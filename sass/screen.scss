@@ -5,3 +5,9 @@
 	@include box-sizing(border-box);
 }
 
+canvas {
+	display: block;
+	width: 600px;
+	height: 600px;
+	border: 1px solid red;
+}

@@ -2,8 +2,17 @@
 (function() {
   var _this = this;
 
-  define("First", [], function() {
-    return console.log("First module bro, get at me");
+  require.config({
+    paths: {
+      'jquery': 'lib/jquery',
+      'underscore': 'lib/underscore',
+      'backbone': 'lib/backbone'
+    }
+  });
+
+  define("First", ["underscore"], function() {
+    console.log("First module bro, get at me");
+    return console.log(_);
   });
 
   require(["First"]);
