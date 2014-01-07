@@ -1,16 +1,18 @@
 require.config
 	paths: 
-		'jquery': 'lib/jquery'
-		'easel': 'lib/easel'
+		'jquery'	: 'lib/jquery'
+		'easel'		: 'lib/easel'
 		'underscore': 'lib/underscore'
-		'backbone': 'lib/backbone'
-		'utilities': 'lib/modules/js/utilities'
-		'board': 'lib/modules/js/board'
-		'controls': 'lib/modules/js/controls'
-		'player': 'lib/modules/js/player'
-		'npc': 'lib/modules/js/npc'
+		'backbone'	: 'lib/backbone'
+		'globals'	: 'lib/modules/js/globals'
+		'utilities' : 'lib/modules/js/utilities'
+		'board'		: 'lib/modules/js/board'
+		'controls'	: 'lib/modules/js/controls'
+		'player'	: 'lib/modules/js/player'
+		'npc'		: 'lib/modules/js/npc'
 
-define ['utilities', 'controls', 'board', 'player', 'npc'], (ut, board, PC, NPC) =>
+define ['utilities', 'board', 'player', 'npc', 'globals'], (ut, board, PC, NPC, globals) =>
+	createjs.Ticker.addEventListener "tick", board.stage
 
 
 	# sheet = new createjs.SpriteSheet
@@ -26,7 +28,6 @@ define ['utilities', 'controls', 'board', 'player', 'npc'], (ut, board, PC, NPC)
 	# sheet.getAnimation("run").next = "run"
 	# sprite = new createjs.Sprite(sheet, "run")
 	# sprite.scaleY = sprite.scaleX = 1
-	# createjs.Ticker.addEventListener("tick", board.stage);
 	# board.stage.addChild(sprite);
 	# ut.c player
 	# # shape.graphics.beginFill("rgba(25,101,101,.5)").drawRoundRect 10, 10, 33, 120, 0

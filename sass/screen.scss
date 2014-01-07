@@ -6,20 +6,37 @@
 }
 
 body {
-	background: #312744;
+	background: #1F182D;
 }
 
 canvas {
 	display: block;
-	width: 600px;
-	height: 600px;
 	margin: 0 auto;
-	background: #333;
-	// background: url("../images/Munashichi/pano.jpg") fixed no-repeat;
-	border: 2px solid #ccc;
+	background: #888;
+	border: 1px solid #aaa;
 	outline: none;
-	@include border-radius(2px);
-	@include box-shadow(0px 0px 14px #222);
+	@include transition(background-image 1.2s ease-in-out);
+	@include border-radius(3px);
+	@include box-shadow(0px 0px 34px #222);
+
+	&[bg='image-1'] {
+		background: url("../images/Munashichi/cropped/monastery.jpg") no-repeat;
+	}
+	&[bg='image-2'] {
+		background: url("../images/Munashichi/cropped/cathedral.jpg") no-repeat;
+	}
+	&[bg='image-3'] {
+		background: url("../images/Munashichi/cropped/sunset.jpg") no-repeat;
+	}
+	&[bg='image-4'] {
+		background: url("../images/Munashichi/cropped/edifice.jpg") no-repeat;
+	}
+	&[bg='image-5'] {
+		background: url("../images/Munashichi/cropped/oldman.jpg") no-repeat;
+	}
+	&[bg='image-6'] {
+		background: url("../images/Munashichi/cropped/dove.jpg") no-repeat;
+	}
 }
 
 .wrapper {

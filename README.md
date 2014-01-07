@@ -9,4 +9,6 @@ Shit needs codenames sometimes. Also it means "Stop! Hammertime." in German.
 
 #### Modules
 
-I'll be writing the game using require.js, backbone.js, and easel.js. There will be a lot of modules. Each "level" shall be its own module.
+I'll be writing the game using require.js, backbone.js, and easel.js. There will be a lot of modules. Each "level" shall be its own module. 
+
+4AM revelation: the architecture for this seems like fairly clear cut MVC. We need a taskrunner (controller) for the game - keeps track of global stuff like game state (battle, cutscene, travel, etc), but has hooks into the board module (view) and the player, npc, and controls module (models, sort of). 

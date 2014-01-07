@@ -1,6 +1,6 @@
-define "npc", ["utilities", "underscore", "backbone"], (ut) =>
+define "npc", ["utilities", "underscore", "backbone"], (ut) ->
 	return Backbone.Model.extend
-		defaults: =>
+		defaults: ->
 			name: "NPC"
 			items: []
 			sprite: null

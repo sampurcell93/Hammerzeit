@@ -8,6 +8,7 @@
       'easel': 'lib/easel',
       'underscore': 'lib/underscore',
       'backbone': 'lib/backbone',
+      'globals': 'lib/modules/js/globals',
       'utilities': 'lib/modules/js/utilities',
       'board': 'lib/modules/js/board',
       'controls': 'lib/modules/js/controls',
@@ -16,6 +17,8 @@
     }
   });
 
-  define(['utilities', 'controls', 'board', 'player', 'npc'], function(ut, board, PC, NPC) {});
+  define(['utilities', 'board', 'player', 'npc', 'globals'], function(ut, board, PC, NPC, globals) {
+    return createjs.Ticker.addEventListener("tick", board.stage);
+  });
 
 }).call(this);
