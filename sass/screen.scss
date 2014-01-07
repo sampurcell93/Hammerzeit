@@ -5,9 +5,24 @@
 	@include box-sizing(border-box);
 }
 
+body {
+	background: #312744;
+}
+
 canvas {
 	display: block;
 	width: 600px;
 	height: 600px;
-	border: 1px solid red;
+	margin: 0 auto;
+	background: #333;
+	// background: url("../images/Munashichi/pano.jpg") fixed no-repeat;
+	border: 2px solid #ccc;
+	outline: none;
+	@include border-radius(2px);
+	@include box-shadow(0px 0px 14px #222);
+}
+
+.wrapper {
+	width: 960px;
+	margin: 10px auto;
 }

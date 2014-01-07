@@ -5,16 +5,17 @@
   require.config({
     paths: {
       'jquery': 'lib/jquery',
+      'easel': 'lib/easel',
       'underscore': 'lib/underscore',
-      'backbone': 'lib/backbone'
+      'backbone': 'lib/backbone',
+      'utilities': 'lib/modules/js/utilities',
+      'board': 'lib/modules/js/board',
+      'controls': 'lib/modules/js/controls',
+      'player': 'lib/modules/js/player',
+      'npc': 'lib/modules/js/npc'
     }
   });
 
-  define("First", ["underscore"], function() {
-    console.log("First module bro, get at me");
-    return console.log(_);
-  });
-
-  require(["First"]);
+  define(['utilities', 'controls', 'board', 'player', 'npc'], function(ut, board, PC, NPC) {});
 
 }).call(this);
