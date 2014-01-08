@@ -1,6 +1,7 @@
-define "globals", [], =>
+define [], =>
 	return {
-		name: 'Hammerzeit.'
+		name: 'Hammerzeit.....!'
 		version: 0.1
 		author: "Sam Purcell"
+		states: null
 	}
