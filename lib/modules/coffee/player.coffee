@@ -1,5 +1,5 @@
-define "player", ["utilities", "npc", "backbone", "easel"], (ut, NPC) ->
-	return NPC.extend 
+define "player", ["utilities", "npc", "backbone", "easel", "underscore"], (ut, NPC) ->
+	player = NPC.extend
 		frames: {
 			# The in place animation frames for the PC
 			down: [[0, 0, 55, 55, 0]
@@ -20,13 +20,20 @@ define "player", ["utilities", "npc", "backbone", "easel"], (ut, NPC) ->
 				[165, 165, 55, 55, 0]]
 		}
 		initialize: (attrs) ->
-			sheet = new createjs.SpriteSheet
-				framerate: 30
-				frames: @frames.down
-				animations: 
-					run: [0,3]
-				images: ["images/sprites/hero.png"]
+			@walkopts = _.extend @walkopts, {images: ["images/sprites/hero.png"]}
+			@sheets = {
+				left : new createjs.SpriteSheet(_.extend @walkopts, {frames: @frames.left})
+				right: new createjs.SpriteSheet(_.extend @walkopts, {frames: @frames.right})
+				up	 : new createjs.SpriteSheet(_.extend @walkopts, {frames: @frames.up})
+				down : new createjs.SpriteSheet(_.extend @walkopts, {frames: @frames.down})
+			}
+			sheet = @sheets.down
 			sheet.getAnimation("run").speed = .13
 			sheet.getAnimation("run").next = "run"
 			sprite = new createjs.Sprite(sheet, "run")
-			@set "marker", sheet
+			@marker = sprite
+
+	return {
+		model: player
+		PC: new player({name: "Hero", items: ["Wooden Sword", "Tattered Cloak"]})
+	}

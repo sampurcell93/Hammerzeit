@@ -1,23 +1,37 @@
 # The beginning of the game! Woot! This module sets up the story and gets the play up and running.
-define ["utilities", "board", "dialog", "globals", "taskrunner", "mapper", "traveler", "underscore", "jquery"], (ut, board, dialog, globals, runner, mapper, traveler) ->
-
+define ["utilities", "board", "dialog", "globals", "taskrunner", "mapper", "traveler", "npc", "player", "underscore", "jquery"], (ut, board, dialog, globals, runner, mapper, traveler, NPC, player) ->
+	PC = player.PC
 	stage = board.getStage()
 
 	g = []
-	for i in [0..10] then g.push "g"
+	r = []
+	t = []
+	ten = []
+	for i in [0..14] 
+		g.push "g"
+		r.push "wh"
+		ten.push "ten"
+		t.push "t"
 
 	mapObj = [
-		["g", "gwbr", "w", "gwtl", g]
-		["gwbr", "w", "gwtl", "g",g]
-		["w", "gwtl", "g", g]
-		["w", "gwbl", "g", g]
-		["gwtr", "w", "gwbl", g]
+		["g", "gwbr", "w", "gwtl", "g", "g", "g", "g", "gwtr", "wh", "wh", "wh", "wh", "gwbl"]
+		["gwbr", "w", "gwtl", "g",g.slice(0,9), "wv" ]
+		["w", "gwtl", "g", g.slice(0,10), "wv"]
+		["w", "gwbl", "g", g.slice(0,9), "wh" ,"gwtl"]
+		["gwtr", "w", "gwbl", g.slice(0,11)]
 		["g", "gwtr", "gwtl",g ]
+		ten, t
+		t, t, t, t,
+		g,r,g,
+		r,
+		g,g
 	]
 
 	return {
 		initialize: ->
 			board.clear()
+			clearInterval globals.introScenery
+			# introSlider 3
 			dialog.initialize()
 			dialog.loadDialogSet([
 				# {
@@ -46,16 +60,14 @@ define ["utilities", "board", "dialog", "globals", "taskrunner", "mapper", "trav
 				{
 					text: 'Perhaps I should show them to you, before they are gone forever. Someone needs to understand. Someone needs to see my homeland...'
 					options:
-						delay: 5000
+						delay: 1000
 						speed: 12
 						after: ->
 							board.setPresetBackground ""
 							dialog.destroy()
 							mapper.renderMap mapper.loadMap(mapObj), stage
-							board.addState("TRAVEL").removeState "WAITING"
-							# board.setKeysDisabled false
-							# board.setState globals.states.WAITING
-
+							board.addState("TRAVEL").removeState("WAITING")
+							board.addCharacter PC
 				}
 			])
 		

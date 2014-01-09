@@ -16,11 +16,11 @@
       'player': 'lib/modules/js/player',
       'taskrunner': 'lib/modules/js/taskrunner',
       'mapper': 'lib/modules/js/mapper',
-      'traveling': 'lib/modules/js/travel'
+      'traveler': 'lib/modules/js/travel'
     }
   });
 
-  define(['utilities', 'board', 'player', 'npc', 'taskrunner', 'traveling'], function(ut, board, PC, NPC, taskrunner) {
+  define(['utilities', 'board', 'player', 'npc', 'taskrunner', 'traveler'], function(ut, board, PC, NPC, taskrunner) {
     taskrunner.initialize(board);
     return board.initialize(taskrunner);
   });

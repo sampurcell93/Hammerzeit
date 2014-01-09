@@ -15,10 +15,10 @@ require.config
 		'player'	: 'lib/modules/js/player'
 		'taskrunner': 'lib/modules/js/taskrunner'
 		'mapper'	: 'lib/modules/js/mapper'
-		'traveling'	: 'lib/modules/js/travel'
+		'traveler'	: 'lib/modules/js/travel'
 
 
-define ['utilities', 'board', 'player', 'npc', 'taskrunner', 'traveling'], (ut, board, PC, NPC, taskrunner) ->
+define ['utilities', 'board', 'player', 'npc', 'taskrunner', 'traveler'], (ut, board, PC, NPC, taskrunner) ->
 	# Bind the taskrunner controller to the board.
 	taskrunner.initialize board
 	# Setup home screen on board, and bind taskrunner

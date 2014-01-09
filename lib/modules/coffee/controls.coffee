@@ -1,7 +1,9 @@
 # 38 up 37 left 39 right 40 down
-define ["utilities", "dialog", "jquery"], (ut, dialog) ->
-	require ["board"], (board) ->
+define ["utilities", "dialog", "npc", "player", "jquery"], (ut, dialog, NPC, player) ->
+	require ["board", "taskrunner"], (board, taskrunner) ->
+		PC = player.PC
 		$c = board.$canvas.focus()
+		keysdisabled = false
 
 		# Keycodes
 		kc = {
@@ -27,14 +29,25 @@ define ["utilities", "dialog", "jquery"], (ut, dialog) ->
 		stateFns = {
 			INTRO: (key) ->
 				switch key
-					when kc["NEW"] then board.newGame()
+					when kc["NEW"] then taskrunner.newGame()
 			WAITING: (key) ->
 			BATTLE: (key) ->
 			CUTSCENE: (key) ->
 			TRAVEL: (key) ->
+				ut.c PC
 				switch key
+					when kc["UP"]
+						ut.c "UP"
+						PC.move("up")
+					when kc["RIGHT"]
+						ut.c "right"
+						PC.move("right")
 					when kc["DOWN"]
-						ut.c "moving down bro"
+						ut.c "down"
+						PC.move("down")
+					when kc["LEFT"]
+						ut.c "left"
+						PC.move("left")
 			DRAWING: (key) ->
 				switch key
 					when kc["ENTER"], kc["SPACE"]
@@ -46,6 +59,7 @@ define ["utilities", "dialog", "jquery"], (ut, dialog) ->
 
 		# High level delegator based on the key pressed and the current board state.
 		delegate = (key, state, e) ->
+			ut.c key
 			if key.isStateDependent()
 				if $.isArray state
 					_.each state, (ins) ->
@@ -56,5 +70,13 @@ define ["utilities", "dialog", "jquery"], (ut, dialog) ->
 				generalFns[key](e)
 
 		$c.on "keydown", (e) =>
-			if !board.getKeysDisabled() then delegate(key = e.keyCode || e.which, board.getState(), e)
+			delegate(key = e.keyCode || e.which, board.getState(), e) unless keysdisabled
 			
+
+		return {
+			getKeysDisabled: -> 
+				keysDisabled
+			setKeysDisabled: (status) ->
+				keysDisabled = status
+				@
+		}

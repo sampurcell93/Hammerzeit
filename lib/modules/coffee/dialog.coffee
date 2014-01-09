@@ -6,18 +6,17 @@ define ["utilities", "board", "globals", "underscore", "jquery"], (ut, board, gl
 		drawrate: 20
 		drawroutine: null
 		background: ->
-			shape = new createjs.Shape()
+			shape = new createjs.Shape
 			shape.graphics.beginFill("#000").drawRect(0,0,200,100)
 			stage.addChild shape
 		initialize: (background) ->
 			board.addState "DRAWING"
-			@background()
+			if background then @background()
 		default: 
 			textstyles: {x: 20, y : 260,  shadow: textshadow, maxWidth: 660, lineHeight: 22, lineWidth: 660}
 			instant: false
 		delegateAfter: (after, delay) ->
 			if after then setTimeout after, delay || 1000
-
 		draw: (text, opts) ->
 			opts = $.extend true, @default, (opts || {})
 			if opts.before then opts.before()

@@ -1,6 +1,16 @@
 define ["globals", "utilities", "underscore", "easel", "jquery"], (globals, ut) ->
 	tileurl = 'images/tiles/<%=name%>.jpg'
 	tiles = {
+		t: {
+			name: 'trees'
+			enter: true
+			subtypes: {
+				en: {
+					name: "treeedgenorth"
+					enter: true
+				}
+			}
+		}
 		g: {
 			enter: true
 			name: 'grass'
@@ -10,11 +20,11 @@ define ["globals", "utilities", "underscore", "easel", "jquery"], (globals, ut) 
 					name: "grasswaterbottomright"
 				}
 				wtr: {
-					enter: false
+					enter: true
 					name: "grasswatertopright"
 				}
 				wtl: {
-					enter: false
+					enter: true
 					name: "grasswatertopleft"
 				}
 				wbl: {
@@ -42,6 +52,10 @@ define ["globals", "utilities", "underscore", "easel", "jquery"], (globals, ut) 
 		f: {
 			enter: true
 			name: 'forest'
+		}
+		s: {
+			enter: true
+			name: 'sand'
 		}
 	}
 	tilewidth = tileheight = 50

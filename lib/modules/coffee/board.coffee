@@ -12,7 +12,6 @@ define ['globals', 'utilities', 'player', 'npc', 'jquery', 'underscore', 'easel'
 		stage.update() unless tick.paused
 	state = ["INTRO"]
 	taskrunner = null
-	keysDisabled = false
 	textshadow = globals.textshadow = new createjs.Shadow("#000000", 0,0,7)
 
 	scenecount = 0
@@ -59,10 +58,6 @@ define ['globals', 'utilities', 'player', 'npc', 'jquery', 'underscore', 'easel'
 		sprite.scaleY = sprite.scaleX = 1
 		stage.addChild(sprite);
 
-	newGame = ->
-		ut.c "About to embark!"
-		taskrunner.loadStage 1
-
 	initialize = (runner) ->
 		taskrunner = runner
 		startSlideshow()
@@ -72,7 +67,8 @@ define ['globals', 'utilities', 'player', 'npc', 'jquery', 'underscore', 'easel'
 		# Make new game button
 		newgame = new createjs.Text("New Game", "30px Arial", "#f9f9f9")
 		_.extend newgame, {x: 140, y: 280, shadow: textshadow, cursor: 'pointer', mouseEnabled: true}
-		newgame.addEventListener "click", newGame
+		newgame.addEventListener "click", ->
+			taskrunner.newGame()
 
 		# Make load game button
 		loadgame = new createjs.Text("Load Game", "30px Arial", "#f9f9f9")
@@ -93,10 +89,7 @@ define ['globals', 'utilities', 'player', 'npc', 'jquery', 'underscore', 'easel'
 
 	clear = ->
 		stage.removeAllChildren()
-		clearInterval globals.introScenery
-		introSlider 3
 		stage.clear()
-
 
 	addState = (newstate) ->
 		state.push newstate
@@ -111,13 +104,14 @@ define ['globals', 'utilities', 'player', 'npc', 'jquery', 'underscore', 'easel'
 		else throw new Error("The board currently has only one state - you can't remove it.")
 		state
 
+	addCharacter = (character) ->
+		stage.addChild character.marker
+		character.stage = stage
+
 	window.board = {
 		canvas: canvas
 		$canvas: $canvas
 		ctx: canvas.getContext "2d"
-		newGame: ->
-			newGame()
-			@
 		# Expects a css bg attribute value.
 		setPresetBackground: (bg) ->
 			setPresetBackground bg
@@ -147,9 +141,7 @@ define ['globals', 'utilities', 'player', 'npc', 'jquery', 'underscore', 'easel'
 		clear: ->
 			clear()
 			@
-		getKeysDisabled: -> 
-			keysDisabled
-		setKeysDisabled: (status) ->
-			keysDisabled = status
-			@
+		# Expects either a PC or NPC model - see player.coffee and npc.coffee
+		addCharacter: (character) ->
+			addCharacter character
 	}
