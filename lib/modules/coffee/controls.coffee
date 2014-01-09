@@ -13,6 +13,7 @@ define ["utilities", "dialog", "jquery"], (ut, dialog) ->
 			RIGHT: 39
 			ESCAPE: 27
 			NEW: 78
+			COMMAND: 91
 		}
 
 		# Todo
@@ -20,31 +21,40 @@ define ["utilities", "dialog", "jquery"], (ut, dialog) ->
 			true
 
 		generalFns =
-			13: ->
+			91: (e) ->
+
 
 		stateFns = {
-			0: (key) ->
+			INTRO: (key) ->
 				switch key
 					when kc["NEW"] then board.newGame()
-			1: (key) ->
-			2: (key) ->
-			3: (key) ->
-			4: (key) ->
-			5: (key) ->
+			WAITING: (key) ->
+			BATTLE: (key) ->
+			CUTSCENE: (key) ->
+			TRAVEL: (key) ->
+				switch key
+					when kc["DOWN"]
+						ut.c "moving down bro"
+			DRAWING: (key) ->
 				switch key
 					when kc["ENTER"], kc["SPACE"]
 						ut.c "finish dialog"
 						dialog.finish()
 					when kc['ESCAPE'] then dialog.clear()
+			LOADING: -> false # Can't do shit when loading brah
 		}
 
 		# High level delegator based on the key pressed and the current board state.
-		delegate = (key, state) ->
+		delegate = (key, state, e) ->
 			if key.isStateDependent()
-				stateFns[state](key)
+				if $.isArray state
+					_.each state, (ins) ->
+						stateFns[ins](key)
+				else 
+					stateFns[state](key)
 			else if generalFns.hasOwnProperty(key) 
-				generalFns[key]()
+				generalFns[key](e)
 
 		$c.on "keydown", (e) =>
-			if !board.getKeysDisabled() then delegate(key = e.keyCode || e.which, board.getState())
+			if !board.getKeysDisabled() then delegate(key = e.keyCode || e.which, board.getState(), e)
 			

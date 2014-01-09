@@ -1,10 +1,10 @@
-define ["utilities", "board", "player", "controls"], (ut, board, player, controls) ->
-	board = null
+define ["utilities", "board", "player", "controls", "mapper", "underscore"], (ut, board, player, controls, mapper) ->
 	return {
 		initialize: (linked_board) ->
 			board = linked_board
 		loadStage: (module) ->
+			board.setState "LOADING"
 			require ["lib/modules/js/stage" + module], (stage) ->
-				ut.c "board", board
-				stage.initialize board
+				board.removeState "LOADING"
+				stage.initialize()
 	}

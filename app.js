@@ -12,13 +12,15 @@
       'dialog': 'lib/modules/js/dialog',
       'board': 'lib/modules/js/board',
       'controls': 'lib/modules/js/controls',
-      'player': 'lib/modules/js/player',
       'npc': 'lib/modules/js/npc',
-      'taskrunner': 'lib/modules/js/taskrunner'
+      'player': 'lib/modules/js/player',
+      'taskrunner': 'lib/modules/js/taskrunner',
+      'mapper': 'lib/modules/js/mapper',
+      'traveling': 'lib/modules/js/travel'
     }
   });
 
-  define(['utilities', 'board', 'player', 'npc', 'taskrunner'], function(ut, board, PC, NPC, taskrunner) {
+  define(['utilities', 'board', 'player', 'npc', 'taskrunner', 'traveling'], function(ut, board, PC, NPC, taskrunner) {
     taskrunner.initialize(board);
     return board.initialize(taskrunner);
   });

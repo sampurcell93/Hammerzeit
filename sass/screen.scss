@@ -12,8 +12,9 @@ body {
 canvas {
 	display: block;
 	margin: 0 auto;
-	background: #888;
-	border: 1px solid #aaa;
+	padding: 0;
+	background: #f9f9f9;
+	border: 1px solid #f9f9f9;
 	outline: none;
 	@include transition(background-image 1.2s ease-in-out);
 	@include border-radius(3px);

@@ -3,40 +3,61 @@ define ['globals', 'utilities', 'player', 'npc', 'jquery', 'underscore', 'easel'
 	$canvas = $ canvas
 
 	# State enum
-	globals.states = states = {
-		INTRO: 0
-		WAITING: 1
-		BATTLE: 2
-		CUTSCENE: 3
-		TRAVEL: 4
-		DRAWING: 5
-	}
+	states = globals.states
 
 	stage = new createjs.Stage canvas
 	stage.enableMouseOver 1000
 	ticker = createjs.Ticker
 	ticker.addEventListener "tick", (tick) ->
 		stage.update() unless tick.paused
-	state = states.INTRO
+	state = ["INTRO"]
 	taskrunner = null
 	keysDisabled = false
 	textshadow = globals.textshadow = new createjs.Shadow("#000000", 0,0,7)
 
 	scenecount = 0
 	scenelen = 6
-	giveBg = (count) -> 
+
+	setPresetBackground = (bg) ->
+		$canvas.attr "bg", bg
+
+	introSlider = (count) -> 
 		if count == -1 then $canvas.attr "bg", "image-none"
 		else $canvas.attr "bg", ("image-" + parseInt(((count || scenecount++)%scenelen)+1))
 
 	startSlideshow = ->
-		giveBg()
+		introSlider()
 		globals.introScenery = setInterval ->
 			unless scenecount == 7
-				giveBg()
+				introSlider()
 			else
 				clearInterval globals.introScenery
-				globals.introScenery = setInterval giveBg, 12000
+				globals.introScenery = setInterval introSlider, 13400
 		, 0
+
+	# Draws the pc walking along the bottom of the screen
+	walkingMan = () ->
+		sheet = new createjs.SpriteSheet
+			framerate: 30
+			frames: [
+				[0, 165, 55, 55, 0]
+				[55, 165, 55, 55, 0]
+				[110, 165, 55, 55, 0]
+				[165, 165, 55, 55, 0]
+			]
+			animations: 
+				run: [0,3]
+			images: ["images/sprites/hero.png"]
+		sheet.getAnimation("run").speed = .13
+		sheet.getAnimation("run").next = "run"
+		sprite = new createjs.Sprite(sheet, "run")
+		sprite.x = 0
+		sprite.y = 0
+		# sprite.addEventListener("tick", -> 
+			# sprite.x += 3; 
+			# if sprite.x >= 150 then sprite.x = -74)
+		sprite.scaleY = sprite.scaleX = 1
+		stage.addChild(sprite);
 
 	newGame = ->
 		ut.c "About to embark!"
@@ -65,20 +86,30 @@ define ['globals', 'utilities', 'player', 'npc', 'jquery', 'underscore', 'easel'
 				loadgame.font = "30px Arial"
 		}
 		# Make copyright
-		copyright = new createjs.Text("Game copyright Sam Purcell 2014", "14px Arial", "rgba(255,255,255,.5)")
+		copyright = new createjs.Text("Game copyright " + globals.author + " 2014", "14px Arial", "rgba(255,255,255,.5)")
 		_.extend copyright, {x: 10, y: 680, shadow: textshadow}
 		stage.addChild newgame, loadgame, title, copyright
-		ut.c stage.getChildIndex copyright
+		walkingMan()
 
 	clear = ->
 		stage.removeAllChildren()
 		clearInterval globals.introScenery
-		giveBg 3
+		introSlider 3
 		stage.clear()
+
+
+	addState = (newstate) ->
+		state.push newstate
+
 	setState = (newstate) ->
-		if typeof newstate is "number"
-			state = newstate
-		else state = states[newstate.toUpperCase()]
+		state = [newstate]
+
+	removeState = (removeme) ->
+		if $.isArray(state) and state.length > 1
+			index = state.indexOf removeme
+			state.splice(index, 1) unless index == -1
+		else throw new Error("The board currently has only one state - you can't remove it.")
+		state
 
 	window.board = {
 		canvas: canvas
@@ -87,14 +118,31 @@ define ['globals', 'utilities', 'player', 'npc', 'jquery', 'underscore', 'easel'
 		newGame: ->
 			newGame()
 			@
+		# Expects a css bg attribute value.
+		setPresetBackground: (bg) ->
+			setPresetBackground bg
+			@
 		getState: -> state
+		# Checks if the board has a state - expects an INT
+		hasState: (checkstate) ->
+			if $.isArray state then state.indexOf(checkstate) != -1
+			else state == checkstate
+
 		getStage: -> stage
 		# Takes in the taskrunner codependency
 		initialize: (runner) ->
 			initialize runner
 			@
-		setState: (newstate) -> 
-			setState newstate
+		# Removes all other states - expects string
+		setState: (state) ->
+			setState state
+		# Adds a state to the array of states - string
+		addState: (newstate) -> 
+			addState newstate
+			@
+		# Give an integer to remove (IE 1 removes the "wait" state)
+		removeState: (removeme) ->
+			removeState removeme
 			@
 		clear: ->
 			clear()

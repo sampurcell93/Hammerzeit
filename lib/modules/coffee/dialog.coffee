@@ -8,16 +8,20 @@ define ["utilities", "board", "globals", "underscore", "jquery"], (ut, board, gl
 		background: ->
 			shape = new createjs.Shape()
 			shape.graphics.beginFill("#000").drawRect(0,0,200,100)
-			# stage.addChild shape
+			stage.addChild shape
 		initialize: (background) ->
-			board.setState states.DRAWING
-			# @background()
+			board.addState "DRAWING"
+			@background()
 		default: 
-			textstyles: {x: 20, y : 300,  shadow: textshadow, maxWidth: 660, lineHeight: 22, lineWidth: 660}
+			textstyles: {x: 20, y : 260,  shadow: textshadow, maxWidth: 660, lineHeight: 22, lineWidth: 660}
 			instant: false
+		delegateAfter: (after, delay) ->
+			if after then setTimeout after, delay || 1000
+
 		draw: (text, opts) ->
 			opts = $.extend true, @default, (opts || {})
-			if opts.before then opts.before.call @
+			if opts.before then opts.before()
+			@delegateAfter opts.after, opts.delay 
 			i = 0
 			if typeof text is "function" then text = text()
 			@current_text = text = text.split(" ")
@@ -30,7 +34,6 @@ define ["utilities", "board", "globals", "underscore", "jquery"], (ut, board, gl
 				# Once we've reached the end, stop writing and break interval
 				if !text[i] 
 					clearInterval @drawroutine 
-					if opts.after then opts.after.call @
 					return
 				# Otherwise add word by word
 				alltext = new createjs.Text visible + " " + text[i], "16px Arial", "#fff"
@@ -51,10 +54,10 @@ define ["utilities", "board", "globals", "underscore", "jquery"], (ut, board, gl
 			_.extend text, opts.textstyles
 			unless opts.instant then stage.removeChildAt @current_display_index
 			stage.addChild text
-			board.setState states.WAITING
+			board.setState "WAITING"
 		destroy: ->
-			@remove()
-			board.setState states.WAITING
+			@clear()
+			board.setState "WAITING"
 		waitThen: (callback, time, donestate) ->
 			callback || (callback = ->)
 			setTimeout ->
@@ -68,7 +71,7 @@ define ["utilities", "board", "globals", "underscore", "jquery"], (ut, board, gl
 			@clear()
 			@waitThen =>
 				@dialogSetHelper set, ++i
-			, blurb.delay
+			, blurb.options.delay
 		loadDialogSet: (set) ->
 			ut.c "wrapper"
 			if !set.length then return
@@ -101,6 +104,6 @@ define ["utilities", "board", "globals", "underscore", "jquery"], (ut, board, gl
 			dialog.waitThen callback, time
 			@
 		# Expects an array of objects, each of which containing a blurb of text, and the delay until the next should appear
-		loadDialogSet: (text) ->
-			dialog.loadDialogSet text
+		loadDialogSet: (set) ->
+			dialog.loadDialogSet set
 	}	
