@@ -20,7 +20,7 @@ define "player", ["utilities", "npc", "backbone", "easel", "underscore"], (ut, N
 				[165, 165, 55, 55, 0]]
 		}
 		initialize: (attrs) ->
-			@walkopts = _.extend @walkopts, {images: ["images/sprites/hero.png"]}
+			@walkopts = _.extend @getPrivate("walkopts"), {images: ["images/sprites/hero.png"]}
 			@sheets = {
 				left : new createjs.SpriteSheet(_.extend @walkopts, {frames: @frames.left})
 				right: new createjs.SpriteSheet(_.extend @walkopts, {frames: @frames.right})

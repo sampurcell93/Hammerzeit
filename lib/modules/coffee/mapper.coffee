@@ -70,6 +70,13 @@ define ["globals", "utilities", "underscore", "easel", "jquery"], (globals, ut) 
 	# Initialize the tiles with common defaults
 	_.each tiles, setDefaultTileAttrs
 
+	# TODO
+	# Breaks a map matrix into a series of matrices with 14*14 tile dimensions
+	# For now, just pass in an array of 14x14s
+	chunkify = (matrix) -> matrix
+			
+	# Takes in a string, for example "gwbr" and walks through the tiles object
+	# until it finds an object and it returns the url for that parent
 	getFromShorthand = (chars, nestedobj) ->
 		if nestedobj.hasOwnProperty(chars) then return nestedobj[chars].url
 		parent = chars.charAt 0
@@ -80,6 +87,7 @@ define ["globals", "utilities", "underscore", "easel", "jquery"], (globals, ut) 
 	loadMap = (map, exceptions) ->
 		bitmaparray = []
 		_.each map, (tile, i, j) ->
+			ut.c tile
 			# Check if it's an array - if so, flatten to make sure only 2D
 			if $.isArray tile
 				bitmaparray.push loadMap _.flatten(tile)
@@ -88,7 +96,7 @@ define ["globals", "utilities", "underscore", "easel", "jquery"], (globals, ut) 
 					type = tile.type
 				else type = tile
 				bitmaparray.push new createjs.Bitmap(getFromShorthand type, tiles)
-
+		ut.c bitmaparray
 		bitmaparray
 
 	renderMap = (bitmap, stage, vertindex) ->
@@ -100,14 +108,19 @@ define ["globals", "utilities", "underscore", "easel", "jquery"], (globals, ut) 
 				tile.x = tilewidth * i
 				tile.y = tileheight * vertindex
 				stage.addChild tile
+		stage.terrain = bitmap
 
 	return {
 		# Expects a 2d Array of characters, along with an optional array of objects with 
 		# x y coordinate exceptions. For example, ["g","g","g"], [{x: 0, y: 0, except: {enter: false}}]
 		# will create a width 3 height 1 strip of grass where the first square cannot be entered.
 		# Returns a 2D array of bitmaps!
-		loadMap: (map, exceptions) ->
-			loadMap map, exceptions
+		loadMap: (mapChunks, exceptions) ->
+			fullmap = []
+			_.each mapChunks, (chunk) ->
+				fullmap.push(loadMap chunk, exceptions)
+			fullmap
+
 		# Expects a bitmap (can be generated with loadMap) and a createjs stage. Will render the map to the stage
 		renderMap: (bitmap, stage) ->
 			renderMap bitmap, stage

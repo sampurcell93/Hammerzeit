@@ -7,24 +7,15 @@ define ["utilities", "board", "dialog", "globals", "taskrunner", "mapper", "trav
 	r = []
 	t = []
 	ten = []
-	for i in [0..14] 
+	for i in [0...14] 
 		g.push "g"
 		r.push "wh"
 		ten.push "ten"
 		t.push "t"
 
-	mapObj = [
-		["g", "gwbr", "w", "gwtl", "g", "g", "g", "g", "gwtr", "wh", "wh", "wh", "wh", "gwbl"]
-		["gwbr", "w", "gwtl", "g",g.slice(0,9), "wv" ]
-		["w", "gwtl", "g", g.slice(0,10), "wv"]
-		["w", "gwbl", "g", g.slice(0,9), "wh" ,"gwtl"]
-		["gwtr", "w", "gwbl", g.slice(0,11)]
-		["g", "gwtr", "gwtl",g ]
-		ten, t
-		t, t, t, t,
-		g,r,g,
-		r,
-		g,g
+	window.mapObj = [
+		[r,r,r,r,r,r,r,r,r,r,r,r,r,r]
+		[g,g,g,g,g,g,g,g,g,g,g,g,g,g]
 	]
 
 	return {
