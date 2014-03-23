@@ -9,8 +9,8 @@
       'backbone': 'lib/backbone',
       'globals': 'lib/modules/js/globals',
       'utilities': 'lib/modules/js/utilities',
-      'dialog': 'lib/modules/js/dialog',
       'board': 'lib/modules/js/board',
+      'dialog': 'lib/modules/js/dialog',
       'controls': 'lib/modules/js/controls',
       'npc': 'lib/modules/js/npc',
       'player': 'lib/modules/js/player',
@@ -20,7 +20,7 @@
     }
   });
 
-  define(['utilities', 'board', 'player', 'npc', 'taskrunner', 'traveler'], function(ut, board, PC, NPC, taskrunner) {
+  define(['utilities', 'board', 'taskrunner'], function(ut, board, taskrunner) {
     taskrunner.initialize(board);
     return board.initialize(taskrunner);
   });

@@ -118,7 +118,7 @@ define ["globals", "utilities", "underscore", "easel", "jquery"], (globals, ut) 
 		loadMap: (mapChunks, exceptions) ->
 			fullmap = []
 			_.each mapChunks, (chunk) ->
-				fullmap.push(loadMap chunk, exceptions)
+				fullmap.unshift(loadMap chunk, exceptions)
 			fullmap
 
 		# Expects a bitmap (can be generated with loadMap) and a createjs stage. Will render the map to the stage

@@ -8,8 +8,8 @@ require.config
 		'backbone'	: 'lib/backbone'
 		'globals'	: 'lib/modules/js/globals'
 		'utilities' : 'lib/modules/js/utilities'
-		'dialog'	: 'lib/modules/js/dialog'
 		'board'		: 'lib/modules/js/board'
+		'dialog'	: 'lib/modules/js/dialog'
 		'controls'	: 'lib/modules/js/controls'
 		'npc'		: 'lib/modules/js/npc'
 		'player'	: 'lib/modules/js/player'
@@ -18,7 +18,7 @@ require.config
 		'traveler'	: 'lib/modules/js/travel'
 
 
-define ['utilities', 'board', 'player', 'npc', 'taskrunner', 'traveler'], (ut, board, PC, NPC, taskrunner) ->
+define ['utilities', 'board', 'taskrunner'], (ut, board, taskrunner) ->
 	# Bind the taskrunner controller to the board.
 	taskrunner.initialize board
 	# Setup home screen on board, and bind taskrunner

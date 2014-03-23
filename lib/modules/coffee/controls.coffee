@@ -25,7 +25,6 @@ define ["utilities", "dialog", "npc", "player", "jquery"], (ut, dialog, NPC, pla
 		generalFns =
 			91: (e) ->
 
-
 		stateFns = {
 			INTRO: (key) ->
 				switch key
@@ -38,16 +37,16 @@ define ["utilities", "dialog", "npc", "player", "jquery"], (ut, dialog, NPC, pla
 				switch key
 					when kc["UP"]
 						ut.c "UP"
-						PC.move("up")
+						PC.move(0,-1)
 					when kc["RIGHT"]
 						ut.c "right"
-						PC.move("right")
+						PC.move(1,0)
 					when kc["DOWN"]
 						ut.c "down"
-						PC.move("down")
+						PC.move(0,1)
 					when kc["LEFT"]
 						ut.c "left"
-						PC.move("left")
+						PC.move(-1,0)
 			DRAWING: (key) ->
 				switch key
 					when kc["ENTER"], kc["SPACE"]
