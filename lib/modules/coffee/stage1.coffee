@@ -12,13 +12,84 @@ define ["utilities", "board", "dialog", "globals", "taskrunner", "player", "mapp
 		# ten.push "ten"
 		# t.push "t"
 
-	window.mapObj = [
-		["g", "g", "g", "g", "g"]
-		# [r,r,r,r,r,r,r,r,r,r,r,r,r,r]
-		# [g,g,g,g,g,g,g,g,g,g,g,g,g,g]
-	]
+	window.mapObj = []
+	fullMap = []
+	for i in [0..1]
+		mapObj[i] = []
+		fullMap[i] = []
+	# The first chunk (think top left of total map)
+	mapObj[0][0] = [
+				["g","g","g","g","g","g","g","g","g","g","g","g","g","g"]
+				["g","g","g","g","g","g","g","g","g","g","g","g","g","g"]
+				["g","g","g","g","g","g","g","g","g","g","g","g","g","g"]
+				["g","g","g","g","g","g","g","g","g","g","g","g","g","g"]
+				["g","g","g","g","g","g","g","g","g","g","g","g","g","g"]
+				["g","g","g","g","g","g","g","g","g","g","g","g","g","g"]
+				["g","g","g","g","g","g","g","g","g","g","g","g","g","g"]
+				["g","g","g","g","g","g","g","g","g","g","g","g","g","g"]
+				["g","g","g","g","g","g","g","g","g","g","g","g","g","g"]
+				["wh","wh","wh","wh","wh","wh","wh","wh","wh","wh","wh","wh","wh","wh"]
+				["g","g","g","g","g","g","g","g","g","g","g","g","g","g"]
+				["g","g","g","g","g","g","g","g","g","g","g","g","g","g"]
+				["g","g","g","g","g","g","g","g","g","g","g","g","g","g"]
+				["g","g","g","g","g","g","g","g","g","g","g","g","g","g"]
+			]
+	mapObj[0][1] = [
+				["wh","wh","wh","wh","wh","wh","wh","wh","wh","wh","wh","wh","wh","wh"]
+				["g","g","g","g","g","g","g","g","g","g","g","g","g","g"]
+				["g","g","g","g","g","g","g","g","g","g","g","g","g","g"]
+				["g","g","g","g","g","g","g","g","g","g","g","g","g","g"]
+				["g","g","g","g","g","g","g","g","g","g","g","g","g","g"]
+				["g","g","g","g","g","g","g","g","g","g","g","g","g","g"]
+				["g","g","g","g","g","g","g","g","g","g","g","g","g","g"]
+				["g","g","g","g","g","g","g","g","g","g","g","g","g","g"]
+				["g","g","g","g","g","g","g","g","g","g","g","g","g","g"]
+				["g","g","g","g","g","g","g","g","g","g","g","g","g","g"]
+				["g","g","g","g","g","g","g","g","g","g","g","g","g","g"]
+				["g","g","g","g","g","g","g","g","g","g","g","g","g","g"]
+				["g","g","g","g","g","g","g","g","g","g","g","g","g","g"]
+				["g","g","g","g","g","g","g","g","g","g","g","g","g","g"]
+			]
+	mapObj[1][0] = [
+				["g","g","g","g","g","g","g","g","g","g","g","g","g","g"]
+				["g","g","g","g","g","g","g","g","g","g","g","g","g","g"]
+				["g","g","g","g","g","g","g","g","g","g","g","g","g","g"]
+				["g","g","g","g","g","g","g","g","g","g","g","g","g","g"]
+				["wv","wv","wv","wv","wv","wv","wv","wv","wv","wv","wv","wv","wv","wv",]
+				["g","g","g","g","g","g","g","g","g","g","g","g","g","g"]
+				["g","g","g","g","g","g","g","g","g","g","g","g","g","g"]
+				["g","g","g","g","g","g","g","g","g","g","g","g","g","g"]
+				["g","g","g","g","g","g","g","g","g","g","g","g","g","g"]
+				["g","g","g","g","g","g","g","g","g","g","g","g","g","g"]
+				["g","g","g","g","g","g","g","g","g","g","g","g","g","g"]
+				["g","g","g","g","g","g","g","g","g","g","g","g","g","g"]
+				["g","g","g","g","g","g","g","g","g","g","g","g","g","g"]
+				["g","g","g","g","g","g","g","g","g","g","g","g","g","g"]
+			]
+	mapObj[1][1] = [
+				["g","g","g","g","g","g","g","g","g","g","g","g","g","g"]
+				["g","g","g","g","g","g","g","g","g","g","g","g","g","g"]
+				["g","g","g","g","g","g","g","g","g","g","g","g","g","g"]
+				["g","g","g","g","g","g","g","g","g","g","g","g","g","g"]
+				["t","t","t","t","t","t","t","t","t","t","t","t","t","t"]
+				["g","g","g","g","g","g","g","g","g","g","g","g","g","g"]
+				["g","g","g","g","g","g","g","g","g","g","g","g","g","g"]
+				["g","g","g","g","g","g","g","g","g","g","g","g","g","g"]
+				["g","g","g","g","g","g","g","g","g","g","g","g","g","g"]
+				["g","g","g","g","g","g","g","g","g","g","g","g","g","g"]
+				["g","g","g","g","g","g","g","g","g","g","g","g","g","g"]
+				["g","g","g","g","g","g","g","g","g","g","g","g","g","g"]
+				["g","g","g","g","g","g","g","g","g","g","g","g","g","g"]
+				["g","g","g","g","g","g","g","g","g","g","g","g","g","g"]
+			]
+
+	# Take each chunk defined above (will move to JSON map files) and load it into a full array of bitmaps
+	for i in [0..1] then for j in [0..1]
+		fullMap[i][j] = mapper.loadChunk(mapObj[i][j])
 
 	return {
+		fullMap: fullMap
+		pictoMap: mapObj
 		initialize: ->
 			board.clear()
 			clearInterval globals.introScenery
@@ -52,9 +123,9 @@ define ["utilities", "board", "dialog", "globals", "taskrunner", "player", "mapp
 						after: ->
 							board.setPresetBackground ""
 							dialog.destroy()
-							mapper.renderMap mapper.loadMap(mapObj), stage
+							mapper.renderChunk fullMap[0][0], stage, "0,0"
 							board.addState("TRAVEL").removeState("WAITING")
-							board.addCharacter PC
+							board.addMarker PC
 				}
 			])
 		

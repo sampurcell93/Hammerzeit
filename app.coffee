@@ -16,6 +16,7 @@ require.config
 		'taskrunner': 'lib/modules/js/taskrunner'
 		'mapper'	: 'lib/modules/js/mapper'
 		'traveler'	: 'lib/modules/js/travel'
+		'battler'	: 'lib/modules/js/battler'
 
 
 define ['utilities', 'board', 'taskrunner'], (ut, board, taskrunner) ->

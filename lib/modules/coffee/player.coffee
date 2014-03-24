@@ -1,5 +1,7 @@
-define "player", ["utilities", "npc", "backbone", "easel", "underscore"], (ut, NPC) ->
-	player = NPC.extend
+define "player", ["utilities", "npc", "board", "globals", "backbone", "easel", "underscore"], (ut, NPC, board, globals) ->
+	class player extends NPC
+		defaults:
+			current_chunk: { x: 0, y: 0 }
 		frames: {
 			# The in place animation frames for the PC
 			down: [[0, 0, 55, 55, 0]
@@ -22,16 +24,46 @@ define "player", ["utilities", "npc", "backbone", "easel", "underscore"], (ut, N
 		initialize: (attrs) ->
 			@walkopts = _.extend @getPrivate("walkopts"), {images: ["images/sprites/hero.png"]}
 			@sheets = {
-				left : new createjs.SpriteSheet(_.extend @walkopts, {frames: @frames.left})
-				right: new createjs.SpriteSheet(_.extend @walkopts, {frames: @frames.right})
-				up	 : new createjs.SpriteSheet(_.extend @walkopts, {frames: @frames.up})
-				down : new createjs.SpriteSheet(_.extend @walkopts, {frames: @frames.down})
+				"-1,0" : new createjs.SpriteSheet(_.extend @walkopts, {frames: @frames.left})
+				"1,0": new createjs.SpriteSheet(_.extend @walkopts, {frames: @frames.right})
+				"0,-1": new createjs.SpriteSheet(_.extend @walkopts, {frames: @frames.up})
+				"0,1" : new createjs.SpriteSheet(_.extend @walkopts, {frames: @frames.down})
 			}
-			sheet = @sheets.down
+			sheet = @sheets["0,1"]
 			sheet.getAnimation("run").speed = .13
 			sheet.getAnimation("run").next = "run"
 			sprite = new createjs.Sprite(sheet, "run")
 			@marker = sprite
+			@marker.name = "Player"
+		# Expects x, y object which normalizes negative values to board dimensions. So x=-50 beomes x=650
+		contextualize: (coords) ->
+			if coords.x < 0 then coords.x = globals.map.width + coords.x
+			if coords.y < 0 then coords.y = globals.map.width + coords.y
+		move: (dx, dy) ->
+			# Call super move function then do native bound checking
+			coords = super
+			@contextualize coords
+			@marker.x  = newx = coords.x
+			@marker.y  = newy = coords.y
+			ut.c coords
+			chunk = @get "current_chunk"
+			ut.c "checking position"
+			# if newx == 0 or newy == 0 then return coords
+			if dx > 0 and (newx % globals.map.width) is 0 then chunk.x += 1
+			else if dx < 0 and (newx % globals.map.c_width) is 0 then chunk.x -= 1
+			else if dy > 0 and (newy % globals.map.height) is 0 then chunk.y += 1
+			else if dy < 0 and (newy % globals.map.c_height) is 0 then chunk.y -= 1
+			else return coords
+			@marker.x %= globals.map.width
+			@marker.y %= globals.map.height
+			ut.c "position found to be on a border"
+			# console.log chunk
+			@set "current_chunk", chunk
+			@trigger "change:current_chunk"
+			board.addMarker @
+
+			{ x: @marker.x, y: @marker.y }
+			# board.addState("battle").removeState("travel")
 
 	return {
 		model: player

@@ -1,11 +1,11 @@
-define ['globals', 'utilities', 'jquery', 'underscore', 'easel'], (globals, ut) ->
+define ['globals', 'utilities', 'battler', 'jquery', 'underscore', 'easel'], (globals, ut, battler) ->
     canvas = document.getElementById "game-board"
     $canvas = $ canvas
 
     # State enum
     states = globals.states
 
-    stage = new createjs.Stage canvas
+    window.stage = stage = new createjs.Stage canvas
     stage.enableMouseOver 1000
     ticker = createjs.Ticker
     ticker.addEventListener "tick", (tick) ->
@@ -13,6 +13,7 @@ define ['globals', 'utilities', 'jquery', 'underscore', 'easel'], (globals, ut) 
     state = ["INTRO"]
     taskrunner = null
     textshadow = globals.textshadow = new createjs.Shadow("#000000", 0,0,7)
+
 
     scenecount = 0
     scenelen = 6
@@ -91,25 +92,112 @@ define ['globals', 'utilities', 'jquery', 'underscore', 'easel'], (globals, ut) 
         stage.removeAllChildren()
         stage.clear()
 
+    # When the state changes to battle, flash the screen old school!!
+    flashStateChange = () ->
+        rect = new createjs.Shape();
+        rect.graphics.beginFill("#000").drawRect(0, 0, globals.map.width, globals.map.height);
+        setTimeout ->
+            stage.addChild rect
+            setTimeout ->
+                stage.removeChild rect
+            , 200
+        , 30
+
+    # Could have used backbone events, but felt contrived, would need to modify data structures 
+    # and would still have to trigger...
+    stateChangeEvents = {
+        add: {
+            "BATTLE": =>
+                ut.c "the state has changed to battle. get it son"
+                flashStateChange()
+            "LOADING": =>
+                ut.c "the state has changed to loading. spinny wheel brah"
+        }
+        remove: {
+            "BATTLE": =>
+                ut.c "Battle over..."
+            "TRAVEL": =>
+                ut.c "travel done"
+            "LOADING": =>
+                ut.c "loading over"
+        }
+    }
+
     addState = (newstate) ->
         state.push newstate
+        fn = stateChangeEvents.add[newstate]
+        if fn? then fn()
 
     setState = (newstate) ->
         state = [newstate]
 
     removeState = (removeme) ->
-        if $.isArray(state) and state.length > 1
+        if state.length > 1
             index = state.indexOf removeme
             state.splice(index, 1) unless index == -1
-        else throw new Error("The board currently has only one state - you can't remove it.")
+            fn = stateChangeEvents.remove[removeme]
+            if fn? then fn()
+        else throw new Error("The board currently has only one state - you can't remove it. Try adding another state first.")
         state
+    addMarker = (obj) ->
+        stage.addChild obj.marker
+        obj.stage = stage
 
-    addCharacter = (character) ->
-        stage.addChild character.marker
-        character.stage = stage
 
-    moveObjectTo = (item, x, y, options) ->
-        ut.c item, x, y, options
+    # move_fns = {
+    #     movingIntervals: {}
+    #     secondarymove: null
+    #     walkSpeed: 20
+        
+    #     moveMarker: (marker, dir, offset) ->
+    #         marker[dir] += 5*(offset || 1)
+    #     stopWhenMoved: (count, dir) -> 
+    #         if count >= 9
+    #             clearInterval @movingIntervals[dir]
+    #             # @moving[dir] = false
+    #             count + 1
+    #         else count + 1
+    #     # MOVE RIGHT
+    #     "1,0": (marker) ->
+    #         count = 0
+    #         unless marker.x >= 650
+    #             @movingIntervals[dir] = setInterval =>
+    #                 @moveMarker(marker, dir)
+    #                 count = @stopWhenMoved(count, dir)
+    #             , @walkSpeed
+    #             return "right"
+    #         false
+    #     # MOVE LEFT
+    #     "-1,0": (marker) ->
+    #         count = 0
+    #         unless marker.x <= 0
+    #             @movingIntervals[dir] = setInterval =>
+    #                 @moveMarker(marker, dir, -1)
+    #                 count = @stopWhenMoved(count, dir)
+    #             , @walkSpeed
+    #             return "left"
+    #         false
+    #     # MOVE UP
+    #     "0,-1": (marker) ->
+    #         count = 0
+    #         unless marker.y <= 0
+    #             @movingIntervals[dir] = setInterval =>
+    #                 @moveMarker(marker, dir, -1)
+    #                 count = @stopWhenMoved(count, dir)
+    #             , @walkSpeed
+    #             return "up"
+    #         false
+    #     # MOVE DOWN
+    #     "0,1": (marker) ->
+    #         count = 0
+    #         unless marker.y >= 650
+    #             @movingIntervals = setInterval =>
+    #                 @moveMarker(marker, dir)
+    #                 count = @stopWhenMoved(count, dir)
+    #             , @walkSpeed
+    #             return "down"
+    #         false
+    # }
 
     board = {
         canvas: canvas
@@ -119,6 +207,7 @@ define ['globals', 'utilities', 'jquery', 'underscore', 'easel'], (globals, ut) 
         setPresetBackground: (bg) ->
             setPresetBackground bg
             @
+        # Returns an array of current state integers
         getState: -> state
         # Checks if the board has a state - expects an INT
         hasState: (checkstate) ->
@@ -130,24 +219,27 @@ define ['globals', 'utilities', 'jquery', 'underscore', 'easel'], (globals, ut) 
         initialize: (runner) ->
             initialize runner
             @
+        ### All state getters and setters are case insensitive! ###
         # Removes all other states - expects string
         setState: (state) ->
-            setState state
+            setState state.toUpperCase()
+            @
         # Adds a state to the array of states - string
         addState: (newstate) -> 
-            addState newstate
+            addState newstate.toUpperCase()
             @
-        # Give an integer to remove (IE 1 removes the "wait" state)
+        # Give an string state to remove
         removeState: (removeme) ->
-            removeState removeme
+            removeState removeme.toUpperCase()
             @
         clear: ->
             clear()
             @
         # Expects either a PC or NPC model - see player.coffee and npc.coffee
-        addCharacter: (character) ->
-            addCharacter character
-        # Expects a stage item, an x coordinate to move it to, and a y coordinate. Optional options object last argument
-        moveObjectTo: (item, x, y, options) ->
-            moveObjectTo item, x, y, options
+        addMarker: (character) ->
+            addMarker character
     }
+
+    battler.loadBoard board
+
+    board

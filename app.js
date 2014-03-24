@@ -16,7 +16,8 @@
       'player': 'lib/modules/js/player',
       'taskrunner': 'lib/modules/js/taskrunner',
       'mapper': 'lib/modules/js/mapper',
-      'traveler': 'lib/modules/js/travel'
+      'traveler': 'lib/modules/js/travel',
+      'battler': 'lib/modules/js/battler'
     }
   });
 

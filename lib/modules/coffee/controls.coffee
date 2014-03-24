@@ -1,5 +1,5 @@
 # 38 up 37 left 39 right 40 down
-define ["utilities", "dialog", "npc", "player", "jquery"], (ut, dialog, NPC, player) ->
+define ["utilities", "globals", "dialog", "npc", "mapper", "player", "jquery"], (ut, globals, dialog, NPC, mapper, player) ->
 	require ["board", "taskrunner"], (board, taskrunner) ->
 		PC = player.PC
 		$c = board.$canvas.focus()
@@ -16,6 +16,7 @@ define ["utilities", "dialog", "npc", "player", "jquery"], (ut, dialog, NPC, pla
 			ESCAPE: 27
 			NEW: 78
 			COMMAND: 91
+			CLEAR: 67
 		}
 
 		# Todo
@@ -47,6 +48,8 @@ define ["utilities", "dialog", "npc", "player", "jquery"], (ut, dialog, NPC, pla
 					when kc["LEFT"]
 						ut.c "left"
 						PC.move(-1,0)
+					when kc['CLEAR']
+						mapper.clearChunk window.stage
 			DRAWING: (key) ->
 				switch key
 					when kc["ENTER"], kc["SPACE"]

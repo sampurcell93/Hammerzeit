@@ -1,5 +1,4 @@
-define [], =>
-	return {
+define =>
 		name: 'Hammerzeit!'
 		version: 0.1
 		author: "Sam Purcell"
@@ -15,4 +14,7 @@ define [], =>
 		map:
 			width: 700
 			height: 700
-	}
+			# sprite bounds
+			c_width: 650
+			c_height: 650
+	
