@@ -1,5 +1,5 @@
 define ["globals", "utilities", "underscore", "easel", "jquery"], (globals, ut) ->
-	tileurl 	 = 'images/tiles/<%=name%>.jpg'
+	tileurl 	 = 'images/tiles/<%=name%>.<%=typeof filetype !== "undefined" ? filetype : "jpg" %>'
 	tilewidth    = tileheight = 50
 	tiles 		 = null
 	_activechunk = null
@@ -12,7 +12,7 @@ define ["globals", "utilities", "underscore", "easel", "jquery"], (globals, ut) 
 
 
 	setDefaultTileAttrs = (tile, key) -> 
-		tile.url = _.template tileurl, {name: tile.name}
+		tile.url = _.template tileurl, tile
 		tile.loaded = false
 		if tile.hasOwnProperty("subtypes")
 			_.each tile["subtypes"], setDefaultTileAttrs
@@ -29,20 +29,22 @@ define ["globals", "utilities", "underscore", "easel", "jquery"], (globals, ut) 
 	loadChunk = (map) ->
 		bitmaparray = []
 		ut.c map
-		_.each map, (tile, i, j) ->
+		_.each map, (tile) ->
 			# Check if it's an array - if so, flatten to make sure only 2D
 			if $.isArray tile
 				bitmaparray.push loadChunk _.flatten(tile)
 			else
 				if typeof tile == "object"
-					type = tile.type
-					console.log tile
+					type = tile.t
 				else type = tile
 				temp = getFromShorthand type, tiles
-				bitmaparray.push _.extend(new createjs.Bitmap(temp.url), (tile || {}), (temp || {}))
+				w = tile.width  || 1
+				h = tile.height || 1
+				# Create a new bitmap image, and extend the generic tile defaults onto it, followed by the specific tile settings
+				bitmaparray.push _.extend(new createjs.Bitmap(temp.url), (temp || {}), (tile || {}))
 		bitmaparray
 
-	# A chunk is a 14X14 array
+	# We have wrapper each chunk in a container, so a simple remove (0) should suffice here
 	clearChunk = (stage) ->
 		stage.removeChildAt 0
 
@@ -53,6 +55,7 @@ define ["globals", "utilities", "underscore", "easel", "jquery"], (globals, ut) 
 			if $.isArray tile
 				container.addChild(renderChunk tile, stage, i)
 			else
+				if tile.width? then 
 				tile.x = tilewidth * i
 				tile.y = tileheight * vertindex
 				container.addChild tile

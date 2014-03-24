@@ -18,11 +18,23 @@ define ["utilities", "board", "mapper", "underscore", "backbone"], (ut, board, m
 	class NPC extends Backbone.Model
 		defaults:
 			current_chunk: { x: 0, y: 0 }
-		# Pass in the move deltas, and the NPC will use the current 
+		# Note the argument order - reflects 2D array notation
+		setChunk: (y,x) ->
+			chunk = @get "current_chunk"
+			chunk.x = x
+			chunk.y = y
+			@set "current_chunk", chunk
+			@
+		# Pass in the target tile and the move deltas, and the NPC will use the current 
 		# active chunk to determine if the spot is enterable.
-		checkEnterable: (target)->
+		checkEnterable: (target, dx, dy)->
 			try 
-				if target.enter is false then return false else return true
+				if target.e?
+					if target.e is false then return false
+					else if typeof target.e is "function"
+						return target.e.call(target, dx, dy)
+					else return true
+				else return true
 			# If the indices do not exist, we're heading to a new chunk.
 			catch 
 				true
@@ -32,7 +44,7 @@ define ["utilities", "board", "mapper", "underscore", "backbone"], (ut, board, m
 
 		checkTrigger: (target) ->
 			if typeof target.trigger is "function" 
-				target.trigger()
+				setTimeout target.trigger, 15
 			else null
 		# expects x and inverse-y deltas, IE move(0, 1) would be a downward move by 1 "square"
 		# Returns false if the move will not work, or returns the new coords if it does.
@@ -40,10 +52,11 @@ define ["utilities", "board", "mapper", "underscore", "backbone"], (ut, board, m
 			marker = @marker
 			target = @getTargetTile(dx,dy)
 			prev = {x: marker.x, y: marker.y}
+			ut.c target
 			if !@stage or !marker then return false
 			# Turn sprite in new dir regardless of success
 			sheet = marker.spriteSheet = @sheets[dx+","+dy]
-			if !@checkEnterable(target) then return false
+			if !@checkEnterable(target, dx, dy) then return false
 			marker.x += (50*dx)
 			marker.y += (50*dy)
 			@checkTrigger target

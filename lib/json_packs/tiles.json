@@ -1,73 +1,102 @@
 {
+    "e": {
+        "name": "p",
+        "e": true,
+        "filetype": "png"
+    },
+
+    "p": {
+        "name": "p",
+        "e": false,
+        "filetype": "png"
+    },
     "t": {
         "name": "trees",
-        "enter": true,
+        "e": true,
         "subtypes": {
             "en": {
                 "name": "treeedgenorth",
-                "enter": true 
+                "e": true 
             },
             "g": {
                 "name": "greentree",
-                "enter": false
+                "e": false
             },
             "lg": {
                 "name": "bigtree",
-                "enter": false
-                
+                "e": false,
+                "width": 3,
+                "height": 3
             },
             "la": {
                 "name": "bigautumntree",
-                "enter": false
+                "e": false,
+                "width": 3,
+                "height": 3
+
             }
         }
     },
     "g": {
-        "enter": true,
+        "e": true,
         "name": "grass",
         "subtypes": {
             "wbr": {
-                "enter": false,
+                "e": false,
                 "name": "grasswaterbottomright"
             },
             "wtr": {
-                "enter": true,
+                "e": true,
                 "name": "grasswatertopright"
             },
             "wtl": {
-                "enter": true,
+                "e": true,
                 "name": "grasswatertopleft"
             },
             "wbl": {
-                "enter": false,
+                "e": false,
                 "name": "grasswaterbottomleft"
             }
         }
     },
     "m": {
-        "enter": false,
-        "name": "mountain"
+        "e": false,
+        "name": "mountain",
+        "subtypes": {
+            "b": {
+                "e": false,
+                "width": 4,
+                "height": 5,
+                "name": "bigmountain"
+            },
+            "c": {
+                "e": false,
+                "width": 3,
+                "height": 6,
+                "name": "mtcorner"
+            }
+        }
     },
     "w": {
-        "enter": false,
+        "e": false,
         "name": "water",
         "subtypes": {
             "v": {
-                "enter": false,
+                "e": false,
                 "name": "watervertical"
             },
             "h": {
-                "enter": false,
+                "e": false,
                 "name": "waterhorizontal"
             }
         }
     },
     "f": {
-        "enter": true,
+        "e": true,
         "name": "forest"
     },
     "s": {
-        "enter": true,
+        "e": true,
         "name": "sand"
     }
 }

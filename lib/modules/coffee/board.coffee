@@ -239,6 +239,11 @@ define ['globals', 'utilities', 'battler', 'jquery', 'underscore', 'easel'], (gl
         # Expects either a PC or NPC model - see player.coffee and npc.coffee
         addMarker: (character) ->
             addMarker character
+        setBackground: (url) ->
+            ut.c "setting background to" + url
+            ut.c $canvas
+            $canvas.css("background-image", "url(" + url + ")")
+
     }
 
     battler.loadBoard board
