@@ -19,7 +19,8 @@ define ["utilities", "board", "dialog", "globals", "taskrunner", "player", "mapp
 		fullMap[i] = []
 	# The first chunk (think top left of total map)
 	mapObj[0][0] = [
-				["g", {type: 'wv', enter: false},"g","g","g","g","g","g","g","g","g","g","g","g"]
+				["g", {type: 'wv', enter: false} ,"tg","tg", {type: "g", trigger: -> alert "TRIGGER ALERT BITCH"},"g","g","g","g","g","g","g","g"]
+				["g","g","g","g","g","g","g","g","tg","tg","tg","g","g","g"]
 				["g","g","g","g","g","g","g","g","g","g","g","g","g","g"]
 				["g","g","g","g","g","g","g","g","g","g","g","g","g","g"]
 				["g","g","g","g","g","g","g","g","g","g","g","g","g","g"]
@@ -27,8 +28,7 @@ define ["utilities", "board", "dialog", "globals", "taskrunner", "player", "mapp
 				["g","g","g","g","g","g","g","g","g","g","g","g","g","g"]
 				["g","g","g","g","g","g","g","g","g","g","g","g","g","g"]
 				["g","g","g","g","g","g","g","g","g","g","g","g","g","g"]
-				["g","g","g","g","g","g","g","g","g","g","g","g","g","g"]
-				["wh","wh","wh","wh","wh","wh","wh","wh","wh","wh","wh","wh","wh","wh"]
+				["wh","wh","wh","gwbl","g","tlg","tlg","wh","wh","wh","wh","wh","wh","wh"]
 				["g","g","g","g","g","g","g","g","g","g","g","g","g","g"]
 				["g","g","g","g","g","g","g","g","g","g","g","g","g","g"]
 				["g","g","g","g","g","g","g","g","g","g","g","g","g","g"]

@@ -20,27 +20,36 @@ define ["utilities", "board", "mapper", "underscore", "backbone"], (ut, board, m
 			current_chunk: { x: 0, y: 0 }
 		# Pass in the move deltas, and the NPC will use the current 
 		# active chunk to determine if the spot is enterable.
-		checkEnterable: (dx, dy)->
-			chunk = mapper.getVisibleChunk().children
+		checkEnterable: (target)->
 			try 
-				tile = chunk[(@marker.y+(50*dy))/50]?.children[(@marker.x+(50*dx))/50]
-				ut.c tile
-				if tile.enter is false then return false else return true
-			catch
-				return false
+				if target.enter is false then return false else return true
+			# If the indices do not exist, we're heading to a new chunk.
+			catch 
+				true
+		getTargetTile: (dx, dy) ->
+			chunk = mapper.getVisibleChunk().children
+			chunk[(@marker.y+(50*dy))/50]?.children[(@marker.x+(50*dx))/50] || {}
+
+		checkTrigger: (target) ->
+			if typeof target.trigger is "function" 
+				target.trigger()
+			else null
 		# expects x and inverse-y deltas, IE move(0, 1) would be a downward move by 1 "square"
 		# Returns false if the move will not work, or returns the new coords if it does.
 		move: (dx, dy) ->
 			marker = @marker
+			target = @getTargetTile(dx,dy)
 			prev = {x: marker.x, y: marker.y}
 			if !@stage or !marker then return false
-			# Turn sprite regardless of success
+			# Turn sprite in new dir regardless of success
 			sheet = marker.spriteSheet = @sheets[dx+","+dy]
-			if !@checkEnterable(dx, dy) then return false
+			if !@checkEnterable(target) then return false
 			marker.x += (50*dx)
 			marker.y += (50*dy)
+			@checkTrigger target
 			sheet.getAnimation("run").speed = .13
 			sheet.getAnimation("run").next = "run"
+			ut.c {x: marker.x, y: marker.y}
 			{x: marker.x, y: marker.y}
 		defaults: ->
 			name: "NPC"
