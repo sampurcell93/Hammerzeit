@@ -1,0 +1,73 @@
+{
+    "t": {
+        "name": "trees",
+        "enter": true,
+        "subtypes": {
+            "en": {
+                "name": "treeedgenorth",
+                "enter": true 
+            },
+            "g": {
+                "name": "greentree",
+                "enter": false
+            },
+            "lg": {
+                "name": "bigtree",
+                "enter": false
+                
+            },
+            "la": {
+                "name": "bigautumntree",
+                "enter": false
+            }
+        }
+    },
+    "g": {
+        "enter": true,
+        "name": "grass",
+        "subtypes": {
+            "wbr": {
+                "enter": false,
+                "name": "grasswaterbottomright"
+            },
+            "wtr": {
+                "enter": true,
+                "name": "grasswatertopright"
+            },
+            "wtl": {
+                "enter": true,
+                "name": "grasswatertopleft"
+            },
+            "wbl": {
+                "enter": false,
+                "name": "grasswaterbottomleft"
+            }
+        }
+    },
+    "m": {
+        "enter": false,
+        "name": "mountain"
+    },
+    "w": {
+        "enter": false,
+        "name": "water",
+        "subtypes": {
+            "v": {
+                "enter": false,
+                "name": "watervertical"
+            },
+            "h": {
+                "enter": false,
+                "name": "waterhorizontal"
+            }
+        }
+    },
+    "f": {
+        "enter": true,
+        "name": "forest"
+    },
+    "s": {
+        "enter": true,
+        "name": "sand"
+    }
+}
