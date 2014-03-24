@@ -19,7 +19,7 @@ define ["utilities", "board", "dialog", "globals", "taskrunner", "player", "mapp
 		fullMap[i] = []
 	# The first chunk (think top left of total map)
 	mapObj[0][0] = [
-				["g","g","g","g","g","g","g","g","g","g","g","g","g","g"]
+				["g", {type: 'wv', enter: false},"g","g","g","g","g","g","g","g","g","g","g","g"]
 				["g","g","g","g","g","g","g","g","g","g","g","g","g","g"]
 				["g","g","g","g","g","g","g","g","g","g","g","g","g","g"]
 				["g","g","g","g","g","g","g","g","g","g","g","g","g","g"]
@@ -123,7 +123,7 @@ define ["utilities", "board", "dialog", "globals", "taskrunner", "player", "mapp
 						after: ->
 							board.setPresetBackground ""
 							dialog.destroy()
-							mapper.renderChunk fullMap[0][0], stage, "0,0"
+							mapper.renderChunk fullMap[0][0], stage
 							board.addState("TRAVEL").removeState("WAITING")
 							board.addMarker PC
 				}

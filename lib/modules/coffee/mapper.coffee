@@ -1,64 +1,15 @@
 define ["globals", "utilities", "underscore", "easel", "jquery"], (globals, ut) ->
-	tileurl = 'images/tiles/<%=name%>.jpg'
-	tiles = {
-		t: {
-			name: 'trees'
-			enter: true
-			subtypes: {
-				en: {
-					name: "treeedgenorth"
-					enter: true
-				}
-			}
-		}
-		g: {
-			enter: true
-			name: 'grass'
-			subtypes: {
-				wbr: {
-					enter: false
-					name: "grasswaterbottomright"
-				}
-				wtr: {
-					enter: true
-					name: "grasswatertopright"
-				}
-				wtl: {
-					enter: true
-					name: "grasswatertopleft"
-				}
-				wbl: {
-					enter: false
-					name: "grasswaterbottomleft"
-				}
-			}
-		}
-		m: {
-			enter: false
-			name: 'mountain'
-		}
-		w: {
-			enter: false
-			name: 'water'
+	tileurl 	 = 'images/tiles/<%=name%>.jpg'
+	tilewidth    = tileheight = 50
+	tiles 		 = null
+	_activechunk = null
 
-			subtypes: {
-				v: {
-					enter: false
-					name: 'watervertical'
-				}
-				h: { enter: false, name: 'waterhorizontal'}
-			}
-		}
-		f: {
-			enter: true
-			name: 'forest'
-		}
-		s: {
-			enter: true
-			name: 'sand'
-		}
-	}
-	tilewidth = tileheight = 50
+	$.getJSON "lib/json_packs/tiles.json", {}, (t) ->
+		tiles = t
+		# Initialize the tiles with common defaults
+		_.each tiles, setDefaultTileAttrs
+
+
 
 	setDefaultTileAttrs = (tile, key) -> 
 		tile.url = _.template tileurl, {name: tile.name}
@@ -66,19 +17,14 @@ define ["globals", "utilities", "underscore", "easel", "jquery"], (globals, ut) 
 		if tile.hasOwnProperty("subtypes")
 			_.each tile["subtypes"], setDefaultTileAttrs
 
-
-	# Initialize the tiles with common defaults
-	_.each tiles, setDefaultTileAttrs
-
-
 	# Takes in a string, for example "gwbr" and walks through the tiles object
 	# until it finds an object and it returns the url for that parent
 	getFromShorthand = (chars, nestedobj) ->
-		if nestedobj.hasOwnProperty(chars) then return nestedobj[chars].url
+		if nestedobj.hasOwnProperty(chars) then return nestedobj[chars]
 		parent = chars.charAt 0
 		if nestedobj[parent].hasOwnProperty("subtypes")
 			getFromShorthand chars.slice(1), nestedobj[parent].subtypes
-		else return nestedobj[parent].url
+		else nestedobj[parent]
 
 	loadChunk = (map) ->
 		bitmaparray = []
@@ -90,8 +36,10 @@ define ["globals", "utilities", "underscore", "easel", "jquery"], (globals, ut) 
 			else
 				if typeof tile == "object"
 					type = tile.type
+					console.log tile
 				else type = tile
-				bitmaparray.push new createjs.Bitmap(getFromShorthand type, tiles)
+				temp = getFromShorthand type, tiles
+				bitmaparray.push _.extend(new createjs.Bitmap(temp.url), (tile || {}), (temp || {}))
 		bitmaparray
 
 	# A chunk is a 14X14 array
@@ -110,7 +58,7 @@ define ["globals", "utilities", "underscore", "easel", "jquery"], (globals, ut) 
 				container.addChild tile
 		stage.terrain = bitmap
 		stage.addChild container
-		container
+		_activechunk = container 
 
 
 	return {
@@ -125,4 +73,6 @@ define ["globals", "utilities", "underscore", "easel", "jquery"], (globals, ut) 
 			renderChunk bitmap, stage
 		clearChunk: (stage) ->
 			clearChunk stage
+		getVisibleChunk: (stage) ->
+			_activechunk
 	}

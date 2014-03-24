@@ -1,5 +1,6 @@
-define ["utilities", "board", "player", "controls", "mapper", "underscore"], (ut, board, player, controls, mapper) ->
+define ["globals", "utilities", "board", "player", "controls", "mapper", "underscore"], (globals, ut, board, player, controls, mapper) ->
 	window.PC = player.PC
+
 	taskrunner = {
 		initialize: (linked_board) ->
 			board = linked_board

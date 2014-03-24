@@ -1,4 +1,8 @@
-define =>
+define ["underscore", "backbone"], =>
+
+	shared_events = _.extend {}, Backbone.Events
+
+	return {
 		name: 'Hammerzeit!'
 		version: 0.1
 		author: "Sam Purcell"
@@ -12,9 +16,11 @@ define =>
 			6: "LOADING"
 		}
 		map:
-			width: 700
+			width: 1000
 			height: 700
 			# sprite bounds
-			c_width: 650
+			c_width: 950
 			c_height: 650
-	
+		shared_events: shared_events
+		tire_url: "lib/json_packs/tiles.json"
+	}

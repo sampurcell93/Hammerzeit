@@ -110,6 +110,7 @@ define ['globals', 'utilities', 'battler', 'jquery', 'underscore', 'easel'], (gl
             "BATTLE": =>
                 ut.c "the state has changed to battle. get it son"
                 flashStateChange()
+                globals.shared_events.trigger("battle")
             "LOADING": =>
                 ut.c "the state has changed to loading. spinny wheel brah"
         }

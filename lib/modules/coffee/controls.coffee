@@ -1,4 +1,3 @@
-# 38 up 37 left 39 right 40 down
 define ["utilities", "globals", "dialog", "npc", "mapper", "player", "jquery"], (ut, globals, dialog, NPC, mapper, player) ->
 	require ["board", "taskrunner"], (board, taskrunner) ->
 		PC = player.PC
