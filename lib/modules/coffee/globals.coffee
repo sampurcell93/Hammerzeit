@@ -21,6 +21,8 @@ define ["underscore", "backbone"], =>
 			# sprite bounds
 			c_width: 950
 			c_height: 650
+			tilewidth: 20
+			tileheight: 14
 		shared_events: shared_events
 		tire_url: "lib/json_packs/tiles.json"
 	}

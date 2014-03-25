@@ -8,60 +8,13 @@ define ["utilities", "board", "dialog", "globals", "taskrunner", "player", "mapp
 		mapObj[i] = []
 		fullMap[i] = []
 
-	# Only entered from the left
-	l = (x,y) -> x>0
-	# Only from right
-	r = (x,y) -> x<0
-	# top
-	t = (x,y) -> y>0
-	# bottom
-	b = (x,y) -> y<0
-	# Enter from left or right
-	lr = (x,y) -> l(x,y) or r(x,y)
-	# Left or top 
-	lt = (x,y) -> l(x,y) or t(x,y)
-	# Left or bottom
-	lb = (x,y) -> l(x,y) or b(x,y)
-	# Left right top
-	lrt = (x,y) -> l(x,y) or r(x,y) or t(x,y)
-	# left right bottom
-	lrb = (x,y) -> l(x,y) or r(x,y) or b(x,y)
-	# left top bottom
-	ltb = (x,y) -> l(x,y) or b(x,y) or t(x,y)
-	# Right or top
-	rt = (x,y) -> r(x,y) or t(x,y)
-	# right or bottom
-	rb = (x,y) -> r(x,y) or b(x,y)
-	# right top bottom
-	rtb = (x,y) -> b(x,y) or r(x,y) or t(x,y)
-	# top or bottom
-	tb = (x,y) -> b(x,y) or t(x,y)
-
-
-
+	t = ut.tileEntryCheckers
 
 	# The first chunk (think top left of total map)
-	mapObj[0][0] = [
-		["p","p","p","p","p","p","p","p","p","p","p","p","p","p","e","e", "p", "p", "p", "p"]
-		["p","p","p","p","p","p","p","p","p","p","p",	 "p",			"p",		{t: 'e', e: rb},"e","e","p","p","p","p"]
-		["p","p","p","p","p","p","p","p","p","p","p",{t: "e", e: b},{t: 'e',e: rb}]
-		["p","e","e","e","e","e","e","e","e","e","e",{t: 'e', e:lt},{t: 'e',e: rtb}]
-		["e","e","e","e","e","e","e","e","e","e","e",{t:'e', e: rb},	"e",		"e","e","e","e","e",{t: "e", e: lb}]
-		["e","e","e","e","e","e","e","e","e",{t:'e',e:ltb},{t: 'e', e: rb}]
-		["e","e","e","e","e","e","e","e","e","e"]
-		["e"]
-		["e"]
-		["e"]
-		["e"]
-		["e"]
-		["e"]
-		["e"]
-	]
-	mapObj[1][0] = [
-	]
+	mapObj[0][0] = [[{"t":"e","e":"f"},{"t":"e","e":"f"},{"t":"e","e":"f"},{"t":"e","e":"f"},{"t":"e","e":"f"},{"t":"e","e":"f"},{"t":"e","e":"f"},{"t":"e","e":"f"},{"t":"e","e":"f"},{"t":"e","e":"f"},{"t":"e","e":"f"},{"t":"e","e":"f"},{"t":"e","e":"f"},{"t":"e","e":"f"},{"t":"e","e":"trb"},{"t":"e","e":"tbl"},{"t":"e","e":"f"},{"t":"e","e":"f"},{"t":"e","e":"f"},{"t":"e","e":"f"}],[{"t":"e","e":"f"},{"t":"e","e":"f"},{"t":"e","e":"f"},{"t":"e","e":"f"},{"t":"e","e":"f"},{"t":"e","e":"f"},{"t":"e","e":"f"},{"t":"e","e":"f"},{"t":"e","e":"f"},{"t":"e","e":"f"},{"t":"e","e":"f"},{"t":"e","e":"f"},{"t":"e","e":"f"},{"t":"e","e":"rb"},{"t":"e","e":"e"},{"t":"e","e":"tbl"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"}],[{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"}],[{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"}],[{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"}],[{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"}],[{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"}],[{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"}],[{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"}],[{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"}],[{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"}],[{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"}],[{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"}],[{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"},{"t":"e"}]]
 
 	# Take each chunk defined above (will move to JSON map files) and load it into a full array of bitmaps
-	for i in [0..1] then for j in [0..1]
+	for i in [0..0] then for j in [0..0]
 		fullMap[i][j] = mapper.loadChunk(mapObj[i][j])
 
 	return {

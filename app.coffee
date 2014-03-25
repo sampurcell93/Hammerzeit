@@ -14,6 +14,7 @@ require.config
 		'npc'		: 'lib/modules/js/npc'
 		'player'	: 'lib/modules/js/player'
 		'taskrunner': 'lib/modules/js/taskrunner'
+		'mapcreator': 'lib/modules/js/mapcreator'
 		'mapper'	: 'lib/modules/js/mapper'
 		'traveler'	: 'lib/modules/js/travel'
 		'battler'	: 'lib/modules/js/battler'

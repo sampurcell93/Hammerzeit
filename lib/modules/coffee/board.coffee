@@ -103,8 +103,6 @@ define ['globals', 'utilities', 'battler', 'jquery', 'underscore', 'easel'], (gl
         _.extend newgame, {x: 140, y: 280, shadow: textshadow, cursor: 'pointer', mouseEnabled: true}
         newgame.addEventListener "click", ->
             taskrunner.newGame()
-
-
         # Make load game button
         loadgame = new createjs.Text("Load Game", "30px Arial", "#f9f9f9")
         _.extend loadgame, {x: 380, y: 280, shadow: textshadow, cursor: 'pointer'}

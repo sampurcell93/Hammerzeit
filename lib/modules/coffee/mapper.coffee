@@ -1,8 +1,9 @@
-define ["globals", "utilities", "underscore", "easel", "jquery"], (globals, ut) ->
+define ["globals", "utilities", "mapcreator", "underscore", "easel", "jquery"], (globals, ut, mapcreator) ->
 	tileurl 	 = 'images/tiles/<%=name%>.<%=typeof filetype !== "undefined" ? filetype : "jpg" %>'
 	tilewidth    = tileheight = 50
 	tiles 		 = null
 	_activechunk = null
+	_activeprecursor = null
 
 	$.getJSON "lib/json_packs/tiles.json", {}, (t) ->
 		tiles = t
@@ -26,11 +27,11 @@ define ["globals", "utilities", "underscore", "easel", "jquery"], (globals, ut) 
 			getFromShorthand chars.slice(1), nestedobj[parent].subtypes
 		else nestedobj[parent]
 
+	# Since PNG files are transparent and therefore unclickable in easel,
+	# We add a "click area" to each tile
 	createBitEventRegister = (bitmap, x, y) ->
 		hit = new createjs.Shape()
 		hit.graphics.beginFill("#000").drawRect 0, 0, 50, 50
-		ut.c "adding a hit register:"
-		console.log hit
 		hit
 
 
@@ -65,36 +66,31 @@ define ["globals", "utilities", "underscore", "easel", "jquery"], (globals, ut) 
 		container.y = 0
 		_.each bitmap, (tile, i) ->
 			if $.isArray tile
-				container = renderChunk tile, stage, i
+				container.addChild(renderChunk tile, stage, i)
 			else
 				tile.x = tilewidth * i
 				tile.y = tileheight * vertindex
 				tile.hitArea = createBitEventRegister(tile, tile.x, tile.y)
 				container.addChild tile
-				tile.addEventListener "click", ->
-					ut.c "CLICKED TILE"
-					ut.c tile
+				mapcreator.bindCreators tile
 		stage.terrain = bitmap
 		stage.addChild container
-		_activechunk = container 
+		container
 
 
 	return {
 		# Expects an array of 14x14 2D arrays, or chunks, each of which represents one full view in the map. 
 		loadChunk: (chunk) ->
-			loadChunk chunk
+			if chunk.length
+				mapcreator.loadChunk chunk
+			else chunk = mapcreator.getDefaultChunk()
+			_activeprecursor = loadChunk chunk
 		# Expects a bitmap (can be generated with loadMap) and a createjs stage. Will render the map to the stage
 		# Returns a Container object with the bitmap inside it
 		renderChunk: (bitmap, stage) ->
 			clearChunk stage
-			renderChunk bitmap, stage
-			test = new createjs.Bitmap("images/tiles/grass.jpg")
-			test.x = 100
-			test.y = 100
-			stage.addChild test
-			test.addEventListener "click", -> 	
-				ut.c "yolo"
-				ut.c stage.getObjectsUnderPoint 100, 100
+			container = renderChunk bitmap, stage
+			_activechunk = container 
 		clearChunk: (stage) ->
 			clearChunk stage
 		getVisibleChunk: (stage) ->

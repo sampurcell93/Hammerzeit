@@ -1,4 +1,6 @@
 define ["utilities", "board", "mapper", "underscore", "backbone"], (ut, board, mapper) ->
+	_checkEntry = ut.tileEntryCheckers
+
 	# Converts left/right/up/down to x y
 	coordToDir = (coord, orientation) ->
 		orientation || orientation = "1"
@@ -30,9 +32,9 @@ define ["utilities", "board", "mapper", "underscore", "backbone"], (ut, board, m
 		checkEnterable: (target, dx, dy)->
 			try 
 				if target.e?
-					if target.e is false then return false
-					else if typeof target.e is "function"
-						return target.e.call(target, dx, dy)
+					if target.e is false or target.e == "f" then return false
+					else if typeof target.e is "string"
+						return _checkEntry[target.e](dx, dy)
 					else return true
 				else return true
 			# If the indices do not exist, we're heading to a new chunk.

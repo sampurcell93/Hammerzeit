@@ -5,6 +5,61 @@ define  ["jquery", "underscore"], ->
 	    F:: = o
 	    new F()
 
+	launchModal = (content, options) ->
+		destroyModal true
+		defaults = 
+		    close: true
+		    destroyHash: false
+		options = $.extend defaults, options
+		modal = $("<div />").addClass("modal")
+		try
+		    if $.isArray(content)
+		      $.each content, (index, item) ->
+		          modal.append(item)
+		    else modal.html(content)
+		unless options.close is false
+		    modal.prepend("<i class='close-modal'>X</i>")
+		    modal.find(".close-modal").on "click", ->
+		        destroyModal(null, options)
+		$(document.body).addClass("active-modal").append(modal)
+		modal
+
+	destroyModal = (existing, options) ->
+		options = $.extend {destroyHash: false}, options
+		$(".modal").remove()
+			# unless existing == true
+		$(document.body).removeClass("active-modal")
+				# if options.destroyHash == true
+					# window.location.hash = ""
+
+	l = (x,y) -> x>0
+	# Only from right
+	r = (x,y) -> x<0
+	# top
+	t = (x,y) -> y>0
+	# bottom
+	b = (x,y) -> y<0
+	# Enter from left or right
+	rl = (x,y) -> l(x,y) or r(x,y)
+	# Left or top 
+	tl = (x,y) -> l(x,y) or t(x,y)
+	# Left or bottom
+	bl = (x,y) -> l(x,y) or b(x,y)
+	# Left right top
+	trl = (x,y) -> tr(x,y) or l(x,y)
+	# TBL
+	tbl = (x,y) -> bl(x,y) or t(x,y)
+	# left top bottom
+	rbl = (x,y) -> l(x,y) or rb(x,y)
+	# Right or top
+	tr = (x,y) -> r(x,y) or t(x,y)
+	# right or bottom
+	rb = (x,y) -> r(x,y) or b(x,y)
+	# right top bottom
+	trb = (x,y) -> tr(x,y) or b(x,y)
+	# top or bottom
+	tb = (x,y) -> b(x,y) or t(x,y)
+
 	return {
 		# Quick logger, saves keystrokes
 		c: () -> for arg in arguments then console.log arg
@@ -25,4 +80,41 @@ define  ["jquery", "underscore"], ->
 		  ctx.moveTo x, y
 		  ctx.lineTo x + width, y
 		  ctx.stroke()
+		# launch modals - dependent on jquery for arrays
+	    # args: content for the modal, as an array of content
+	    # rets the modal jquery obj
+		launchModal:  (content, options) ->
+	        launchModal content, options
+	  	destroyModal: (existing, options) ->
+	        destroyModal existing, options
+	    tileEntryCheckers: {
+			# Only entered from the left
+			l: (x,y) -> x>0
+			# Only from right
+			r: (x,y) -> x<0
+			# top
+			t: (x,y) -> y>0
+			# bottom
+			b: (x,y) -> y<0
+			# Enter from left or right
+			rl: (x,y) -> l(x,y) or r(x,y)
+			# Left or top 
+			tl: (x,y) -> l(x,y) or t(x,y)
+			# Left or bottom
+			bl: (x,y) -> l(x,y) or b(x,y)
+			# Left right top
+			trl: (x,y) -> tr(x,y) or l(x,y)
+			# TBL
+			tbl: (x,y) -> bl(x,y) or t(x,y)
+			# left top bottom
+			rbl: (x,y) -> l(x,y) or rb(x,y)
+			# Right or top
+			tr: (x,y) -> r(x,y) or t(x,y)
+			# right or bottom
+			rb: (x,y) -> r(x,y) or b(x,y)
+			# right top bottom
+			trb: (x,y) -> tr(x,y) or b(x,y)
+			# top or bottom
+			tb: (x,y) -> b(x,y) or t(x,y)
+		}
 	}

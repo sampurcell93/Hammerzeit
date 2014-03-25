@@ -10,6 +10,7 @@
 		<div class="wrapper">
 			<!-- <h1>Hammerzeit: A tale of glory and intrigue!</h1> -->
 			<ol class='horiz-letters'>
+				<li>0</li>
 				<li>1</li>
 				<li>2</li>
 				<li>3</li>
@@ -29,9 +30,9 @@
 				<li>17</li>
 				<li>18</li>
 				<li>19</li>
-				<li>20</li>
 			</ol>
 			<ol class="vert-numbers">
+				<li>0</li>
 				<li>1</li>
 				<li>2</li>
 				<li>3</li>
@@ -45,9 +46,13 @@
 				<li>11</li>
 				<li>12</li>
 				<li>13</li>
-				<li>14</li>
 			</ol>
+			<ul class='enterable-list'></ul>
 			<canvas id='game-board' tabindex='1' width='1000' height='700'></canvas>
+			<script type='text/template' id='modify-tile'>
+				<input type="text" class='js-add-dirs' placeholder='add directions' value='<%= typeof e !== "undefined" ? e : "" %>'/>
+				<button class='js-submit-dirs'>Add Dirs to Tile</button>
+			</script>
 		</div>
 	</body>
 </html>
