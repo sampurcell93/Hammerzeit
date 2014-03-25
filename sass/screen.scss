@@ -44,3 +44,35 @@ canvas {
 	width: 960px;
 	margin: 10px auto;
 }
+
+ol {
+	
+	color: white;
+	
+	&.horiz-letters { 
+		display: block;
+		width: 1000px;
+		height: 30px;
+
+		li {
+			display: inline-block;
+			width: 50px;
+			margin: 0 -2px;
+			padding: 0;
+			text-align: center;
+		}
+	}
+	&.vert-numbers {
+	
+		position: fixed;
+		left: 50%;
+		margin-left: -510px;
+		height: 700px;
+		top: 40px;
+
+		li {
+			line-height: 50px;
+			display: block;
+		}
+	}
+}

@@ -52,7 +52,6 @@ define ["utilities", "board", "mapper", "underscore", "backbone"], (ut, board, m
 			marker = @marker
 			target = @getTargetTile(dx,dy)
 			prev = {x: marker.x, y: marker.y}
-			ut.c target
 			if !@stage or !marker then return false
 			# Turn sprite in new dir regardless of success
 			sheet = marker.spriteSheet = @sheets[dx+","+dy]
@@ -60,9 +59,11 @@ define ["utilities", "board", "mapper", "underscore", "backbone"], (ut, board, m
 			marker.x += (50*dx)
 			marker.y += (50*dy)
 			@checkTrigger target
+			@currentspace = target
+			target.occupied = true
+			target.occupiedBy = @marker
 			sheet.getAnimation("run").speed = .13
 			sheet.getAnimation("run").next = "run"
-			ut.c {x: marker.x, y: marker.y}
 			{x: marker.x, y: marker.y}
 		defaults: ->
 			name: "NPC"

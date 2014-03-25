@@ -9,30 +9,53 @@ define ["utilities", "board", "dialog", "globals", "taskrunner", "player", "mapp
 		fullMap[i] = []
 
 	# Only entered from the left
-	lt = (x,y) -> x>0
+	l = (x,y) -> x>0
 	# Only from right
-	rt = (x,y) -> x<0
+	r = (x,y) -> x<0
 	# top
-	top = (x,y) -> y>0
+	t = (x,y) -> y>0
 	# bottom
-	bot = (x,y) -> y<0
+	b = (x,y) -> y<0
+	# Enter from left or right
+	lr = (x,y) -> l(x,y) or r(x,y)
+	# Left or top 
+	lt = (x,y) -> l(x,y) or t(x,y)
+	# Left or bottom
+	lb = (x,y) -> l(x,y) or b(x,y)
+	# Left right top
+	lrt = (x,y) -> l(x,y) or r(x,y) or t(x,y)
+	# left right bottom
+	lrb = (x,y) -> l(x,y) or r(x,y) or b(x,y)
+	# left top bottom
+	ltb = (x,y) -> l(x,y) or b(x,y) or t(x,y)
+	# Right or top
+	rt = (x,y) -> r(x,y) or t(x,y)
+	# right or bottom
+	rb = (x,y) -> r(x,y) or b(x,y)
+	# right top bottom
+	rtb = (x,y) -> b(x,y) or r(x,y) or t(x,y)
+	# top or bottom
+	tb = (x,y) -> b(x,y) or t(x,y)
+
+
+
 
 	# The first chunk (think top left of total map)
 	mapObj[0][0] = [
 		["p","p","p","p","p","p","p","p","p","p","p","p","p","p","e","e", "p", "p", "p", "p"]
-		["p","p","p","p","p","p","p","p","p","p","p","p","p","p","e","e", "p", "p", "p", "p"]
-		["p","p","p","p","p","p","p","p","p","p","p",{t: "e", e: bot},{t: 'e', e: (x,y) -> bot(x,y) or rt(x,y)}]
-		["e","e","e","e","e","e","e","e","e","e","e","e"]
-		[]
-		[]
-		[]
-		[]
-		[]
-		[]
-		[]
-		[]
-		[]
-		[]
+		["p","p","p","p","p","p","p","p","p","p","p",	 "p",			"p",		{t: 'e', e: rb},"e","e","p","p","p","p"]
+		["p","p","p","p","p","p","p","p","p","p","p",{t: "e", e: b},{t: 'e',e: rb}]
+		["p","e","e","e","e","e","e","e","e","e","e",{t: 'e', e:lt},{t: 'e',e: rtb}]
+		["e","e","e","e","e","e","e","e","e","e","e",{t:'e', e: rb},	"e",		"e","e","e","e","e",{t: "e", e: lb}]
+		["e","e","e","e","e","e","e","e","e",{t:'e',e:ltb},{t: 'e', e: rb}]
+		["e","e","e","e","e","e","e","e","e","e"]
+		["e"]
+		["e"]
+		["e"]
+		["e"]
+		["e"]
+		["e"]
+		["e"]
 	]
 	mapObj[1][0] = [
 	]

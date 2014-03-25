@@ -6,11 +6,16 @@ define ['globals', 'utilities', 'battler', 'jquery', 'underscore', 'easel'], (gl
     states = globals.states
 
     window.stage = stage = new createjs.Stage canvas
-    stage.enableMouseOver 1000
+    stage.enableMouseOver 200
+    stage.enableDOMEvents true
     ticker = createjs.Ticker
     ticker.addEventListener "tick", (tick) ->
         stage.update() unless tick.paused
+    # stage.addEventListener "stagemousedown", (e)->
+        # ut.c "clicked stage".
+        # ut.c stage.children[0].children[0].children[0].getObjectsUnderPoint(0,0)
     state = ["INTRO"]
+    _gridded = false
     taskrunner = null
     textshadow = globals.textshadow = new createjs.Shadow("#000000", 0,0,7)
 
@@ -59,6 +64,34 @@ define ['globals', 'utilities', 'battler', 'jquery', 'underscore', 'easel'], (gl
         sprite.scaleY = sprite.scaleX = 1
         stage.addChild(sprite);
 
+
+    toggleGrid = () ->
+        if _gridded == false
+            ut.c "toggle grid"
+            bw = globals.map.width
+            bh = globals.map.height
+            p = 0
+            x = 0
+            context = canvas.getContext "2d"
+            while x <= bw
+                context.moveTo 0.5 + x + p, p
+                context.lineTo 0.5 + x + p, bh + p
+                x += 50
+            x = 0
+
+            while x <= bh
+                context.moveTo p, 0.5 + x + p
+                context.lineTo bw + p, 0.5 + x + p
+                x += 50
+            context.strokeStyle = "#666"
+            context.stroke()
+            _gridded = true
+            ticker.setPaused true
+        else
+            _gridded = false
+            ticker.setPaused false
+
+
     initialize = (runner) ->
         taskrunner = runner
         startSlideshow()
@@ -71,9 +104,10 @@ define ['globals', 'utilities', 'battler', 'jquery', 'underscore', 'easel'], (gl
         newgame.addEventListener "click", ->
             taskrunner.newGame()
 
+
         # Make load game button
         loadgame = new createjs.Text("Load Game", "30px Arial", "#f9f9f9")
-        _.extend loadgame, {x: 380, y: 280, shadow: textshadow, cursor: 'pointer', mouseEnabled: true}
+        _.extend loadgame, {x: 380, y: 280, shadow: textshadow, cursor: 'pointer'}
         ut.addEventListeners loadgame, {
             "click": ->
                 ut.c "load, you say?"
@@ -145,61 +179,6 @@ define ['globals', 'utilities', 'battler', 'jquery', 'underscore', 'easel'], (gl
         obj.stage = stage
 
 
-    # move_fns = {
-    #     movingIntervals: {}
-    #     secondarymove: null
-    #     walkSpeed: 20
-        
-    #     moveMarker: (marker, dir, offset) ->
-    #         marker[dir] += 5*(offset || 1)
-    #     stopWhenMoved: (count, dir) -> 
-    #         if count >= 9
-    #             clearInterval @movingIntervals[dir]
-    #             # @moving[dir] = false
-    #             count + 1
-    #         else count + 1
-    #     # MOVE RIGHT
-    #     "1,0": (marker) ->
-    #         count = 0
-    #         unless marker.x >= 650
-    #             @movingIntervals[dir] = setInterval =>
-    #                 @moveMarker(marker, dir)
-    #                 count = @stopWhenMoved(count, dir)
-    #             , @walkSpeed
-    #             return "right"
-    #         false
-    #     # MOVE LEFT
-    #     "-1,0": (marker) ->
-    #         count = 0
-    #         unless marker.x <= 0
-    #             @movingIntervals[dir] = setInterval =>
-    #                 @moveMarker(marker, dir, -1)
-    #                 count = @stopWhenMoved(count, dir)
-    #             , @walkSpeed
-    #             return "left"
-    #         false
-    #     # MOVE UP
-    #     "0,-1": (marker) ->
-    #         count = 0
-    #         unless marker.y <= 0
-    #             @movingIntervals[dir] = setInterval =>
-    #                 @moveMarker(marker, dir, -1)
-    #                 count = @stopWhenMoved(count, dir)
-    #             , @walkSpeed
-    #             return "up"
-    #         false
-    #     # MOVE DOWN
-    #     "0,1": (marker) ->
-    #         count = 0
-    #         unless marker.y >= 650
-    #             @movingIntervals = setInterval =>
-    #                 @moveMarker(marker, dir)
-    #                 count = @stopWhenMoved(count, dir)
-    #             , @walkSpeed
-    #             return "down"
-    #         false
-    # }
-
     board = {
         canvas: canvas
         $canvas: $canvas
@@ -243,7 +222,8 @@ define ['globals', 'utilities', 'battler', 'jquery', 'underscore', 'easel'], (gl
             ut.c "setting background to" + url
             ut.c $canvas
             $canvas.css("background-image", "url(" + url + ")")
-
+        toggleGrid: () ->
+            toggleGrid()
     }
 
     battler.loadBoard board

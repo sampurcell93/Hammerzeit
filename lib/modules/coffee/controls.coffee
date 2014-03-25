@@ -16,6 +16,7 @@ define ["utilities", "globals", "dialog", "npc", "mapper", "player", "jquery"], 
 			NEW: 78
 			COMMAND: 91
 			CLEAR: 67
+			GRID: 71
 		}
 
 		# Todo
@@ -24,6 +25,8 @@ define ["utilities", "globals", "dialog", "npc", "mapper", "player", "jquery"], 
 
 		generalFns =
 			91: (e) ->
+			71: (e) ->
+				board.toggleGrid()
 
 		stateFns = {
 			INTRO: (key) ->
@@ -67,7 +70,7 @@ define ["utilities", "globals", "dialog", "npc", "mapper", "player", "jquery"], 
 						stateFns[ins](key)
 				else 
 					stateFns[state](key)
-			else if generalFns.hasOwnProperty(key) 
+			if generalFns.hasOwnProperty(key) 
 				generalFns[key](e)
 
 		$c.on "keydown", (e) =>
