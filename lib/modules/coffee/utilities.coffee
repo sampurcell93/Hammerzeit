@@ -1,4 +1,13 @@
 define  ["jquery", "underscore"], ->
+
+	window.onbeforeunload = (event) ->
+	  s = "You have unsaved changes. Really leave?"
+	  event = event or window.event	  
+	  # This is for IE
+	  event.returnValue = s  if event
+	  # This is for all other browsers
+	  s
+
 	if typeof Object.create isnt "function"
 	  Object.create = (o) ->
 	    F = ->
@@ -117,4 +126,6 @@ define  ["jquery", "underscore"], ->
 			# top or bottom
 			tb: (x,y) -> b(x,y) or t(x,y)
 		}
+		floorToOne: (val) ->
+			if val < 0 then -1 else if val > 0 then 1 else 0
 	}

@@ -6,6 +6,7 @@ define ["underscore", "backbone"], =>
 		name: 'Hammerzeit!'
 		version: 0.1
 		author: "Sam Purcell"
+		dev : true
 		states:  {
 			0: "INTRO"
 			1: "WAITING"

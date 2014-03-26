@@ -1,8 +1,9 @@
-define ["utilities", "globals", "dialog", "npc", "mapper", "player", "jquery"], (ut, globals, dialog, NPC, mapper, player) ->
+define ["utilities", "globals", "dialog", "npc", "mapper","battler", "menus", "player", "jquery"], (ut, globals, dialog, NPC, mapper, battler, menus, player) ->
 	require ["board", "taskrunner"], (board, taskrunner) ->
 		PC = player.PC
 		$c = board.$canvas.focus()
 		keysdisabled = false
+		_activeplayer = null
 
 		# Keycodes
 		kc = {
@@ -16,6 +17,7 @@ define ["utilities", "globals", "dialog", "npc", "mapper", "player", "jquery"], 
 			NEW: 78
 			COMMAND: 91
 			CLEAR: 67
+			BATTLE: 66
 			GRID: 71
 		}
 
@@ -24,9 +26,10 @@ define ["utilities", "globals", "dialog", "npc", "mapper", "player", "jquery"], 
 			true
 
 		generalFns =
+			# Cmd
 			91: (e) ->
-			71: (e) ->
-				board.toggleGrid()
+			# G
+			71: board.toggleGrid
 
 		stateFns = {
 			INTRO: (key) ->
@@ -34,6 +37,22 @@ define ["utilities", "globals", "dialog", "npc", "mapper", "player", "jquery"], 
 					when kc["NEW"] then taskrunner.newGame()
 			WAITING: (key) ->
 			BATTLE: (key) ->
+				_activeplayer = battler.getActivePlayer()
+				ut.c _activeplayer
+				switch key
+					when kc["UP"]
+						PC.move(0,-1)
+					when kc["RIGHT"]
+						ut.c "right"
+						PC.move(1,0)
+					when kc["DOWN"]
+						ut.c "down"
+						PC.move(0,1)
+					when kc["LEFT"]
+						ut.c "left"
+						PC.move(-1,0)
+					when kc['SPACE']
+						menus.launchMenu()
 			CUTSCENE: (key) ->
 			TRAVEL: (key) ->
 				ut.c PC
@@ -52,6 +71,11 @@ define ["utilities", "globals", "dialog", "npc", "mapper", "player", "jquery"], 
 						PC.move(-1,0)
 					when kc['CLEAR']
 						mapper.clearChunk window.stage
+					when kc['BATTLE']
+						board.addState "battle"
+					when kc['SPACE']
+						menus.launchMenu()
+						ut.c 'launching travel menu'
 			DRAWING: (key) ->
 				switch key
 					when kc["ENTER"], kc["SPACE"]

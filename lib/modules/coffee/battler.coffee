@@ -1,8 +1,9 @@
-define ["globals", "utilities", "backbone", "underscore", "jquery"], (globals, ut) ->
+define ["board", "globals", "utilities", "npc", "player", "backbone", "underscore", "jquery"], (board, globals, ut, NPC, player) ->
 
     _shared = globals.shared_events
     _shared.on "battle", ->
-        # battle = new Battle()
+        ut.c "battle timed"
+
     _board = null
 
     class BattleRunner
@@ -12,4 +13,6 @@ define ["globals", "utilities", "backbone", "underscore", "jquery"], (globals, u
         BattleRunner: BattleRunner
         loadBoard: (board) ->
             _board = board
+        getActivePlayer: ->
+            player.PC
     }

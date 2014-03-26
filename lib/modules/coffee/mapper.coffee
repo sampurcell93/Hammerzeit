@@ -1,4 +1,4 @@
-define ["globals", "utilities", "mapcreator", "underscore", "easel", "jquery"], (globals, ut, mapcreator) ->
+define ["globals", "utilities", "mapcreator", "underscore", "backbone", "easel", "jquery"], (globals, ut, mapcreator) ->
 	tileurl 	 = 'images/tiles/<%=name%>.<%=typeof filetype !== "undefined" ? filetype : "jpg" %>'
 	tilewidth    = tileheight = 50
 	tiles 		 = null
@@ -9,8 +9,6 @@ define ["globals", "utilities", "mapcreator", "underscore", "easel", "jquery"], 
 		tiles = t
 		# Initialize the tiles with common defaults
 		_.each tiles, setDefaultTileAttrs
-
-
 
 	setDefaultTileAttrs = (tile, key) -> 
 		tile.url = _.template tileurl, tile

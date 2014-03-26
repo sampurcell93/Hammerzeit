@@ -51,7 +51,7 @@
 			<canvas id='game-board' tabindex='1' width='1000' height='700'></canvas>
 			<script type='text/template' id='modify-tile'>
 				<input type="text" class='js-add-dirs' placeholder='add directions' value='<%= typeof e !== "undefined" ? e : "" %>'/>
-				<button class='js-submit-dirs'>Add Dirs to Tile</button>
+				<input type="text" class='js-add-elevation' placeholder='add an elevation - positive integer 1-10' value='<%= typeof elv !== "undefined" ? elv : 0 %>'/>
 			</script>
 		</div>
 	</body>

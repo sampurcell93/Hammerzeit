@@ -9,6 +9,7 @@ body, html { height: 100%; }
 
 body {
 	background: #1F182D;
+    overflow: hidden;
 	
 	&:after {
 		content: '';
@@ -137,4 +138,10 @@ ol {
         outline: 1px solid red;
         white-space: nowrap;
     }
+}
+
+textarea {
+    width: 100%;
+    max-width: 100%;
+    min-height: 400px;
 }

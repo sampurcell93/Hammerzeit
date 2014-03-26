@@ -1,7 +1,5 @@
 define "player", ["utilities", "npc", "board", "globals", "mapper", "backbone", "easel", "underscore"], (ut, NPC, board, globals, mapper) ->
 	class player extends NPC
-		defaults:
-			current_chunk: { x: 0, y: 0 }
 		frames: {
 			# The in place animation frames for the PC
 			down: [[0, 0, 55, 55, 0]
@@ -76,8 +74,15 @@ define "player", ["utilities", "npc", "board", "globals", "mapper", "backbone", 
 			@trigger "change:current_chunk"
 			board.addMarker @
 			{ x: @marker.x, y: @marker.y }
+		defaults:
+			current_chunk: { x: 0, y: 0 }
+			type: "PC"
+			name: "Hero"
+			inventory: ["Wooden Sword", "Tattered Cloak"]
+			level: 1
+			
 
 	return {
 		model: player
-		PC: new player({name: "Hero", items: ["Wooden Sword", "Tattered Cloak"]})
+		PC: new player()
 	}

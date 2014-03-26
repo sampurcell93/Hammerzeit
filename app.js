@@ -18,7 +18,8 @@
       'mapcreator': 'lib/modules/js/mapcreator',
       'mapper': 'lib/modules/js/mapper',
       'traveler': 'lib/modules/js/travel',
-      'battler': 'lib/modules/js/battler'
+      'battler': 'lib/modules/js/battler',
+      'menus': 'lib/modules/js/menus'
     }
   });
 

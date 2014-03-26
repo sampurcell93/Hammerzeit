@@ -1,4 +1,4 @@
-define ['globals', 'utilities', 'battler', 'jquery', 'underscore', 'easel'], (globals, ut, battler) ->
+define ['globals', 'utilities', 'jquery', 'underscore', 'easel'], (globals, ut) ->
     canvas = document.getElementById "game-board"
     $canvas = $ canvas
 
@@ -189,6 +189,7 @@ define ['globals', 'utilities', 'battler', 'jquery', 'underscore', 'easel'], (gl
         getState: -> state
         # Checks if the board has a state - expects an INT
         hasState: (checkstate) ->
+            checkstate = checkstate.toUpperCase()
             if $.isArray state then state.indexOf(checkstate) != -1
             else state == checkstate
 
@@ -224,6 +225,4 @@ define ['globals', 'utilities', 'battler', 'jquery', 'underscore', 'easel'], (gl
             toggleGrid()
     }
 
-    battler.loadBoard board
-
-    board
+    window.board = board
