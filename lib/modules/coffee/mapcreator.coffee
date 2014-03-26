@@ -1,4 +1,4 @@
-define ["globals", "utilities", "backbone", "jquery", "underscore"], (globals, ut) ->
+define ["globals", "utilities", "mapper", "backbone", "jquery", "underscore"], (globals, ut, mapper) ->
 
 
 
@@ -12,7 +12,13 @@ define ["globals", "utilities", "backbone", "jquery", "underscore"], (globals, u
             t: 'e'
             e: ''
         initialize: (attrs) ->
-            @set attrs
+            @on "expose", @expose
+            attrs.x = @x
+            attrs.y = @y
+        expose: ->
+            console.log "changing tile"
+            console.log @
+            mapper.setTile @attributes
 
     class Row extends Backbone.Collection
         model: Tile
@@ -62,11 +68,11 @@ define ["globals", "utilities", "backbone", "jquery", "underscore"], (globals, u
             _selected.reset()
 
     class OverlayItem extends Backbone.View
-        template: "<%= typeof e !== 'undefined' && e ? e : 'e' %>"
+        template: "<%= typeof e !== 'undefined' && e ? e : '&nbsp;' %><span class='elevation'><%= elv %></span>"
         tagName: 'li'
         initialize: ->
             @listenTo @model, {
-                "change:e": @render
+                "change": @render
                 "modification": @modifyTileInfo
             }    
         # Handles the view and array modification 
@@ -75,7 +81,7 @@ define ["globals", "utilities", "backbone", "jquery", "underscore"], (globals, u
             tile = @model
             if multi then str = "<h3>Editing Many</h3>" else str = ""
             modal = ut.launchModal(str + _.template(_enterInfo, _.extend(tile.toJSON(), {x: tile.x, y: tile.y})))
-            modal.find(".js-add-dirs").select()
+            modal.find(".js-add-elevation").select()
             modal.on("keydown", ".js-add-dirs, .js-add-elevation", (e) =>
                 key = e.keyCode || e.which
                 if key == 13
@@ -90,6 +96,7 @@ define ["globals", "utilities", "backbone", "jquery", "underscore"], (globals, u
             @model.set "elv", modal.find(".js-add-elevation").val()
             ut.destroyModal()
             @$el.removeClass "selected-tile"
+            @model.trigger "expose"
             unless proceed is false
                 next = getNextTile(@model.x,@model.y)
                 if next.tile then next.tile.modifier.modifyTileInfo modal, proceed
@@ -150,9 +157,11 @@ define ["globals", "utilities", "backbone", "jquery", "underscore"], (globals, u
             _.each precursor_chunk, (row, i) ->
                 rowCollection = new Row
                 _.each row, (tile, j) ->
+                    tile = _.pick tile, "t", "e", "elv"
                     rowCollection.add TileModel = new Tile(tile)
                     TileModel.x = j
                     TileModel.y = i
+                    TileModel.set {x: j, y: i}
                 allRows[i] = rowCollection
             chunk.set("rows", allRows)
             _chunk = chunk

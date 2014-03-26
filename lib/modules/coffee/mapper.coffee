@@ -1,4 +1,4 @@
-define ["globals", "utilities", "mapcreator", "underscore", "backbone", "easel", "jquery"], (globals, ut, mapcreator) ->
+define ["globals", "utilities", "underscore", "backbone", "easel", "jquery"], (globals, ut) ->
 	tileurl 	 = 'images/tiles/<%=name%>.<%=typeof filetype !== "undefined" ? filetype : "jpg" %>'
 	tilewidth    = tileheight = 50
 	tiles 		 = null
@@ -70,7 +70,6 @@ define ["globals", "utilities", "mapcreator", "underscore", "backbone", "easel",
 				tile.y = tileheight * vertindex
 				tile.hitArea = createBitEventRegister(tile, tile.x, tile.y)
 				container.addChild tile
-				mapcreator.bindCreators tile
 		stage.terrain = bitmap
 		stage.addChild container
 		container
@@ -79,9 +78,6 @@ define ["globals", "utilities", "mapcreator", "underscore", "backbone", "easel",
 	return {
 		# Expects an array of 14x14 2D arrays, or chunks, each of which represents one full view in the map. 
 		loadChunk: (chunk) ->
-			if chunk.length
-				mapcreator.loadChunk chunk
-			else chunk = mapcreator.getDefaultChunk()
 			_activeprecursor = loadChunk chunk
 		# Expects a bitmap (can be generated with loadMap) and a createjs stage. Will render the map to the stage
 		# Returns a Container object with the bitmap inside it
@@ -91,6 +87,10 @@ define ["globals", "utilities", "mapcreator", "underscore", "backbone", "easel",
 			_activechunk = container 
 		clearChunk: (stage) ->
 			clearChunk stage
-		getVisibleChunk: (stage) ->
+		getVisibleChunk: () ->
 			_activechunk
+		setTile: (tile) ->
+			ut.c tile
+			ut.c _activechunk
+			_.extend(_activechunk.children[tile.y].children[tile.x], _.omit(tile, "x", "y"))
 	}
