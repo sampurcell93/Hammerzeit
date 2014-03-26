@@ -123,20 +123,37 @@ ol {
 .enterable-list {
     position: absolute;
     top: 40px;
-    width: 1000px;
-    height: 700px;
-    pointer-events: none;
+    max-width: 1000px;
+    max-height: 700px;
+    -webkit-user-select: none; /* Chrome/Safari */        
+    -moz-user-select: none; /* Firefox */
+    -ms-user-select: none; /* IE10+ */
+    /* Rules below not implemented in browsers yet */
+    -o-user-select: none;
+    user-select: none;
 
     li {
         width: 50px;
         margin: 0px;
-        color: #fff;
+        color: #333;
         text-shadow: 0px 1px 3px #333;
         line-height: 50px;
         display: inline-block;
         text-align: center;
-        outline: 1px solid red;
+        outline: 1px solid #333;
         white-space: nowrap;
+        font-size: 1.2em;
+        font-family: sans-serif;
+        text-transform: uppercase;
+        &:hover {
+            background: #333;
+            color: #aaa;
+        }
+
+        &.selected-tile {
+            background: rgba(0,0,0,.5);
+            color: #ddd;
+        }
     }
 }
 

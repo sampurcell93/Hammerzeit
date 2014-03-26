@@ -30,6 +30,10 @@ define  ["jquery", "underscore"], ->
 		    modal.prepend("<i class='close-modal'>X</i>")
 		    modal.find(".close-modal").on "click", ->
 		        destroyModal(null, options)
+		    modal.on("keyup", (e) ->
+		    	key = e.keyCode || e.which
+		    	if key == 27 then destroyModal()
+		    )
 		$(document.body).addClass("active-modal").append(modal)
 		modal
 

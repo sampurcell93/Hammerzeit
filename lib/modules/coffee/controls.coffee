@@ -1,4 +1,4 @@
-define ["utilities", "globals", "dialog", "npc", "mapper","battler", "menus", "player", "jquery"], (ut, globals, dialog, NPC, mapper, battler, menus, player) ->
+define ["utilities", "globals", "dialog", "npc", "mapper", "mapcreator", "battler", "menus", "player", "jquery"], (ut, globals, dialog, NPC, mapper, mapcreator, battler, menus, player) ->
 	require ["board", "taskrunner"], (board, taskrunner) ->
 		PC = player.PC
 		$c = board.$canvas.focus()
@@ -17,8 +17,10 @@ define ["utilities", "globals", "dialog", "npc", "mapper","battler", "menus", "p
 			NEW: 78
 			COMMAND: 91
 			CLEAR: 67
+			EXPORTMAP: 69
 			BATTLE: 66
 			GRID: 71
+			MAPCREATOR: 77
 		}
 
 		# Todo
@@ -76,6 +78,10 @@ define ["utilities", "globals", "dialog", "npc", "mapper","battler", "menus", "p
 					when kc['SPACE']
 						menus.launchMenu()
 						ut.c 'launching travel menu'
+					when kc['MAPCREATOR']
+						mapcreator.toggleOverlay()
+					when kc['EXPORTMAP']
+						mapcreator.exportMap()
 			DRAWING: (key) ->
 				switch key
 					when kc["ENTER"], kc["SPACE"]

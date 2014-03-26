@@ -1,20 +1,34 @@
 define ["globals", "utilities", "backbone", "jquery", "underscore"], (globals, ut) ->
 
+
+
+    t = ut.tileEntryCheckers
+    _enterInfo = $("#modify-tile").html()
+    # Reference to the currently open map overlay
+    _overlay = null
+
     class Tile extends Backbone.Model
         defaults: 
             t: 'e'
             e: ''
         initialize: (attrs) ->
             @set attrs
+
     class Row extends Backbone.Collection
         model: Tile
+
+    # Reference to all currently selected tiles
+    window._selected = _selected = new Row
 
     class Chunk extends Backbone.Model
         defaults: ->
             rows = []
             for i in [0...globals.map.tileheight]
                 rows[i] = row = new Row
-                for j in [0...globals.map.tilewidth] then row.add new Tile({t: 'e'})
+                for j in [0...globals.map.tilewidth] 
+                    row.add tile = new Tile({t: 'e'})
+                    tile.x = j
+                    tile.y = i
             return rows: rows
         export: ->
             str = "["
@@ -26,21 +40,75 @@ define ["globals", "utilities", "backbone", "jquery", "underscore"], (globals, u
                 str += "],"
             str.substring(0,str.length-1) + "]"
 
-
-    t = ut.tileEntryCheckers
-    _enterInfo = $("#modify-tile").html()
-
     # Instantiate empty chunk of enterable spaces
     _chunk = new Chunk
-    
 
-    getArrayPos = (x,y) ->
-        x /= 50
-        y /= 50
-        return {
-            x: x
-            y: y
-        }
+    class Overlay extends Backbone.View
+        el: '.enterable-list'
+        initialize: () ->
+            _.bindAll @, "render"
+            @render()
+        render: ->
+            @$el.empty()
+            _.each @model.get("rows"), (row) =>
+                _.each row.models, (tile) =>
+                    item = new OverlayItem model: tile
+                    item.parent = @
+                    tile.modifier = item
+                    @$el.append(item.render().el)
+        modifyAllTiles: (modal) ->
+            _.each _selected.models, (tile) ->
+                tile.modifier.applyChanges modal, false
+            _selected.reset()
+
+    class OverlayItem extends Backbone.View
+        template: "<%= typeof e !== 'undefined' && e ? e : 'e' %>"
+        tagName: 'li'
+        initialize: ->
+            @listenTo @model, {
+                "change:e": @render
+                "modification": @modifyTileInfo
+            }    
+        # Handles the view and array modification 
+        modifyTileInfo: ->
+            if _selected.length > 1 then multi = true else multi = false
+            tile = @model
+            if multi then str = "<h3>Editing Many</h3>" else str = ""
+            modal = ut.launchModal(str + _.template(_enterInfo, _.extend(tile.toJSON(), {x: tile.x, y: tile.y})))
+            modal.find(".js-add-dirs").select()
+            modal.on("keydown", ".js-add-dirs, .js-add-elevation", (e) =>
+                key = e.keyCode || e.which
+                if key == 13
+                    if multi
+                        @parent.modifyAllTiles modal
+                    @applyChanges(modal)
+            )
+            tile
+         # grab the content of the dir box and set to tiler
+        applyChanges: (modal, proceed) ->
+            @model.set "e", modal.find(".js-add-dirs").val()
+            @model.set "elv", modal.find(".js-add-elevation").val()
+            ut.destroyModal()
+            @$el.removeClass "selected-tile"
+            unless proceed is false
+                next = getNextTile(@model.x,@model.y)
+                if next.tile then next.tile.modifier.modifyTileInfo modal, proceed
+        render: ->
+            @$el.html(_.template(@template, @model.toJSON()))
+            @
+        events: 
+            click: (e) ->
+                @$el.toggleClass("selected-tile")
+                e.preventDefault()
+                unless e.shiftKey
+                    model = @model
+                    _selected.add @model
+                    @modifyTileInfo()
+                else 
+                    if _selected.indexOf(@model) != -1 
+                        _selected.remove(@model.cid)
+                    else
+                        _selected.add @model
 
     # Takes in a json array containing string representations of functions 
     # and converts them to direct references to the function (a member of ut.tileEntryCheckers)
@@ -55,59 +123,12 @@ define ["globals", "utilities", "backbone", "jquery", "underscore"], (globals, u
             return {tile: _chunk.get("rows")[y].at(0), y: y, x: 0}
         else null
 
-    # grab the content of the dir box and set to tile
-    applyDirs = (tile, x, y) ->
-        v = @val()
-        tile.set "e",  v
-
-    # Get content of elevation box and set
-    applyElevation = (tile, x, y) ->
-        v = @val()
-        tile.set "elv", parseInt(v)
-
-
-    applyChanges = (modal, tile, x, y) ->
-        applyDirs.call(modal.find(".js-add-dirs"), tile, x, y)
-        applyElevation.call(modal.find(".js-add-elevation"), tile, x, y)
-        ut.destroyModal()
-        next = getNextTile(x,y)
-        modifyTileInfo(next.tile, next.x, next.y)
-
-    # Handles the view and array modification 
-    modifyTileInfo = (tile, x, y) ->
-        if !tile? then return null
-        modal = ut.launchModal("x: " + x + "<br />y: " + y + _.template(_enterInfo, tile.toJSON()))
-        modal.find(".js-add-dirs").select()
-        modal.on("keydown", ".js-add-dirs, .js-add-elevation", (e) ->
-            key = e.keyCode || e.which
-            if key == 13 then applyChanges(modal, tile, x, y)
-
-        )
-        tile
-
-    class Overlay extends Backbone.View
-        el: '.enterable-list'
-        initialize: () ->
-            _.bindAll @, "render"
-            @render()
-        render: ->
-            @$el.empty()
-            console.log @model
-            _.each @model.get("rows"), (row) =>
-                _.each row.models, (tile) =>
-                    item = new OverlayItem model: tile
-                    @$el.append(item.render().el)
-
-    class OverlayItem extends Backbone.View
-        template: "<%= typeof e !== 'undefined' && e ? e : 'e' %>"
-        tagName: 'li'
-        initialize: ->
-            @listenTo @model, {
-                "change:e": @render
-            }
-        render: ->
-            @$el.html(_.template(@template, @model.toJSON()))
-            @
+    toggleOverlay = ->
+        if !_overlay
+            _overlay = new Overlay model: _chunk
+        else 
+            _overlay.$el.empty()
+            _overlay = null
 
 
     exportMap = ->
@@ -117,34 +138,24 @@ define ["globals", "utilities", "backbone", "jquery", "underscore"], (globals, u
         m = ut.launchModal("<textarea>" + _chunk.export() + "</textarea>")
         # ut.c _chunk
         m.find("textarea").select()
-        new Overlay model: _chunk
-
     return {
+        toggleOverlay: toggleOverlay
         getDefaultChunk: ->
             new Chunk
         bindCreators: (tile) ->
-            if globals.dev 
-                tile.addEventListener "click", ->
-                    ut.c tile
-                    coords = getArrayPos tile.x, tile.y
-                    modifyTileInfo _chunk.get("rows")[coords.y].at(coords.x), coords.x, coords.y
-                tile.addEventListener "pressmove", ->
-                    exportMap()
         loadChunk: (precursor_chunk) ->
             chunk = new Chunk
             allRows = []
             # Deep copy
             _.each precursor_chunk, (row, i) ->
                 rowCollection = new Row
-                _.each row, (tile) ->
-                    rowCollection.add new Tile(tile)
+                _.each row, (tile, j) ->
+                    rowCollection.add TileModel = new Tile(tile)
+                    TileModel.x = j
+                    TileModel.y = i
                 allRows[i] = rowCollection
             chunk.set("rows", allRows)
             _chunk = chunk
-        exportMap: ->
-            exportMap()
-        # Expects the tile and the tile's x y array coordinates
-        modifyTileInfo: (tile, x, y) ->
-            modifyTileInfo tile
+        exportMap: exportMap
 
-    }
+    }   
