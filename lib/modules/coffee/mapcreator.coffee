@@ -1,4 +1,4 @@
-define ["globals", "utilities", "mapper", "backbone", "jquery", "underscore"], (globals, ut, mapper) ->
+define ["globals", "utilities", "backbone", "jquery", "underscore"], (globals, ut) ->
 
 
 
@@ -11,14 +11,13 @@ define ["globals", "utilities", "mapper", "backbone", "jquery", "underscore"], (
         defaults: 
             t: 'e'
             e: ''
+            elv: 0
         initialize: (attrs) ->
             @on "expose", @expose
             attrs.x = @x
             attrs.y = @y
         expose: ->
-            console.log "changing tile"
-            console.log @
-            mapper.setTile @attributes
+            # mapper.setTile @attributes
 
     class Row extends Backbone.Collection
         model: Tile
@@ -93,7 +92,7 @@ define ["globals", "utilities", "mapper", "backbone", "jquery", "underscore"], (
          # grab the content of the dir box and set to tiler
         applyChanges: (modal, proceed) ->
             @model.set "e", modal.find(".js-add-dirs").val()
-            @model.set "elv", modal.find(".js-add-elevation").val()
+            @model.set "elv", parseInt(modal.find(".js-add-elevation").val())
             ut.destroyModal()
             @$el.removeClass "selected-tile"
             @model.trigger "expose"
@@ -148,7 +147,7 @@ define ["globals", "utilities", "mapper", "backbone", "jquery", "underscore"], (
     return {
         toggleOverlay: toggleOverlay
         getDefaultChunk: ->
-            new Chunk
+            ut.launchModal new Chunk().export()
         bindCreators: (tile) ->
         loadChunk: (precursor_chunk) ->
             chunk = new Chunk

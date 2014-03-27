@@ -16,7 +16,6 @@ define ['globals', 'utilities', 'jquery', 'underscore', 'easel'], (globals, ut) 
         # ut.c stage.children[0].children[0].children[0].getObjectsUnderPoint(0,0)
     state = ["INTRO"]
     _gridded = false
-    taskrunner = null
     textshadow = globals.textshadow = new createjs.Shadow("#000000", 0,0,7)
 
 
@@ -92,8 +91,7 @@ define ['globals', 'utilities', 'jquery', 'underscore', 'easel'], (globals, ut) 
             ticker.setPaused false
 
 
-    initialize = (runner) ->
-        taskrunner = runner
+    initialize = ->
         startSlideshow()
         # Make title text
         title = new createjs.Text(globals.name + " v " + globals.version, "50px Arial", "#f9f9f9")
@@ -101,8 +99,7 @@ define ['globals', 'utilities', 'jquery', 'underscore', 'easel'], (globals, ut) 
         # Make new game button
         newgame = new createjs.Text("New Game", "30px Arial", "#f9f9f9")
         _.extend newgame, {x: 140, y: 280, shadow: textshadow, cursor: 'pointer', mouseEnabled: true}
-        newgame.addEventListener "click", ->
-            taskrunner.newGame()
+        newgame.addEventListener "click", -> globals.shared_events.trigger "newgame"
         # Make load game button
         loadgame = new createjs.Text("Load Game", "30px Arial", "#f9f9f9")
         _.extend loadgame, {x: 380, y: 280, shadow: textshadow, cursor: 'pointer'}
@@ -195,8 +192,8 @@ define ['globals', 'utilities', 'jquery', 'underscore', 'easel'], (globals, ut) 
 
         getStage: -> stage
         # Takes in the taskrunner codependency
-        initialize: (runner) ->
-            initialize runner
+        initialize: ->
+            do initialize
             @
         ### All state getters and setters are case insensitive! ###
         # Removes all other states - expects string
@@ -218,11 +215,15 @@ define ['globals', 'utilities', 'jquery', 'underscore', 'easel'], (globals, ut) 
         addMarker: (character) ->
             addMarker character
         setBackground: (url) ->
-            ut.c "setting background to" + url
-            ut.c $canvas
+            if !url 
+                throw new Error("You need to supply an image for the background")
+                return @
             $canvas.css("background-image", "url(" + url + ")")
+            @
         toggleGrid: () ->
             toggleGrid()
     }
+
+    board.initialize()
 
     window.board = board

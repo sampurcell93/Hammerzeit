@@ -23,9 +23,6 @@
     }
   });
 
-  define(['utilities', 'board', 'taskrunner'], function(ut, board, taskrunner) {
-    taskrunner.initialize(board);
-    return board.initialize(taskrunner);
-  });
+  define(['utilities', 'board', 'taskrunner'], function(ut, board, taskrunner) {});
 
 }).call(this);

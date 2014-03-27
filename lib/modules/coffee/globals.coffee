@@ -24,6 +24,7 @@ define ["underscore", "backbone"], =>
 			c_height: 650
 			tilewidth: 20
 			tileheight: 14
+			tileside: 50
 		shared_events: shared_events
 		tire_url: "lib/json_packs/tiles.json"
 	}

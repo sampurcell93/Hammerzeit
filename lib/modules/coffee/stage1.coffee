@@ -2,25 +2,27 @@
 define ["mapcreator", "utilities", "board", "dialog", "globals", "taskrunner", "player", "mapper", "controls", "underscore", "jquery"], (mapcreator, ut, board, dialog, globals, runner, player, mapper, controls) ->
 	PC = player.PC
 	stage = board.getStage()
-	mapObj = []
+	# This is the bare array of map identifiers, elevation, enterable, triggers, etc
+	_stageObj = {}
+	# This is the parsed map with bitmaps - has not been added to the 
+	# stage at all after loading, only created
 	fullMap = []
 	for i in [0..1]
-		mapObj[i] = []
 		fullMap[i] = []
 
-	t = ut.tileEntryCheckers
+	# t = ut.tileEntryCheckers
+	$.getJSON "lib/json_packs/stage1.json", (json) =>
+		_stageObj = json
+		map = _stageObj.map
+		# Take each chunk defined above (will move to JSON map files) and load it into a full array of bitmaps
+		for i in [0..._stageObj.width] then for j in [0..._stageObj.height]
+			fullMap[j][i] = mapper.loadChunk(map[j][i])
+			# mapcreator.loadChunk map[j][i].tiles
 
-	# The first chunk (think top left of total map)
-	mapObj[0][0] = [[{"t":"e","e":"f","elv":"0"},{"t":"e","e":"f","elv":"0"},{"t":"e","e":"f","elv":"0"},{"t":"e","e":"f","elv":"0"},{"t":"e","e":"f","elv":"0"},{"t":"e","e":"f","elv":0},{"t":"e","e":"f","elv":0},{"t":"e","e":"f","elv":0},{"t":"e","e":"f","elv":0},{"t":"e","e":"f","elv":0},{"t":"e","e":"f","elv":0},{"t":"e","e":"f","elv":0},{"t":"e","e":"f","elv":0},{"t":"e","e":"f","elv":0},{"t":"e","e":"tbl","elv":"5"},{"t":"e","e":"tbl","elv":"5"},{"t":"e","e":"f","elv":0},{"t":"e","e":"f","elv":0},{"t":"e","e":"f","elv":0},{"t":"e","e":"f","elv":0}],[{"t":"e","e":"f","elv":0},{"t":"e","e":"f","elv":0},{"t":"e","e":"f","elv":0},{"t":"e","e":"f","elv":0},{"t":"e","e":"f","elv":0},{"t":"e","e":"f","elv":0},{"t":"e","e":"f","elv":0},{"t":"e","e":"f","elv":0},{"t":"e","e":"f","elv":0},{"t":"e","e":"f","elv":0},{"t":"e","e":"f","elv":0},{"t":"e","e":"f","elv":0},{"t":"e","e":"f","elv":0},{"t":"e","e":"rb","elv":0},{"t":"e","e":"e","elv":"4"},{"t":"e","e":"e","elv":"4"},{"t":"e","e":"f","elv":0},{"t":"e","e":"f","elv":0},{"t":"e","e":"f","elv":0},{"t":"e","e":"f","elv":0}],[{"t":"e","e":"f","elv":0},{"t":"e","e":"f","elv":0},{"t":"e","e":"f","elv":0},{"t":"e","e":"f","elv":0},{"t":"e","e":"f","elv":0},{"t":"e","e":"f","elv":0},{"t":"e","e":"f","elv":0},{"t":"e","e":"f","elv":0},{"t":"e","e":"f","elv":0},{"t":"e","e":"f","elv":0},{"t":"e","e":"f","elv":0},{"t":"e","e":"b","elv":0},{"t":"e","e":"","elv":"3"},{"t":"e","e":"","elv":"3"},{"t":"e","e":"","elv":"3"},{"t":"e","e":"","elv":"3"},{"t":"e","e":"","elv":"3"},{"t":"e","e":"f","elv":0},{"t":"e","e":"f","elv":0},{"t":"e","e":"f","elv":0}],[{"t":"e","e":"f","elv":0},{"t":"e","e":"","elv":0},{"t":"e","e":"","elv":0},{"t":"e","e":"","elv":0},{"t":"e","e":"","elv":0},{"t":"e","e":"","elv":0},{"t":"e","e":"","elv":0},{"t":"e","e":"","elv":0},{"t":"e","e":"","elv":0},{"t":"e","e":"","elv":0},{"t":"e","e":"e","elv":0},{"t":"e","e":"tl","elv":0},{"t":"e","e":"","elv":"3"},{"t":"e","e":"","elv":"3"},{"t":"e","e":"","elv":"3"},{"t":"e","e":"","elv":"3"},{"t":"e","e":"","elv":"3"},{"t":"e","e":"","elv":"3"},{"t":"e","e":"f","elv":0},{"t":"e","e":"f","elv":0}],[{"t":"e","e":"","elv":0},{"t":"e","e":"","elv":0},{"t":"e","e":"trl","elv":0},{"t":"e","e":"trl","elv":0},{"t":"e","e":"trl","elv":0},{"t":"e","e":"trl","elv":0},{"t":"e","e":"trl","elv":0},{"t":"e","e":"","elv":0},{"t":"e","e":"e","elv":0},{"t":"e","e":"e","elv":0},{"t":"e","e":"tl","elv":0},{"t":"e","e":"","elv":"3"},{"t":"e","e":"","elv":"3"},{"t":"e","e":"","elv":"3"},{"t":"e","e":"","elv":"3"},{"t":"e","e":"","elv":"3"},{"t":"e","e":"","elv":"3"},{"t":"e","e":"","elv":"3"},{"t":"e","e":"","elv":"3"},{"t":"e","e":"f","elv":0}],[{"t":"e","e":"","elv":0},{"t":"e","e":"tb","elv":"2"},{"t":"e","e":"rb","elv":3},{"t":"e","e":"rbl","elv":3},{"t":"e","e":"rbl","elv":3},{"t":"e","e":"rbl","elv":3},{"t":"e","e":"bl","elv":0},{"t":"e","e":"tr","elv":0},{"t":"e","e":"trl","elv":0},{"t":"e","e":"tl","elv":0},{"t":"e","e":"","elv":"3"},{"t":"e","e":"","elv":"3"},{"t":"e","e":"tb","elv":"1"},{"t":"e","e":"","elv":"3"},{"t":"e","e":"","elv":"3"},{"t":"e","e":"","elv":"3"},{"t":"e","e":"","elv":"3"},{"t":"e","e":"","elv":"3"},{"t":"e","e":"","elv":"3"},{"t":"e","elv":0,"e":""}],[{"t":"e","e":"tb","elv":0},{"t":"e","e":"rb","elv":3},{"t":"e","e":"","elv":3},{"t":"e","e":"","elv":3},{"t":"e","e":"","elv":3},{"t":"e","e":"","elv":3},{"t":"e","e":"","elv":3},{"t":"e","e":"rl","elv":3},{"t":"e","e":"rl","elv":3},{"t":"e","e":"rl","elv":3},{"t":"e","e":"trl","elv":3},{"t":"e","e":"","elv":3},{"t":"e","e":"","elv":3},{"t":"e","e":"","elv":3},{"t":"e","e":"","elv":3},{"t":"e","e":"","elv":3},{"t":"e","e":"","elv":3},{"t":"e","e":"","elv":3},{"t":"e","e":"tbl","elv":3},{"t":"e","e":"f","elv":0}],[{"t":"e","e":"tb","elv":0},{"t":"e","e":"","elv":"3"},{"t":"e","e":"","elv":"3"},{"t":"e","e":"","elv":"3"},{"t":"e","e":"","elv":"3"},{"t":"e","e":"","elv":"3"},{"t":"e","e":"","elv":"3"},{"t":"e","e":"f","elv":0},{"t":"e","e":"rb","elv":0},{"t":"e","e":"bl","elv":0},{"t":"e","e":"","elv":"3"},{"t":"e","e":"","elv":"3"},{"t":"e","e":"","elv":"3"},{"t":"e","e":"","elv":"3"},{"t":"e","e":"","elv":"3"},{"t":"e","e":"","elv":"3"},{"t":"e","e":"","elv":"3"},{"t":"e","e":"","elv":"3"},{"t":"e","e":"","elv":"3"},{"t":"e","e":"","elv":"3"}],[{"t":"e","e":"tb","elv":0},{"t":"e","e":"f","elv":0},{"t":"e","e":"","elv":"3"},{"t":"e","e":"","elv":"3"},{"t":"e","e":"","elv":"3"},{"t":"e","e":"","elv":"3"},{"t":"e","e":"f","elv":0},{"t":"e","e":"rb","elv":0},{"t":"e","e":"","elv":0},{"t":"e","e":"tbl","elv":0},{"t":"e","e":"f","elv":0},{"t":"e","e":"","elv":"3"},{"t":"e","e":"","elv":"3"},{"t":"e","e":"","elv":"3"},{"t":"e","e":"","elv":"3"},{"t":"e","e":"","elv":"3"},{"t":"e","e":"","elv":"3"},{"t":"e","e":"","elv":"3"},{"t":"e","e":"","elv":"3"},{"t":"e","e":"","elv":"3"}],[{"t":"e","e":"","elv":0},{"t":"e","e":"bl","elv":0},{"t":"e","e":"f","elv":0},{"t":"e","e":"f","elv":0},{"t":"e","e":"","elv":"3"},{"t":"e","e":"f","elv":0},{"t":"e","e":"rb","elv":0},{"t":"e","e":"","elv":0},{"t":"e","e":"","elv":0},{"t":"e","e":"tbl","elv":0},{"t":"e","e":"f","elv":0},{"t":"e","e":"f","elv":0},{"t":"e","e":"","elv":"3"},{"t":"e","e":"","elv":"3"},{"t":"e","e":"","elv":"3"},{"t":"e","e":"","elv":"3"},{"t":"e","e":"","elv":"3"},{"t":"e","e":"","elv":"3"},{"t":"e","e":"","elv":"3"},{"t":"e","e":"","elv":"3"}],[{"t":"e","e":"","elv":0},{"t":"e","e":"","elv":0},{"t":"e","e":"bl","elv":0},{"t":"e","e":"f","elv":0},{"t":"e","e":"tb","elv":"1"},{"t":"e","e":"f","elv":0},{"t":"e","e":"","elv":0},{"t":"e","e":"","elv":0},{"t":"e","e":"","elv":0},{"t":"e","e":"","elv":0},{"t":"e","e":"bl","elv":0},{"t":"e","e":"f","elv":0},{"t":"e","e":"tb","elv":"2"},{"t":"e","e":"","elv":"3"},{"t":"e","e":"","elv":"3"},{"t":"e","e":"","elv":"3"},{"t":"e","e":"","elv":"3"},{"t":"e","e":"","elv":"3"},{"t":"e","e":"","elv":"3"},{"t":"e","e":"","elv":"3"}],[{"t":"e","e":"","elv":0},{"t":"e","e":"","elv":0},{"t":"e","e":"","elv":0},{"t":"e","e":"rbl","elv":0},{"t":"e","e":"","elv":0},{"t":"e","e":"","elv":0},{"t":"e","e":"","elv":0},{"t":"e","e":"","elv":0},{"t":"e","e":"","elv":0},{"t":"e","e":"","elv":0},{"t":"e","e":"","elv":0},{"t":"e","e":"bl","elv":0},{"t":"e","e":"tb","elv":"1"},{"t":"e","e":"f","elv":0},{"t":"e","e":"","elv":"3"},{"t":"e","e":"","elv":"3"},{"t":"e","e":"","elv":"3"},{"t":"e","e":"","elv":"3"},{"t":"e","e":"","elv":"3"},{"t":"e","e":"","elv":"3"}],[{"t":"e","e":"","elv":0},{"t":"e","e":"","elv":0},{"t":"e","e":"","elv":0},{"t":"e","e":"","elv":0},{"t":"e","e":"","elv":0},{"t":"e","e":"","elv":0},{"t":"e","e":"","elv":0},{"t":"e","e":"","elv":0},{"t":"e","e":"","elv":0},{"t":"e","e":"","elv":0},{"t":"e","e":"","elv":0},{"t":"e","e":"","elv":0},{"t":"e","e":"","elv":0},{"t":"e","e":"bl","elv":0},{"t":"e","e":"","elv":"3"},{"t":"e","e":"","elv":"3"},{"t":"e","e":"","elv":"3"},{"t":"e","e":"","elv":"3"},{"t":"e","e":"","elv":"3"},{"t":"e","e":"","elv":"3"}],[{"t":"e","e":"e","elv":0},{"t":"e","e":"","elv":0},{"t":"e","e":"","elv":0},{"t":"e","e":"","elv":0},{"t":"e","e":"","elv":0},{"t":"e","e":"","elv":0},{"t":"e","e":"","elv":0},{"t":"e","e":"","elv":0},{"t":"e","e":"","elv":0},{"t":"e","e":"","elv":0},{"t":"e","e":"","elv":0},{"t":"e","e":"","elv":0},{"t":"e","e":"","elv":0},{"t":"e","e":"","elv":0},{"t":"e","e":"l","elv":0},{"t":"e","e":"f","elv":0},{"t":"e","e":"f","elv":0},{"t":"e","e":"f","elv":0},{"t":"e","e":"f","elv":0},{"t":"e","e":"f","elv":0}]]
-
-
-	# Take each chunk defined above (will move to JSON map files) and load it into a full array of bitmaps
-	for i in [0..0] then for j in [0..0]
-		fullMap[i][j] = mapper.loadChunk(mapObj[i][j])
 
 	return {
 		fullMap: fullMap
-		pictoMap: mapObj
+		getMap: -> _stageObj.map
 		initialize: ->
 			board.clear()
 			clearInterval globals.introScenery
@@ -55,12 +57,11 @@ define ["mapcreator", "utilities", "board", "dialog", "globals", "taskrunner", "
 							board.setPresetBackground ""
 							dialog.destroy()
 							mapper.renderChunk fullMap[0][0], stage
-							mapcreator.loadChunk fullMap[0][0]
 							board.addState("TRAVEL").removeState("WAITING")
 							board.addMarker PC
-							PC.move(0,4)
-							# PC.setChunk(1,0)
-							board.setBackground("images/tiles/hometown.jpg")
+							PC.trigger("change:current_chunk")
+							PC.marker.y = 400
+
 				}
 			])
 		

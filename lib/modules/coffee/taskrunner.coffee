@@ -1,9 +1,7 @@
-define ["globals", "utilities", "board", "player", "controls", "mapper", "underscore"], (globals, ut, board, player, controls, mapper) ->
+define ["globals", "utilities", "board", "player", "controls", "mapper", "mapcreator", "underscore"], (globals, ut, board, player, controls, mapper, mapcreator) ->
 	window.PC = player.PC
 
 	taskrunner = {
-		initialize: (linked_board) ->
-			board = linked_board
 		newGame: () ->
 			@loadStage 1
 		loadStage: (module) ->
@@ -12,9 +10,12 @@ define ["globals", "utilities", "board", "player", "controls", "mapper", "unders
 			require ["lib/modules/js/stage" + module], (level) ->
 				board.removeState "LOADING"
 				level.initialize()
-				PC.on "change:current_chunk", ->
+				PC.on "change:current_chunk", () ->
 					ut.c "CHUNK CHANGE REGISTERED IN TASKRUNNER"
 					newchunk = PC.get "current_chunk"
+					mapcreator.loadChunk level.getMap()[newchunk.y][newchunk.x].tiles
+					# mapcreator.exportMap()
+
 					# ut.c level.pictoMap[newchunk.y][newchunk.x]
 					# ut.c "BEFORE"
 					# console.log board.getStage().children.slice(0)
@@ -25,5 +26,4 @@ define ["globals", "utilities", "board", "player", "controls", "mapper", "unders
 
 
 	}
-
 	taskrunner

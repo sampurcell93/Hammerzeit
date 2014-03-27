@@ -16,9 +16,10 @@ define ["utilities", "globals", "dialog", "npc", "mapper", "mapcreator", "battle
 			ESCAPE: 27
 			NEW: 78
 			COMMAND: 91
-			CLEAR: 67
-			EXPORTMAP: 69
 			BATTLE: 66
+			CLEAR: 67
+			DEFAULT: 68
+			EXPORTMAP: 69
 			GRID: 71
 			MAPCREATOR: 77
 		}
@@ -42,19 +43,11 @@ define ["utilities", "globals", "dialog", "npc", "mapper", "mapcreator", "battle
 				_activeplayer = battler.getActivePlayer()
 				ut.c _activeplayer
 				switch key
-					when kc["UP"]
-						PC.move(0,-1)
-					when kc["RIGHT"]
-						ut.c "right"
-						PC.move(1,0)
-					when kc["DOWN"]
-						ut.c "down"
-						PC.move(0,1)
-					when kc["LEFT"]
-						ut.c "left"
-						PC.move(-1,0)
-					when kc['SPACE']
-						menus.launchMenu()
+					when kc["UP"] 	 then PC.moveUp()
+					when kc["RIGHT"] then PC.moveRight()
+					when kc["DOWN"]  then PC.moveDown()
+					when kc["LEFT"]  then PC.moveLeft()
+					when kc['SPACE'] then menus.launchMenu()
 			CUTSCENE: (key) ->
 			TRAVEL: (key) ->
 				ut.c PC
@@ -82,6 +75,8 @@ define ["utilities", "globals", "dialog", "npc", "mapper", "mapcreator", "battle
 						mapcreator.toggleOverlay()
 					when kc['EXPORTMAP']
 						mapcreator.exportMap()
+					when kc['DEFAULT']
+						mapcreator.getDefaultChunk()
 			DRAWING: (key) ->
 				switch key
 					when kc["ENTER"], kc["SPACE"]

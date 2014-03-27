@@ -1,4 +1,4 @@
-define ["globals", "utilities", "underscore", "backbone", "easel", "jquery"], (globals, ut) ->
+define ["globals", "utilities", "board", "underscore", "backbone", "easel", "jquery"], (globals, ut, board) ->
 	tileurl 	 = 'images/tiles/<%=name%>.<%=typeof filetype !== "undefined" ? filetype : "jpg" %>'
 	tilewidth    = tileheight = 50
 	tiles 		 = null
@@ -31,6 +31,10 @@ define ["globals", "utilities", "underscore", "backbone", "easel", "jquery"], (g
 		hit = new createjs.Shape()
 		hit.graphics.beginFill("#000").drawRect 0, 0, 50, 50
 		hit
+
+
+	loadChunkFromURL: (url) ->
+		# $.getJSON "lib/json_packs/hometown.json"
 
 
 	loadChunk = (map) ->
@@ -78,12 +82,16 @@ define ["globals", "utilities", "underscore", "backbone", "easel", "jquery"], (g
 	return {
 		# Expects an array of 14x14 2D arrays, or chunks, each of which represents one full view in the map. 
 		loadChunk: (chunk) ->
-			_activeprecursor = loadChunk chunk
+			if typeof chunk is "string" then loadChunkFromURL chunk
+			else 
+				_activeprecursor = loadChunk chunk.tiles
+				_.extend _activeprecursor, _.omit(chunk, "tiles")
 		# Expects a bitmap (can be generated with loadMap) and a createjs stage. Will render the map to the stage
 		# Returns a Container object with the bitmap inside it
 		renderChunk: (bitmap, stage) ->
 			clearChunk stage
 			container = renderChunk bitmap, stage
+			board.setBackground(bitmap.background)
 			_activechunk = container 
 		clearChunk: (stage) ->
 			clearChunk stage

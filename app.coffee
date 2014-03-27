@@ -22,7 +22,3 @@ require.config
 
 
 define ['utilities', 'board', 'taskrunner'], (ut, board, taskrunner) ->
-	# Bind the taskrunner controller to the board.
-	taskrunner.initialize board
-	# Setup home screen on board, and bind taskrunner
-	board.initialize taskrunner
