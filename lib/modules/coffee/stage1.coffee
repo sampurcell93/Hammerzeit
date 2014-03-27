@@ -6,22 +6,31 @@ define ["mapcreator", "utilities", "board", "dialog", "globals", "taskrunner", "
 	_stageObj = {}
 	# This is the parsed map with bitmaps - has not been added to the 
 	# stage at all after loading, only created
-	fullMap = []
-	for i in [0..1]
-		fullMap[i] = []
+	_fullMap = []
+
+	generateChunkSprite = (chunk, j, i) ->
+		if chunk.background_position is true
+			str = "-"  + globals.map.width*i  + "px "
+			str += "-" + globals.map.height*j + "px"
+			str
+		else chunk.background_position
 
 	# t = ut.tileEntryCheckers
 	$.getJSON "lib/json_packs/stage1.json", (json) =>
 		_stageObj = json
+		for f in [0..._stageObj.height]
+			_fullMap[f] = []
 		map = _stageObj.map
 		# Take each chunk defined above (will move to JSON map files) and load it into a full array of bitmaps
 		for i in [0..._stageObj.width] then for j in [0..._stageObj.height]
-			fullMap[j][i] = mapper.loadChunk(map[j][i])
+			map[j][i].background_position = generateChunkSprite map[j][i], j, i
+			_fullMap[j][i] = mapper.loadChunk(map[j][i])
 			# mapcreator.loadChunk map[j][i].tiles
+		console.log map
 
 
 	return {
-		fullMap: fullMap
+		fullMap: _fullMap
 		getMap: -> _stageObj.map
 		initialize: ->
 			board.clear()
@@ -56,7 +65,7 @@ define ["mapcreator", "utilities", "board", "dialog", "globals", "taskrunner", "
 						after: ->
 							board.setPresetBackground ""
 							dialog.destroy()
-							mapper.renderChunk fullMap[0][0], stage
+							mapper.renderChunk _fullMap[0][0], stage
 							board.addState("TRAVEL").removeState("WAITING")
 							board.addMarker PC
 							PC.trigger("change:current_chunk")

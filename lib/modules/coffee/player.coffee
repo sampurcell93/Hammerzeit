@@ -20,7 +20,9 @@ define "player", ["utilities", "npc", "board", "globals", "mapper", "backbone", 
 				[165, 165, 55, 55, 0]]
 		}
 		initialize: (attrs) ->
-			_.bindAll @, "contextualize", "afterMove", "insideChunkBounds", "move"
+			_.bindAll @, "contextualize", "insideChunkBounds", "move"
+			_.bind @move_callbacks.done, @
+			_.bind @move_callbacks.change, @
 			@walkopts = _.extend @getPrivate("walkopts"), {images: ["images/sprites/hero.png"]}
 			@sheets = {
 				"-1,0" : new createjs.SpriteSheet(_.extend @walkopts, {frames: @frames.left})
@@ -52,33 +54,31 @@ define "player", ["utilities", "npc", "board", "globals", "mapper", "backbone", 
 			 	# @marker.y += 50
 			 	flag = true
 			 flag
-		afterMove: (dx, dy) ->
-			chunk = @get "current_chunk"
-			marker = @marker
-			_.extend(marker, coords = @contextualize marker.x, marker.y)
-			x = marker.x
-			y = marker.y
-			if dx > 0 and (x % globals.map.width) is 0 then chunk.x += 1
-			else if dx < 0 and x != 0 and (x % globals.map.c_width) is 0 then chunk.x -= 1
-			else if dy > 0 and (y % globals.map.height) is 0 then chunk.y += 1
-			else if dy < 0 and y != 0 and (y % globals.map.c_height) is 0 then chunk.y -= 1
-			else return {x: x, y: y}
-			ut.c "before context"
-			ut.c coords
-			ut.c "after"
-			ut.c coords
-			# if @insideChunkBounds(chunk)
-			@marker.x %= globals.map.width
-			@marker.y %= globals.map.height
-			@set "current_chunk", chunk
-			@trigger "change:current_chunk"
-			console.log marker.x, marker.y
-			board.addMarker @
-			{ x: x, y: y }
+		move_callbacks:
+			done: (dx, dy) ->
+				chunk = @get "current_chunk"
+				marker = @marker
+				_.extend(marker, coords = @contextualize marker.x, marker.y)
+				x = marker.x
+				y = marker.y
+				if dx > 0 and (x % globals.map.width) is 0 then chunk.x += 1
+				else if dx < 0 and x != 0 and (x % globals.map.c_width) is 0 then chunk.x -= 1
+				else if dy > 0 and (y % globals.map.height) is 0 then chunk.y += 1
+				else if dy < 0 and y != 0 and (y % globals.map.c_height) is 0 then chunk.y -= 1
+				else return {x: x, y: y}
+				@marker.x %= globals.map.width
+				@marker.y %= globals.map.height
+				@set "current_chunk", chunk
+				@trigger "change:current_chunk"
+				board.addMarker @
+				{ x: x, y: y }
+			change: (dx, dy)->
+				# console.log "change :)"
+
 		move: (dx, dy) ->
 			# board.addState("battle").removeState("travel")
 			# Call super move function then do native bound checking when animation done
-			super(dx, dy, @afterMove)
+			super(dx, dy)
 		defaults:
 			current_chunk: { x: 0, y: 0 }
 			type: "PC"

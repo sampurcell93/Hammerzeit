@@ -52,18 +52,10 @@ define ["utilities", "globals", "dialog", "npc", "mapper", "mapcreator", "battle
 			TRAVEL: (key) ->
 				ut.c PC
 				switch key
-					when kc["UP"]
-						ut.c "UP"
-						PC.move(0,-1)
-					when kc["RIGHT"]
-						ut.c "right"
-						PC.move(1,0)
-					when kc["DOWN"]
-						ut.c "down"
-						PC.move(0,1)
-					when kc["LEFT"]
-						ut.c "left"
-						PC.move(-1,0)
+					when kc["UP"] 	 then PC.moveUp()
+					when kc["RIGHT"] then PC.moveRight()
+					when kc["DOWN"]  then PC.moveDown()
+					when kc["LEFT"]  then PC.moveLeft()
 					when kc['CLEAR']
 						mapper.clearChunk window.stage
 					when kc['BATTLE']

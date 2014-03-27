@@ -42,6 +42,7 @@ define  ["jquery", "underscore"], ->
 		$(".modal").remove()
 			# unless existing == true
 		$(document.body).removeClass("active-modal")
+		$("#game-board").focus()
 				# if options.destroyHash == true
 					# window.location.hash = ""
 

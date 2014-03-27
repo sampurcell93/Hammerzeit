@@ -7,23 +7,30 @@ define ["globals", "utilities", "board", "mapper", "underscore", "backbone"], (g
 		orientation = orientation.toString()
 		{"-1x": "left", "1x": "right", "-1y": "up", "1y": "down"}[orientation + coord]
 
-	privates = {
+	_p = {
 		 walkopts: {
             framerate: 30
             animations: 
                 run: [0,3]
             images: ["images/sprites/hero.png"]
         }
+        walkspeed: 9
 	}	
 	
+	_ts = globals.map.tileside
+
 	class NPC extends Backbone.Model
 		currentspace: {}
+		move_callbacks: 
+			done: -> 
+			change: ->
+		moving: {x: false, y: false}
 		# Note the argument order - reflects 2D array notation
 		setChunk: (y,x) ->
 			chunk = @get "current_chunk"
 			chunk.x = x
 			chunk.y = y
-			@set "current_chunk", chunk, {siltnt: true}
+			@set "current_chunk", chunk, {silent: true}
 			@trigger "change:current_chunk"
 			@
 		# Pass in the tile the NPC will move to - if the diff in elevations exceeds the jump
@@ -33,8 +40,12 @@ define ["globals", "utilities", "board", "mapper", "underscore", "backbone"], (g
 		# Pass in the target tile and the move deltas, and the NPC will use the current 
 		# active chunk to determine if the spot is enterable.
 		checkEnterable: (target, dx, dy)->
+			ut.c "checking enter at " + dx + "," + dy
 			try 
-				elevation = @checkElevation(target)
+				if !@checkElevation(target)
+					ut.c "failed elevation check"
+					ut.c target
+					return false
 				if target.e?
 					if target.e is false or target.e is "f" then return false
 					else if typeof target.e is "string"
@@ -45,14 +56,18 @@ define ["globals", "utilities", "board", "mapper", "underscore", "backbone"], (g
 			catch 
 				true
 		# Given move deltas, retrieve the DisplayObject (bitmap) at that position in the current chunk
-		getTargetTile: (dx, dy) ->
+		getTargetTile: (dx, dy, prev) ->
 			chunk = mapper.getVisibleChunk().children
-			chunk[(@marker.y+(50*dy))/50]?.children[(@marker.x+(50*dx))/50] || {}
+			y = if prev then prev.y else @marker.y
+			x = if prev then prev.x else @marker.x
+			if prev then ut.c "checking new target at " + x + "," + y
+			chunk[(y+(50*dy))/50]?.children[(x+(50*dx))/50] || {}
 
 		# Takes in a tile DisplayObject (bitmap) and calls a trigger function if it exists
+		# Triggers stored in the trigger module
 		checkTrigger: (target) ->
-			if typeof target.trigger is "function" 
-				setTimeout target.trigger, 15
+			if target.trigger?
+				setTimeout triggers[target.trigger], 15
 			else null
 
 		canMoveOffChunk: (x, y) ->
@@ -77,41 +92,77 @@ define ["globals", "utilities", "board", "mapper", "underscore", "backbone"], (g
 		moveLeft: -> @move -1, 0
 		moveUp: -> @move 0, -1
 		moveDown: -> @move 0, 1
+		# Reset an animation's properties
+		reanimate: (animation, speed, next) ->
+			sheet = @marker.spriteSheet
+			sheet.getAnimation(animation || "run").speed = speed
+			sheet.getAnimation(animation || "run").next = next
+		# Takes in a half position (say x= 476, y= 450) and rounds to the nearest 50 (up or down deps on dx,dy)
+		# Returns x,y obj
+		roundToNearestTile: (x, y, dx, dy) ->
+			{x: (Math.ceil(x/_ts)*_ts), y: (Math.ceil(y/_ts)*_ts) }
+		# Accepts delta params and returns a string for direction. so (1,0) would return "x"
+		deltaToString: (dx, dy) ->	
+			if dx isnt 0 then "x" else if dy isnt 0 then "y" else ""
+		# Takes in a dir string and returns the opposite
+		oppositeDir: (dir) ->
+			if dir is "x" then "y" else if dir is "y" then "x" else ""
 		# expects x and inverse-y deltas, IE move(0, 1) would be a downward move by 1 "square"
 		# Returns false if the move will not work, or returns the new coords if it does.
-		move: (dx, dy, done) ->
+		move: (dx, dy) ->
+			cbs = @move_callbacks
 			marker = @marker
-			target = @getTargetTile(dx,dy)
-			prev = {x: marker.x, y: marker.y}
-			if !@stage or !marker then return false
-			# Turn sprite in new dir regardless of success
-			sheet = @setSpriteSheet()
-			if !@checkEnterable(target, dx, dy) then return false
+			@previous_position = @roundToNearestTile marker.x, marker.y, dx, dy
+			target = @getTargetTile dx, dy
+			sheet = @setSpriteSheet dx, dy
+			dir = @deltaToString dx, dy
+			other_dir = @oppositeDir dir
+			if @moving[dir] is true then return false
+			ut.c "dir is " + dir
+			ut.c "other dir is " + other_dir
+			if !@stage or !marker
+				throw new Error("There is no stage or marker assigned to this NPC!")
 			count = 0
+			ut.c "SETTING " + dir + " TO TRUE"
+			@moving[dir] = true
 			m_i = setInterval =>
-				if count == 1 
-					@moving = true
-				else if count <= 10
+				if count < 10
 					marker.x += 5*dx
 					marker.y += 5*dy
+					cbs.change.call(@, dx, dy)
 				else 
 					clearInterval m_i
-					@moving = false
-					if done? and typeof done is "function" then done(dx, dy)
+					@moving[dir] = false
+					marker = _.extend(marker, @roundToNearestTile marker.x, marker.y, dx, dy)
+					@checkTrigger target
+					do @leaveSquare
+					@enterSquare target
+					@reanimate "run", .13, "run"
+					cbs.done.call(@, dx, dy)
 				count++
-			, 5
-			console.log "checking canMoveOffChunk"
+			, _p.walkspeed
+			console.log @moving
+			if @moving[other_dir] is true
+				ut.c "checking new target based on previous position"
+				if other_dir is "y" then @previous_position.y += _ts
+				else if other_dir is "x" then @previous_position.x += _ts
+				ut.c @previous_position
+				target = @getTargetTile(dx,dy, @previous_position)
+				ut.c "found at" + target.x + "," + target.y
+			if !@checkEnterable(target, dx, dy)
+				console.clear()
+				ut.c "encountered a bad move:"
+				ut.c "previous_position: ", @previous_position
+				ut.c "vector was (x,y): ", dx, dy
+				clearInterval m_i
+				_.extend marker, @previous_position
+				return @moving[dir] = false
+			else ut.c "enterable at" + target.x/50 + "," + target.y/50
+			# console.log "checking canMoveOffChunk"
 			# if !@canMoveOffChunk(marker.x+dx*globals.tileside, marker.y+dy*globals.tileside) then return false
 
-			if !@canMoveOffChunk(marker.x+dx*50, marker.y+dy*50) then return false
-			# marker.x += dx
-			# marker.y += dy
-			@checkTrigger target
-			do @leaveSquare
-			@enterSquare target
-			sheet.getAnimation("run").speed = .13
-			sheet.getAnimation("run").next = "run"
-			{x: marker.x, y: marker.y}
+			# if !@canMoveOffChunk(marker.x+dx*50, marker.y+dy*50) then return false
+			true
 		defaults: ->
 			name: "NPC"
 			inventory: []
@@ -127,10 +178,10 @@ define ["globals", "utilities", "board", "mapper", "underscore", "backbone"], (g
 			current_chunk: { x: 0, y: 0 }
 
 		getPrivate: (id) ->
-			privates[id]
+			_p[id]
 
 	# Bind all the private functions to the public object.... invisibly 0_0
 	# _.each move_fns, (fn) ->
 		# if typeof fn == "function" then _.bind fn, NPC
 
-	NPC
+	window.NPC = NPC

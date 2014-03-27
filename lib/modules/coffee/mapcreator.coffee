@@ -164,6 +164,9 @@ define ["globals", "utilities", "backbone", "jquery", "underscore"], (globals, u
                 allRows[i] = rowCollection
             chunk.set("rows", allRows)
             _chunk = chunk
+            toggleOverlay()
+            toggleOverlay()
+            _chunk = chunk
         exportMap: exportMap
 
     }   

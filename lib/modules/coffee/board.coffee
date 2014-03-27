@@ -214,9 +214,17 @@ define ['globals', 'utilities', 'jquery', 'underscore', 'easel'], (globals, ut) 
         # Expects either a PC or NPC model - see player.coffee and npc.coffee
         addMarker: (character) ->
             addMarker character
+        setBackgroundPosition: (position) ->
+            ut.c "changing background pos to ", position
+            if !position
+                # console.error "You need to supply a valid css position for the background position."
+                return @
+            $canvas.css("background-position", position)
+            @
         setBackground: (url) ->
+            ut.c "Setting url to " + url
             if !url 
-                throw new Error("You need to supply an image for the background")
+                # console.error "You need to supply a valid string for the background url."
                 return @
             $canvas.css("background-image", "url(" + url + ")")
             @

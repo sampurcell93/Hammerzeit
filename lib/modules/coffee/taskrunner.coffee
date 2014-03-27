@@ -13,15 +13,8 @@ define ["globals", "utilities", "board", "player", "controls", "mapper", "mapcre
 				PC.on "change:current_chunk", () ->
 					ut.c "CHUNK CHANGE REGISTERED IN TASKRUNNER"
 					newchunk = PC.get "current_chunk"
+					console.log newchunk
 					mapcreator.loadChunk level.getMap()[newchunk.y][newchunk.x].tiles
-					# mapcreator.exportMap()
-
-					# ut.c level.pictoMap[newchunk.y][newchunk.x]
-					# ut.c "BEFORE"
-					# console.log board.getStage().children.slice(0)
-					# mapper.clearChunk level.fullMap[0][0], board.getStage()
-					# ut.c "AFTER"
-					# console.log board.getStage().children
 					mapper.renderChunk level.fullMap[newchunk.y][newchunk.x], board.getStage()
 
 

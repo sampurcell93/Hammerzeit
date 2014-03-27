@@ -78,6 +78,9 @@ define ["globals", "utilities", "board", "underscore", "backbone", "easel", "jqu
 		stage.addChild container
 		container
 
+	modifyBackground = (bitmap) ->
+		board.setBackground(bitmap.background || "")
+		board.setBackgroundPosition(bitmap.background_position || "top left")
 
 	return {
 		# Expects an array of 14x14 2D arrays, or chunks, each of which represents one full view in the map. 
@@ -91,7 +94,7 @@ define ["globals", "utilities", "board", "underscore", "backbone", "easel", "jqu
 		renderChunk: (bitmap, stage) ->
 			clearChunk stage
 			container = renderChunk bitmap, stage
-			board.setBackground(bitmap.background)
+			modifyBackground bitmap
 			_activechunk = container 
 		clearChunk: (stage) ->
 			clearChunk stage
