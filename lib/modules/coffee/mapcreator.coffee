@@ -140,7 +140,7 @@ define ["globals", "utilities", "mapper", "backbone", "jquery", "jquery-ui", "un
                     @select()
                     @modifyTileInfo()
                 else 
-                    if @selected is false then @unselect()
+                    if @selected is true then @unselect()
                     else @select()
 
     # Takes in a json array containing string representations of functions 
