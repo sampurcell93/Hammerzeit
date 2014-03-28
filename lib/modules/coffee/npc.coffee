@@ -150,7 +150,6 @@ define ["globals", "utilities", "board", "mapper", "underscore", "backbone"], (g
 				target = @getTargetTile(dx,dy, @previous_position)
 				ut.c "found at" + target.x + "," + target.y
 			if !@checkEnterable(target, dx, dy)
-				console.clear()
 				ut.c "encountered a bad move:"
 				ut.c "previous_position: ", @previous_position
 				ut.c "vector was (x,y): ", dx, dy

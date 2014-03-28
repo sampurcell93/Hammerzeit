@@ -174,7 +174,7 @@ define ["globals", "utilities", "mapper", "backbone", "jquery", "jquery-ui", "un
     return {
         toggleOverlay: toggleOverlay
         getDefaultChunk: ->
-            ut.launchModal new Chunk().export()
+            JSON.parse new Chunk().export()
         bindCreators: (tile) ->
         loadChunk: (precursor_chunk) ->
             chunk = new Chunk

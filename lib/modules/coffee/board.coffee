@@ -1,6 +1,10 @@
 define ['globals', 'utilities', 'jquery', 'underscore', 'easel'], (globals, ut) ->
     canvas = document.getElementById "game-board"
     $canvas = $ canvas
+    # The current zoom value
+    _zoom = 0
+    # The current pixel width and height of a loaded map
+    _mapwidth = _mapheight = 0
 
     # State enum
     states = globals.states
@@ -230,6 +234,37 @@ define ['globals', 'utilities', 'jquery', 'underscore', 'easel'], (globals, ut) 
             @
         toggleGrid: () ->
             toggleGrid()
+        getZoom: -> _zoom
+        zoomIn: (amount) ->
+            current = $canvas.css("background-size").split(" ")
+            current = _.map current, (num) -> parseInt num
+            console.log current
+            if current == "auto" or current[0] >= _mapwidth or current[1] >= _mapheight
+                return _zoom
+            _zoom += 1
+            newstr = current[0] + globals.map.width + "px "
+            newstr += current[1] + globals.map.height + "px"
+            ut.c newstr
+            $canvas.css("background-size", newstr)
+            _zoom
+        zoomOut: (amount) ->
+            current = $canvas.css("background-size").split(" ")
+            current = _.map current, (num) -> parseInt num
+            console.log current
+            if isNaN(current[0]) 
+                current[0] = _mapwidth
+                current[1] = _mapheight 
+            console.log current
+            if current[0] is 1000 or current[1] is 700 then return _zoom
+            newstr = current[0] - globals.map.width + "px "
+            newstr += current[1] - globals.map.height + "px"
+            ut.c newstr
+            $canvas.css("background-size", newstr)
+            _zoom -= 1
+        setMapSize: (width, height) ->
+            _mapwidth = width
+            _mapheight = height
+            console.log "Setting map dimensoions:", width, height
     }
 
     board.initialize()

@@ -22,6 +22,8 @@ define ["utilities", "globals", "dialog", "npc", "mapper", "mapcreator", "battle
 			EXPORTMAP: 69
 			GRID: 71
 			MAPCREATOR: 77
+			ZOOMIN: 90
+			ZOOMOUT: 79
 		}
 
 		# Todo
@@ -29,8 +31,6 @@ define ["utilities", "globals", "dialog", "npc", "mapper", "mapcreator", "battle
 			true
 
 		generalFns =
-			# Cmd
-			91: (e) ->
 			# G
 			71: board.toggleGrid
 
@@ -47,7 +47,7 @@ define ["utilities", "globals", "dialog", "npc", "mapper", "mapcreator", "battle
 					when kc["RIGHT"] then PC.moveRight()
 					when kc["DOWN"]  then PC.moveDown()
 					when kc["LEFT"]  then PC.moveLeft()
-					when kc['SPACE'] then menus.launchMenu()
+					when kc['SPACE'] then menus.toggleBattleMenu()
 			CUTSCENE: (key) ->
 			TRAVEL: (key) ->
 				ut.c PC
@@ -56,19 +56,14 @@ define ["utilities", "globals", "dialog", "npc", "mapper", "mapcreator", "battle
 					when kc["RIGHT"] then PC.moveRight()
 					when kc["DOWN"]  then PC.moveDown()
 					when kc["LEFT"]  then PC.moveLeft()
-					when kc['CLEAR']
-						mapper.clearChunk window.stage
-					when kc['BATTLE']
-						board.addState "battle"
-					when kc['SPACE']
-						menus.launchMenu()
-						ut.c 'launching travel menu'
-					when kc['MAPCREATOR']
-						mapcreator.toggleOverlay()
-					when kc['EXPORTMAP']
-						mapcreator.exportMap()
-					when kc['DEFAULT']
-						mapcreator.getDefaultChunk()
+					when kc['CLEAR'] then mapper.clearChunk window.stage
+					when kc['BATTLE'] then board.addState "battle"
+					when kc['SPACE'] then menus.toggleTravelMenu()
+					when kc['MAPCREATOR'] then mapcreator.toggleOverlay()
+					when kc['EXPORTMAP'] then mapcreator.exportMap()
+					when kc['DEFAULT'] then mapcreator.getDefaultChunk()
+					when kc['ZOOMIN'] then board.zoomIn 1
+					when kc['ZOOMOUT'] then board.zoomOut 1
 			DRAWING: (key) ->
 				switch key
 					when kc["ENTER"], kc["SPACE"]
