@@ -4,6 +4,7 @@
     urlArgs: "bust=" + (new Date()).getTime(),
     paths: {
       'jquery': 'lib/jquery',
+      'jquery-ui': 'lib/jquery-ui.min',
       'easel': 'lib/easel',
       'underscore': 'lib/underscore',
       'backbone': 'lib/backbone',

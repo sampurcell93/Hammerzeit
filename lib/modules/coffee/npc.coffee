@@ -158,10 +158,6 @@ define ["globals", "utilities", "board", "mapper", "underscore", "backbone"], (g
 				_.extend marker, @previous_position
 				return @moving[dir] = false
 			else ut.c "enterable at" + target.x/50 + "," + target.y/50
-			# console.log "checking canMoveOffChunk"
-			# if !@canMoveOffChunk(marker.x+dx*globals.tileside, marker.y+dy*globals.tileside) then return false
-
-			# if !@canMoveOffChunk(marker.x+dx*50, marker.y+dy*50) then return false
 			true
 		defaults: ->
 			name: "NPC"

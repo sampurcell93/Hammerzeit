@@ -1,5 +1,7 @@
 define  ["jquery", "underscore"], ->
 
+	_c = -> for arg in arguments then console.log arg
+
 	window.onbeforeunload = (event) ->
 	  s = "You have unsaved changes. Really leave?"
 	  event = event or window.event	  
@@ -7,6 +9,12 @@ define  ["jquery", "underscore"], ->
 	  event.returnValue = s  if event
 	  # This is for all other browsers
 	  s
+
+	 $.fn.inputChanged = ->
+	 	_c "checking changed"
+	 	_c @
+	 	_c @attr("changed")
+	 	@attr("changed") || false
 
 	if typeof Object.create isnt "function"
 	  Object.create = (o) ->
@@ -76,7 +84,7 @@ define  ["jquery", "underscore"], ->
 
 	return {
 		# Quick logger, saves keystrokes
-		c: () -> for arg in arguments then console.log arg
+		c: () -> _c
 		create: Object.create
 		# Bind multiple events to an object at once.... this is probably native and I'm missing it.
 		addEventListeners: (obj, events) -> _.each events, (fn, name) -> obj.addEventListener name, fn
@@ -133,4 +141,5 @@ define  ["jquery", "underscore"], ->
 		}
 		floorToOne: (val) ->
 			if val < 0 then -1 else if val > 0 then 1 else 0
+		$inputChanged: $.fn.inputChanged
 	}

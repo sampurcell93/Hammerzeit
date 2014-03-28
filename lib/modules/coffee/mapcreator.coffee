@@ -1,5 +1,4 @@
-define ["globals", "utilities", "backbone", "jquery", "underscore"], (globals, ut) ->
-
+define ["globals", "utilities", "mapper", "backbone", "jquery", "jquery-ui", "underscore"], (globals, ut, mapper) ->
 
 
     t = ut.tileEntryCheckers
@@ -17,13 +16,27 @@ define ["globals", "utilities", "backbone", "jquery", "underscore"], (globals, u
             attrs.x = @x
             attrs.y = @y
         expose: ->
-            # mapper.setTile @attributes
+            mapper.setTile @attributes
 
     class Row extends Backbone.Collection
         model: Tile
 
     # Reference to all currently selected tiles
     window._selected = _selected = new Row
+
+    $(".enterable-list").selectable
+        selecting: (e, ui) ->
+            ut.c "selecting via drag"
+            $(ui.selecting).trigger "select"
+        unselecting: (e, ui) ->
+            ut.c "unselecting via drag"
+            $(ui.unselecting).trigger "unselect"
+        stop: (e, ui) ->
+            ut.c "stop and modify"
+            ut.c 
+            $(ui.selected).trigger "modification"
+        filter: 'li'
+        delay: 100
 
     class Chunk extends Backbone.Model
         defaults: ->
@@ -62,9 +75,11 @@ define ["globals", "utilities", "backbone", "jquery", "underscore"], (globals, u
                     tile.modifier = item
                     @$el.append(item.render().el)
         modifyAllTiles: (modal) ->
+            ut.c "modding all", _selected
             _.each _selected.models, (tile) ->
                 tile.modifier.applyChanges modal, false
             _selected.reset()
+
 
     class OverlayItem extends Backbone.View
         template: "<%= typeof e !== 'undefined' && e ? e : '&nbsp;' %><span class='elevation'><%= elv %></span>"
@@ -76,45 +91,57 @@ define ["globals", "utilities", "backbone", "jquery", "underscore"], (globals, u
             }    
         # Handles the view and array modification 
         modifyTileInfo: ->
+            ut.c "modiying tile info"
             if _selected.length > 1 then multi = true else multi = false
             tile = @model
             if multi then str = "<h3>Editing Many</h3>" else str = ""
             modal = ut.launchModal(str + _.template(_enterInfo, _.extend(tile.toJSON(), {x: tile.x, y: tile.y})))
             modal.find(".js-add-elevation").select()
-            modal.on("keydown", ".js-add-dirs, .js-add-elevation", (e) =>
+            self = @
+            modal.on("keydown", ".js-add-dirs, .js-add-elevation", (e) ->
                 key = e.keyCode || e.which
+                if key != 9 then $(@).attr("changed", true)
                 if key == 13
                     if multi
-                        @parent.modifyAllTiles modal
-                    @applyChanges(modal)
+                        self.parent.modifyAllTiles modal
+                    else 
+                        self.applyChanges modal
+                        _selected.remove self.model.cid
             )
             tile
          # grab the content of the dir box and set to tiler
         applyChanges: (modal, proceed) ->
-            @model.set "e", modal.find(".js-add-dirs").val()
-            @model.set "elv", parseInt(modal.find(".js-add-elevation").val())
+            if modal.find(".js-add-dirs").inputChanged()
+                @model.set "e", modal.find(".js-add-dirs").val()
+            if modal.find(".js-add-elevation").inputChanged() 
+                @model.set "elv", parseInt(modal.find(".js-add-elevation").val())
             ut.destroyModal()
-            @$el.removeClass "selected-tile"
             @model.trigger "expose"
+            @unselect()
             unless proceed is false
                 next = getNextTile(@model.x,@model.y)
                 if next.tile then next.tile.modifier.modifyTileInfo modal, proceed
         render: ->
             @$el.html(_.template(@template, @model.toJSON()))
             @
+        select: ->
+            @$el.addClass("selected-tile")
+            @selected = true
+            _selected.add @model
+        unselect: ->
+            @$el.removeClass("selected-tile")
+            @selected = false
         events: 
+            select: "select"
+            unselect: "unselect"
             click: (e) ->
-                @$el.toggleClass("selected-tile")
                 e.preventDefault()
                 unless e.shiftKey
-                    model = @model
-                    _selected.add @model
+                    @select()
                     @modifyTileInfo()
                 else 
-                    if _selected.indexOf(@model) != -1 
-                        _selected.remove(@model.cid)
-                    else
-                        _selected.add @model
+                    if @selected is false then @unselect()
+                    else @select()
 
     # Takes in a json array containing string representations of functions 
     # and converts them to direct references to the function (a member of ut.tileEntryCheckers)
