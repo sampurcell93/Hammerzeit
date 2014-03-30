@@ -7,37 +7,53 @@ module.exports = (grunt) =>
 				files: [{
 					expand: true
 					flatten: true
-					cwd: 'lib/modules/coffee/'
+					cwd: 'public/lib/modules/coffee/'
 					src: ['*.coffee']
-					dest: 'lib/modules/js'
+					dest: 'public/lib/modules/js'
 					rename: (dest, src) ->
   						dest + "/" + src.replace(/\.coffee$/, ".js")
 				}]
 		compass:
 			dist:
 				options:
-					sassDir: 'sass'
-					cssDir: 'stylesheets'
+					sassDir: 'public/sass'
+					cssDir: 'public/stylesheets'
 					environment: 'production'
 			dev:
 				options:
-					sassDir: 'sass'
-					cssDir: 'stylesheets'
+					sassDir: 'public/sass'
+					cssDir: 'public/stylesheets'
+		# nodemon: 
+	 #        dev: 
+	 #            options: 
+	 #                file: 'server.js',
+	 #                nodeArgs: ['--debug'],
+	 #                env: 
+	 #                    PORT: '5000'
 		watch:
 		  sass:
-		    files: ["sass/*.scss"]
+		    files: ["public/sass/*.scss"]
 		    tasks: ["compass:dist"]
 		  css:
 		    files: ["*.css"]
 		  coffee:
-		  	files: ['lib/modules/coffee/*.coffee']
+		  	files: ['public/lib/modules/coffee/*.coffee']
 		  	tasks: ['coffee:dist']
 		  livereload:
-		    files: ["stylesheets/*.css"]
+		    files: ["public/stylesheets/*.css"]
 		   	options:
 		      livereload: true
 
 	grunt.loadNpmTasks 'grunt-contrib-watch'
 	grunt.loadNpmTasks 'grunt-contrib-compass'
 	grunt.loadNpmTasks 'grunt-contrib-coffee'
+	grunt.loadNpmTasks 'grunt-nodemon'
+
+	# grunt.registerTask 'server', (target) ->
+	# 	nodemon = grunt.util.spawn
+	# 		cmd: 'grunt'
+	#         grunt: true
+	#         args: 'nodemon'
+
 	grunt.registerTask "default", ['watch']
+
