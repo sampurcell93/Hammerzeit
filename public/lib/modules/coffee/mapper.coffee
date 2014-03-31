@@ -5,6 +5,9 @@ define ["globals", "utilities", "board", "mapper", "underscore", "backbone", "ea
 	_activechunk = null
 	_activeprecursor = null
 	_backbone = null
+	stage = board.getStage()
+	# 3d tiles have to be drawn after the players and npcs, because they overshadow them
+	_3dtiles = null
 
 	class Tile extends Backbone.Model
         defaults: 
@@ -108,22 +111,25 @@ define ["globals", "utilities", "board", "mapper", "underscore", "backbone", "ea
 		bitmaparray
 
 	# We have wrapper each chunk in a container, so a simple remove (0) should suffice here
-	clearChunk = (stage) ->
-		stage.removeChildAt 0
+	clearChunk =  ->
+		stage.removeChild _activechunk
+		stage.removeChild _3dtiles
 
-	renderChunk = (bitmap, stage, vertindex) ->
+	renderChunk = (bitmap, vertindex) ->
 		vertindex || vertindex = 0
 		container = new createjs.Container()
 		container.x = 0
 		container.y = 0
 		_.each bitmap, (tile, i) ->
 			if $.isArray tile
-				container.addChild(renderChunk tile, stage, i)
+				container.addChild(renderChunk tile, i)
 			else
 				tile.x = tilewidth * i
 				tile.y = tileheight * vertindex
 				tile.hitArea = createBitEventRegister(tile, tile.x, tile.y)
-				container.addChild tile
+				if tile.t isnt "e" and tile.t isnt "p"
+					_3dtiles.addChild tile
+				else container.addChild tile
 		stage.terrain = bitmap
 		stage.addChild container
 		container
@@ -141,13 +147,16 @@ define ["globals", "utilities", "board", "mapper", "underscore", "backbone", "ea
 				_.extend _activeprecursor, _.omit(chunk, "tiles")
 		# Expects a bitmap (can be generated with loadMap) and a createjs stage. Will render the map to the stage
 		# Returns a Container object with the bitmap inside it
-		renderChunk: (bitmap, stage) ->
-			clearChunk stage
-			container = renderChunk bitmap, stage
+		renderChunk: (bitmap) ->
+			clearChunk()
+			_3dtiles = new createjs.Container()
+			_3dtiles.name = "3dtiles"
+			container = renderChunk bitmap
 			modifyBackground bitmap
+			stage.addChild _3dtiles
 			_activechunk = container 
-		clearChunk: (stage) ->
-			clearChunk stage
+		clearChunk: ->
+			clearChunk()
 		getVisibleChunk: () ->
 			_activechunk
 		setTile: (tile) ->

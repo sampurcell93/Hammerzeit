@@ -6,6 +6,8 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
     _grid = null
     _gridded = false
     _activemap = null
+    stage = board.getStage()
+    _side = globals.map.tileside
 
     class Overlay extends mapcreator.Overlay
         show: -> @$el.fadeIn  "fast"
@@ -18,28 +20,51 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
         template: "&nbsp;"
         initialize: ->
             @listenTo @model,
-                potentialmove: -> 
-                    @potentialmove = true
-                    @highlight()
-                unhighlight: ->
-                    @unhighlight
-                    @removepotential()
+                potentialmove: @potentialmoves
+                removemove: @removepotential
+
         render: ->
             @model.square = @
             @$el.html(_.template @template, @model.toJSON())
             @
+        # handler for click event on 
+        clickHandler: (e, data) -> 
+            console.log "you clicked the area"
+            console.log arguments
+        bindMoveFns: (area) ->
+            area.on "click" , @clickHandler, @, false
         # Pass in a stringto identify why a grid square should be highlighted
-        highlight: (type) ->
-            @$el.addClass("highlight-" + (type || "potentialmove"))
-        unhighlight: -> 
-            classes = @$el.attr("class").split " "
-            @$el.removeClass()
-            _.each classes, (cl) ->
-                if cl.indexOf("highlight") != -1 then cl = ""
-            @$el.addClass classes.join " "
+        potentialmoves: (type) ->
+            @$el.addClass("potentialmove")
+            @potentialmoves = true
+            bitmap = @model.bitmap
+            area = bitmap.hitArea
+            if area.drawn?
+                stage.addChildAt(area, 0)
+                return @
+            area.drawn = true
+            g = area.graphics
+            area.x = bitmap.x - 1
+            area.y = bitmap.y - 1
+            g.beginFill("#ea0000").drawRect(0, 0, _side - 2, _side - 2).endFill()
+            area.alpha = 0.3
+            @bindMoveFns(area)
+            stage.addChildAt(area, 0)
+            @
+            console.log area
         removepotential: -> 
-            @potentialmove = false
+            # classes = @$el.classes()
+            # _.each classes, (cl) =>
+            #     if cl.indexOf("highlight") != -1 then @$el.removeClass cl
+            @$el.removeClass("potentialmove")
+            @potentialmoves = false
+            bitmaphit = @model.bitmap.hitArea
+            console.log bitmaphit
+            bitmaphit.off "click"
+            console.log bitmaphit
+            stage.removeChild bitmaphit
         events: ->
+            "click": -> console.log "hitarea"
             mouseover: (e) ->
                 if @potentialmove then @$el.addClass("selecting-move")
             mouseout: ->

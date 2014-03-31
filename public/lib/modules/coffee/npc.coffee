@@ -48,8 +48,8 @@ define ["globals", "utilities", "board","items", "mapper", "underscore", "backbo
 				if !@checkElevation(target, start)
 					return false
 				if target.e?
-					if target.e is false or target.e is "f" 
-						return false
+					if target.e is false or target.e is "f" then return false
+					else if target.occupied is true then return false
 					else if typeof target.e is "string"
 						return _checkEntry[target.e](dx, dy)
 					else true
@@ -108,7 +108,7 @@ define ["globals", "utilities", "board","items", "mapper", "underscore", "backbo
 		# expects x and inverse-y deltas, IE move(0, 1) would be a downward move by 1 "square"
 		# Returns false if the move will not work, or returns the new coords if it does.
 		move: (dx, dy) ->
-			if board.hasState("battle") then return false
+			# if board.hasState("battle") then return false
 			if board.getPaused() then return false
 			cbs = @move_callbacks
 			marker = @marker
@@ -182,23 +182,24 @@ define ["globals", "utilities", "board","items", "mapper", "underscore", "backbo
 			chunk = mapper.getVisibleChunk().children
 			y = if start then start.y else @marker.y
 			x = if start then start.x else @marker.x
-			chunk[(y+(50*dy))/50]?.children[(x+(50*dx))/50] || null
+			chunk[(y+(50*dy))/50]?.children[(x+(50*dx))/50] || {}
 
 		# Like move, but lightweight and with no transitions - simple arithmetic check
 		# Because we're not updating marker, we can pass in a start object (x:,y:) to be virtualized from
 		virtualMove: (dx, dy, start) ->
 			if board.getPaused() then return false
 			target = @getTargetTile dx, dy, start
-			if !target then return false
+			if _.isEmpty(target) then return false
 			if target.tileModel.discovered then return false
 			if !@checkEnterable(target, dx, dy, start) then return false
 			target
 		# Runs through the currently visible tiles in a battle and determines which moves are possible
 		# Returns array of tiles. If true, silent prevents observation 
 		# Still inefficient - keeps checking past max distance - todo
-		virtualMovePossibilities: (silent) ->
+		virtualMovePossibilities: (done) ->
 			speed      || (speed = @get("attrs").spd)
 			start 	   || (start = @getTargetTile 0, 0)
+			done	   || (done = (target) -> target.tileModel.trigger("potentialmove"))
 			checkQueue = []
 			movable = new Row
 			checkQueue.unshift(start)
@@ -211,7 +212,7 @@ define ["globals", "utilities", "board","items", "mapper", "underscore", "backbo
 				else target.tileModel.distance = distance + 1
 				target.tileModel.discovered = true
 				checkQueue.unshift target
-				unless silent then target.tileModel.trigger "potentialmove"
+				done.call(@, target)
 
 			while checkQueue.length > 0
 				square = checkQueue.pop()
@@ -223,7 +224,7 @@ define ["globals", "utilities", "board","items", "mapper", "underscore", "backbo
 
 			_.each movable.models, (tile) ->
 				tile.discovered = false
-			return movable
+			movable
 		# Attrs is a sub object, so this saves time
 		# May want to remove for security
 		setAttrs: (attrs) ->

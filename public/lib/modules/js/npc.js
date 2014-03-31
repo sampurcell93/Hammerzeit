@@ -69,6 +69,8 @@
           if (target.e != null) {
             if (target.e === false || target.e === "f") {
               return false;
+            } else if (target.occupied === true) {
+              return false;
             } else if (typeof target.e === "string") {
               return _checkEntry[target.e](dx, dy);
             } else {
@@ -169,9 +171,6 @@
       NPC.prototype.move = function(dx, dy) {
         var cbs, count, m_i, marker, sheet, target,
           _this = this;
-        if (board.hasState("battle")) {
-          return false;
-        }
         if (board.getPaused()) {
           return false;
         }
@@ -270,7 +269,7 @@
         chunk = mapper.getVisibleChunk().children;
         y = start ? start.y : this.marker.y;
         x = start ? start.x : this.marker.x;
-        return ((_ref1 = chunk[(y + (50 * dy)) / 50]) != null ? _ref1.children[(x + (50 * dx)) / 50] : void 0) || null;
+        return ((_ref1 = chunk[(y + (50 * dy)) / 50]) != null ? _ref1.children[(x + (50 * dx)) / 50] : void 0) || {};
       };
 
       NPC.prototype.virtualMove = function(dx, dy, start) {
@@ -279,7 +278,7 @@
           return false;
         }
         target = this.getTargetTile(dx, dy, start);
-        if (!target) {
+        if (_.isEmpty(target)) {
           return false;
         }
         if (target.tileModel.discovered) {
@@ -291,10 +290,13 @@
         return target;
       };
 
-      NPC.prototype.virtualMovePossibilities = function(silent) {
+      NPC.prototype.virtualMovePossibilities = function(done) {
         var checkQueue, enqueue, i, movable, speed, square, start, _i;
         speed || (speed = this.get("attrs").spd);
         start || (start = this.getTargetTile(0, 0));
+        done || (done = function(target) {
+          return target.tileModel.trigger("potentialmove");
+        });
         checkQueue = [];
         movable = new Row;
         checkQueue.unshift(start);
@@ -311,9 +313,7 @@
           }
           target.tileModel.discovered = true;
           checkQueue.unshift(target);
-          if (!silent) {
-            return target.tileModel.trigger("potentialmove");
-          }
+          return done.call(this, target);
         };
         while (checkQueue.length > 0) {
           square = checkQueue.pop();

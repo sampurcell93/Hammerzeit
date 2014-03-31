@@ -3,13 +3,15 @@
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
   define(["globals", "utilities", "board", "mapper", "underscore", "backbone", "easel", "jquery"], function(globals, ut, board, mapper) {
-    var Chunk, Row, Tile, clearChunk, createBitEventRegister, getFromShorthand, loadChunk, modifyBackground, renderChunk, setDefaultTileAttrs, setTile, tileheight, tiles, tileurl, tilewidth, _activechunk, _activeprecursor, _backbone, _ref, _ref1, _ref2;
+    var Chunk, Row, Tile, clearChunk, createBitEventRegister, getFromShorthand, loadChunk, modifyBackground, renderChunk, setDefaultTileAttrs, setTile, stage, tileheight, tiles, tileurl, tilewidth, _3dtiles, _activechunk, _activeprecursor, _backbone, _ref, _ref1, _ref2;
     tileurl = 'images/tiles/<%=name%>.<%=typeof filetype !== "undefined" ? filetype : "jpg" %>';
     tilewidth = tileheight = 50;
     tiles = null;
     _activechunk = null;
     _activeprecursor = null;
     _backbone = null;
+    stage = board.getStage();
+    _3dtiles = null;
     Tile = (function(_super) {
       __extends(Tile, _super);
 
@@ -162,10 +164,11 @@
       });
       return bitmaparray;
     };
-    clearChunk = function(stage) {
-      return stage.removeChildAt(0);
+    clearChunk = function() {
+      stage.removeChild(_activechunk);
+      return stage.removeChild(_3dtiles);
     };
-    renderChunk = function(bitmap, stage, vertindex) {
+    renderChunk = function(bitmap, vertindex) {
       var container;
       vertindex || (vertindex = 0);
       container = new createjs.Container();
@@ -173,12 +176,16 @@
       container.y = 0;
       _.each(bitmap, function(tile, i) {
         if ($.isArray(tile)) {
-          return container.addChild(renderChunk(tile, stage, i));
+          return container.addChild(renderChunk(tile, i));
         } else {
           tile.x = tilewidth * i;
           tile.y = tileheight * vertindex;
           tile.hitArea = createBitEventRegister(tile, tile.x, tile.y);
-          return container.addChild(tile);
+          if (tile.t !== "e" && tile.t !== "p") {
+            return _3dtiles.addChild(tile);
+          } else {
+            return container.addChild(tile);
+          }
         }
       });
       stage.terrain = bitmap;
@@ -198,15 +205,18 @@
           return _.extend(_activeprecursor, _.omit(chunk, "tiles"));
         }
       },
-      renderChunk: function(bitmap, stage) {
+      renderChunk: function(bitmap) {
         var container;
-        clearChunk(stage);
-        container = renderChunk(bitmap, stage);
+        clearChunk();
+        _3dtiles = new createjs.Container();
+        _3dtiles.name = "3dtiles";
+        container = renderChunk(bitmap);
         modifyBackground(bitmap);
+        stage.addChild(_3dtiles);
         return _activechunk = container;
       },
-      clearChunk: function(stage) {
-        return clearChunk(stage);
+      clearChunk: function() {
+        return clearChunk();
       },
       getVisibleChunk: function() {
         return _activechunk;

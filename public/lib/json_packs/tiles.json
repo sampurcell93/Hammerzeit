@@ -14,6 +14,10 @@
         "name": "trees",
         "e": true,
         "subtypes": {
+            "z": {
+                "name": "tree",
+                "filetype": "png"
+            },
             "en": {
                 "name": "treeedgenorth",
                 "e": true 

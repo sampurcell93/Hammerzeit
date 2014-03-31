@@ -58,7 +58,7 @@ define ["globals", "utilities", "mapper", "backbone", "jquery", "jquery-ui", "un
 
 
     class OverlayItem extends Backbone.View
-        template: "<%= typeof e !== 'undefined' && e ? e : '&nbsp;' %><span class='elevation'><%= elv %></span>"
+        template: $("#mapcreate-item").html()
         tagName: 'li'
         initialize: ->
             @listenTo @model, {
@@ -74,7 +74,7 @@ define ["globals", "utilities", "mapper", "backbone", "jquery", "jquery-ui", "un
             modal = ut.launchModal(str + _.template(_enterInfo, _.extend(tile.toJSON(), {x: tile.x, y: tile.y})))
             modal.find(".js-add-elevation").select()
             self = @
-            modal.on("keydown", ".js-add-dirs, .js-add-elevation", (e) ->
+            modal.on("keydown", ".js-add-dirs, .js-add-elevation, .js-add-type", (e) ->
                 key = e.keyCode || e.which
                 if key != 9 then $(@).attr("changed", true)
                 if key == 13
@@ -87,6 +87,8 @@ define ["globals", "utilities", "mapper", "backbone", "jquery", "jquery-ui", "un
             tile
          # grab the content of the dir box and set to tiler
         applyChanges: (modal, proceed) ->
+            if modal.find(".js-add-type").inputChanged()
+                @model.set "t", modal.find(".js-add-type").val()
             if modal.find(".js-add-dirs").inputChanged()
                 @model.set "e", modal.find(".js-add-dirs").val()
             if modal.find(".js-add-elevation").inputChanged() 

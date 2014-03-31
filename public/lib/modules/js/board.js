@@ -172,8 +172,12 @@
       }
       return state;
     };
-    addMarker = function(obj) {
-      stage.addChild(obj.marker);
+    addMarker = function(obj, at) {
+      if (at) {
+        stage.addChildAt(obj, at);
+      } else {
+        stage.addChild(obj.marker);
+      }
       return obj.stage = stage;
     };
     hasState = function(checkstate) {
@@ -285,8 +289,8 @@
         clear();
         return this;
       },
-      addMarker: function(character) {
-        return addMarker(character);
+      addMarker: function(character, at) {
+        return addMarker(character, at);
       },
       setBackgroundPosition: function(position) {
         if (!position) {

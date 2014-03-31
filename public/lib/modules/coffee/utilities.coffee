@@ -2,6 +2,25 @@ define  ["jquery", "underscore"], ->
 
 	_c = -> for arg in arguments then console.log arg
 
+	# Thanks to stackoverflow user Will for this handy class splitter
+	(($) ->
+	  $.fn.classes = (callback) ->
+	    classes = []
+	    $.each this, (i, v) ->
+	      splitClassName = v.className.split(/\s+/)
+	      for j of splitClassName
+	        className = splitClassName[j]
+	        classes.push className  if -1 is classes.indexOf(className)
+	      return
+
+	    if "function" is typeof callback
+	      for i of classes
+	        callback classes[i]
+	    classes
+
+	  return
+	) jQuery
+
 	window.onbeforeunload = (event) ->
 	  s = "You have unsaved changes. Really leave?"
 	  event = event or window.event	  
@@ -87,7 +106,10 @@ define  ["jquery", "underscore"], ->
 		c: _c
 		create: Object.create
 		# Bind multiple events to an object at once.... this is probably native and I'm missing it.
-		addEventListeners: (obj, events) -> _.each events, (fn, name) -> obj.addEventListener name, fn
+		addEventListeners: (obj, events) -> 
+			_.each events, (fn, name) -> 
+				obj.addEventListener name, fn
+				_.bind fn, obj
 		underline: (ctx, text, x, y, size, color, thickness, offset) ->
 		  width = ctx.measureText(text).width
 		  switch ctx.textAlign

@@ -1,6 +1,9 @@
 define ["globals", "utilities", "dialog", "battler", "player", "npc", "board", "underscore", "backbone", "jquery-ui"], (globals, ut, dialog, battler, player, NPC, board) ->
 
+    board.$canvas.focus()
+
     InventoryList = items.InventoryList
+    _potential_moves = null
 
     # Basic manu view
     class Menu extends Backbone.View
@@ -14,8 +17,10 @@ define ["globals", "utilities", "dialog", "battler", "player", "npc", "board", "
             siblings(".selected").removeClass("selected")
             @
         selectNext: ->
+            console.log "next"
             @selectThis @$el.children(".selected").next()
         selectPrev: ->
+            console.log "prev"
             @selectThis @$el.children(".selected").prev()
         events:
             "click .js-close-menu": ->
@@ -27,25 +32,37 @@ define ["globals", "utilities", "dialog", "battler", "player", "npc", "board", "
                 @selectThis $(e.currentTarget)
             "keyup": (e) ->
                 key = e.keyCode || e.which
-                if key == 38 then @selectPrev()
-                else if key == 40 then @selectNext()
+                console.log key
+                switch key
+                    when key == 38 then @selectPrev()
+                    when key == 40 then @selectNext()
+                    when key == 32 then @toggle()
+                    when key == 27 then @close()
+            # "click": -> board.$canvas.focus()
         render: ->
             @showInventory()
             PC = @model.toJSON()
             @$(".HP").text PC.HP
         clickActiveItem: ->
             @$el.children(".selected").trigger "click"
+        clearPotentialMoves: ->
+            console.log _potential_moves
+            if !_potential_moves? then return @
+            _.each _potential_moves.models, (tile) ->
+                # console.log tile
+                tile.trigger "removemove"
         close: ->
             console.log @
             @showing = false
             @$el.effect "slide", _.extend({mode: 'hide'}, {direction: 'right', easing: 'easeInOutQuart'}), 300
             board.unpause().$canvas.focus()
+            @clearPotentialMoves()
         open: ->
             _activemenu = @
             @showing = true 
             @render()
             board.pause()
-            @$el.effect "slide", _.extend({mode: 'show'}, {direction: 'right', easing: 'easeInOutQuart'}) , 300
+            @$el.focus().effect "slide", _.extend({mode: 'show'}, {direction: 'right', easing: 'easeInOutQuart'}) , 300
         toggle: ->
             if @showing then @close()
             else @open()    
@@ -75,10 +92,9 @@ define ["globals", "utilities", "dialog", "battler", "player", "npc", "board", "
         child_events:
             # Creates an overlay on the 
             "click .js-virtual-move": -> 
-                console.clear()
-                # Reflected in the battler grid via observation pattern
-                p = battler.getActivePlayer().virtualMovePossibilities(false)
-                ut.c p
+                @clearPotentialMoves()
+                _potential_moves = battler.getActivePlayer().virtualMovePossibilities()
+                console.log _potential_moves
 
 
     _menus = window._menus = {
@@ -105,4 +121,6 @@ define ["globals", "utilities", "dialog", "battler", "player", "npc", "board", "
         selectPrev: -> _activemenu.selectPrev()
         activateMenuItem: -> _activemenu.clickActiveItem()
         closeAll: -> closeAll()
+        battleMenu: _menus["battle"]
+        travelMenu: _menus['travel']
     }

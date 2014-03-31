@@ -1,4 +1,4 @@
-define ["globals", "utilities", "board", "player", "controls", "mapper", "mapcreator", "underscore"], (globals, ut, board, player, controls, mapper, mapcreator) ->
+define ["globals", "utilities", "board", "player", "controls", "mapper", "mapcreator", "menus", "underscore"], (globals, ut, board, player, controls, mapper, mapcreator, menus) ->
 	window.PC = player.PC
 
 	taskrunner = {
@@ -17,6 +17,6 @@ define ["globals", "utilities", "board", "player", "controls", "mapper", "mapcre
 					full_chunk = level.fullMap[newchunk.y][newchunk.x]
 					mapper.renderChunk full_chunk, board.getStage()
 					mapcreator.bindModels full_chunk, newchunk.x, newchunk.y
-
+					menus.battleMenu.clearPotentialMoves()
 	}
 	taskrunner

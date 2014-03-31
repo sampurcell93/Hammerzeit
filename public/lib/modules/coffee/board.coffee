@@ -145,8 +145,10 @@ define ['globals', 'utilities', 'jquery', 'underscore', 'easel'], (globals, ut) 
             if fn? then fn()
         else throw new Error("The board currently has only one state - you can't remove it. Try adding another state first.")
         state
-    addMarker = (obj) ->
-        stage.addChild obj.marker
+    addMarker = (obj, at) ->
+        if at then stage.addChildAt obj, at
+        else
+            stage.addChild obj.marker
         obj.stage = stage
 
     hasState = (checkstate) ->
@@ -233,8 +235,8 @@ define ['globals', 'utilities', 'jquery', 'underscore', 'easel'], (globals, ut) 
             clear()
             @
         # Expects either a PC or NPC model - see player.coffee and npc.coffee
-        addMarker: (character) ->
-            addMarker character
+        addMarker: (character, at) ->
+            addMarker character, at
         setBackgroundPosition: (position) ->
             if !position then return @
             $canvas.css("background-position", position)

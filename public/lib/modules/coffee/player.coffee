@@ -1,4 +1,5 @@
 define "player", ["utilities", "npc", "board", "globals", "mapper", "items", "backbone", "easel", "underscore"], (ut, NPC, board, globals, mapper, items) ->
+	stage = board.getStage()
 	class player extends NPC
 		frames: {
 			# The in place animation frames for the PC
@@ -71,6 +72,8 @@ define "player", ["utilities", "npc", "board", "globals", "mapper", "items", "ba
 				@set "current_chunk", chunk
 				@trigger "change:current_chunk"
 				board.addMarker @
+				len = stage.children.length
+				stage.setChildIndex marker, 0
 				{ x: x, y: y }
 			change: (dx, dy)->
 				# console.log "change :)"

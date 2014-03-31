@@ -9,9 +9,17 @@ script#modify-tile(type='text/template')
         <label>
         Enterable Directions: <input type="text" class='js-add-dirs' placeholder='add directions' value='<%= typeof e !== "undefined" ? e : "" %>'/>
         </label>
+        <label>
+        Tile type: <input type="text" class='js-add-type' placeholder='add type' value='<%= typeof t !== "undefined" ? t : "e" %>'/>
+        </label>
 
 script#inventory-item(type='text/template')
         <%= name %> 
         <% if (equipped) { %> 
         span.js-item-equipped E 
         <% } %>
+
+script#mapcreate-item(type='text/template')
+        <%= typeof e !== 'undefined' && e ? e : '&nbsp;' %>
+        <span class='elevation'><%= elv %></span>
+        <span class='type'><%= t || "" %></span>

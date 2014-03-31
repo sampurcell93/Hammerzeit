@@ -85,7 +85,7 @@
         return _ref1;
       }
 
-      OverlayItem.prototype.template = "<%= typeof e !== 'undefined' && e ? e : '&nbsp;' %><span class='elevation'><%= elv %></span>";
+      OverlayItem.prototype.template = $("#mapcreate-item").html();
 
       OverlayItem.prototype.tagName = 'li';
 
@@ -116,7 +116,7 @@
         })));
         modal.find(".js-add-elevation").select();
         self = this;
-        modal.on("keydown", ".js-add-dirs, .js-add-elevation", function(e) {
+        modal.on("keydown", ".js-add-dirs, .js-add-elevation, .js-add-type", function(e) {
           var key;
           key = e.keyCode || e.which;
           if (key !== 9) {
@@ -136,6 +136,9 @@
 
       OverlayItem.prototype.applyChanges = function(modal, proceed) {
         var next;
+        if (modal.find(".js-add-type").inputChanged()) {
+          this.model.set("t", modal.find(".js-add-type").val());
+        }
         if (modal.find(".js-add-dirs").inputChanged()) {
           this.model.set("e", modal.find(".js-add-dirs").val());
         }

@@ -3,8 +3,10 @@
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
   define(["globals", "utilities", "dialog", "battler", "player", "npc", "board", "underscore", "backbone", "jquery-ui"], function(globals, ut, dialog, battler, player, NPC, board) {
-    var BattleMenu, InventoryList, Menu, TravelMenu, closeAll, toggleMenu, _activemenu, _menus, _ref, _ref1, _ref2;
+    var BattleMenu, InventoryList, Menu, TravelMenu, closeAll, toggleMenu, _activemenu, _menus, _potential_moves, _ref, _ref1, _ref2;
+    board.$canvas.focus();
     InventoryList = items.InventoryList;
+    _potential_moves = null;
     Menu = (function(_super) {
       __extends(Menu, _super);
 
@@ -30,10 +32,12 @@
       };
 
       Menu.prototype.selectNext = function() {
+        console.log("next");
         return this.selectThis(this.$el.children(".selected").next());
       };
 
       Menu.prototype.selectPrev = function() {
+        console.log("prev");
         return this.selectThis(this.$el.children(".selected").prev());
       };
 
@@ -51,10 +55,16 @@
         "keyup": function(e) {
           var key;
           key = e.keyCode || e.which;
-          if (key === 38) {
-            return this.selectPrev();
-          } else if (key === 40) {
-            return this.selectNext();
+          console.log(key);
+          switch (key) {
+            case key === 38:
+              return this.selectPrev();
+            case key === 40:
+              return this.selectNext();
+            case key === 32:
+              return this.toggle();
+            case key === 27:
+              return this.close();
           }
         }
       };
@@ -70,6 +80,16 @@
         return this.$el.children(".selected").trigger("click");
       };
 
+      Menu.prototype.clearPotentialMoves = function() {
+        console.log(_potential_moves);
+        if (_potential_moves == null) {
+          return this;
+        }
+        return _.each(_potential_moves.models, function(tile) {
+          return tile.trigger("removemove");
+        });
+      };
+
       Menu.prototype.close = function() {
         console.log(this);
         this.showing = false;
@@ -79,7 +99,8 @@
           direction: 'right',
           easing: 'easeInOutQuart'
         }), 300);
-        return board.unpause().$canvas.focus();
+        board.unpause().$canvas.focus();
+        return this.clearPotentialMoves();
       };
 
       Menu.prototype.open = function() {
@@ -88,7 +109,7 @@
         this.showing = true;
         this.render();
         board.pause();
-        return this.$el.effect("slide", _.extend({
+        return this.$el.focus().effect("slide", _.extend({
           mode: 'show'
         }, {
           direction: 'right',
@@ -156,10 +177,9 @@
 
       BattleMenu.prototype.child_events = {
         "click .js-virtual-move": function() {
-          var p;
-          console.clear();
-          p = battler.getActivePlayer().virtualMovePossibilities(false);
-          return ut.c(p);
+          this.clearPotentialMoves();
+          _potential_moves = battler.getActivePlayer().virtualMovePossibilities();
+          return console.log(_potential_moves);
         }
       };
 
@@ -203,7 +223,9 @@
       },
       closeAll: function() {
         return closeAll();
-      }
+      },
+      battleMenu: _menus["battle"],
+      travelMenu: _menus['travel']
     };
   });
 

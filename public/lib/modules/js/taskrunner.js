@@ -1,5 +1,5 @@
 (function() {
-  define(["globals", "utilities", "board", "player", "controls", "mapper", "mapcreator", "underscore"], function(globals, ut, board, player, controls, mapper, mapcreator) {
+  define(["globals", "utilities", "board", "player", "controls", "mapper", "mapcreator", "menus", "underscore"], function(globals, ut, board, player, controls, mapper, mapcreator, menus) {
     var taskrunner;
     window.PC = player.PC;
     taskrunner = {
@@ -18,7 +18,8 @@
             mapcreator.loadChunk(level.getMap()[newchunk.y][newchunk.x].tiles, newchunk.x, newchunk.y);
             full_chunk = level.fullMap[newchunk.y][newchunk.x];
             mapper.renderChunk(full_chunk, board.getStage());
-            return mapcreator.bindModels(full_chunk, newchunk.x, newchunk.y);
+            mapcreator.bindModels(full_chunk, newchunk.x, newchunk.y);
+            return menus.battleMenu.clearPotentialMoves();
           });
         });
       }

@@ -10,6 +10,28 @@
       }
       return _results;
     };
+    (function($) {
+      $.fn.classes = function(callback) {
+        var classes, i;
+        classes = [];
+        $.each(this, function(i, v) {
+          var className, j, splitClassName;
+          splitClassName = v.className.split(/\s+/);
+          for (j in splitClassName) {
+            className = splitClassName[j];
+            if (-1 === classes.indexOf(className)) {
+              classes.push(className);
+            }
+          }
+        });
+        if ("function" === typeof callback) {
+          for (i in classes) {
+            callback(classes[i]);
+          }
+        }
+        return classes;
+      };
+    })(jQuery);
     window.onbeforeunload = function(event) {
       var s;
       s = "You have unsaved changes. Really leave?";
@@ -122,7 +144,8 @@
       create: Object.create,
       addEventListeners: function(obj, events) {
         return _.each(events, function(fn, name) {
-          return obj.addEventListener(name, fn);
+          obj.addEventListener(name, fn);
+          return _.bind(fn, obj);
         });
       },
       underline: function(ctx, text, x, y, size, color, thickness, offset) {

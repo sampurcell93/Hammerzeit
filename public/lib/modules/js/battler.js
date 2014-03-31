@@ -3,7 +3,7 @@
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
   define(["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player", "backbone", "underscore", "jquery"], function(board, globals, ut, mapper, NPC, mapcreator, player) {
-    var GridSquare, Overlay, activateGrid, deactivateGrid, toggleGrid, _activemap, _board, _grid, _gridded, _ref, _ref1, _shared;
+    var GridSquare, Overlay, activateGrid, deactivateGrid, stage, toggleGrid, _activemap, _board, _grid, _gridded, _ref, _ref1, _shared, _side;
     _shared = globals.shared_events;
     _shared.on("battle", function() {
       return activateGrid();
@@ -11,6 +11,8 @@
     _grid = null;
     _gridded = false;
     _activemap = null;
+    stage = board.getStage();
+    _side = globals.map.tileside;
     Overlay = (function(_super) {
       __extends(Overlay, _super);
 
@@ -46,14 +48,8 @@
 
       GridSquare.prototype.initialize = function() {
         return this.listenTo(this.model, {
-          potentialmove: function() {
-            this.potentialmove = true;
-            return this.highlight();
-          },
-          unhighlight: function() {
-            this.unhighlight;
-            return this.removepotential();
-          }
+          potentialmove: this.potentialmoves,
+          removemove: this.removepotential
         });
       };
 
@@ -63,28 +59,53 @@
         return this;
       };
 
-      GridSquare.prototype.highlight = function(type) {
-        return this.$el.addClass("highlight-" + (type || "potentialmove"));
+      GridSquare.prototype.clickHandler = function(e, data) {
+        console.log("you clicked the area");
+        return console.log(arguments);
       };
 
-      GridSquare.prototype.unhighlight = function() {
-        var classes;
-        classes = this.$el.attr("class").split(" ");
-        this.$el.removeClass();
-        _.each(classes, function(cl) {
-          if (cl.indexOf("highlight") !== -1) {
-            return cl = "";
-          }
-        });
-        return this.$el.addClass(classes.join(" "));
+      GridSquare.prototype.bindMoveFns = function(area) {
+        return area.on("click", this.clickHandler, this, false);
+      };
+
+      GridSquare.prototype.potentialmoves = function(type) {
+        var area, bitmap, g;
+        this.$el.addClass("potentialmove");
+        this.potentialmoves = true;
+        bitmap = this.model.bitmap;
+        area = bitmap.hitArea;
+        if (area.drawn != null) {
+          stage.addChildAt(area, 0);
+          return this;
+        }
+        area.drawn = true;
+        g = area.graphics;
+        area.x = bitmap.x - 1;
+        area.y = bitmap.y - 1;
+        g.beginFill("#ea0000").drawRect(0, 0, _side - 2, _side - 2).endFill();
+        area.alpha = 0.3;
+        this.bindMoveFns(area);
+        stage.addChildAt(area, 0);
+        this;
+        return console.log(area);
       };
 
       GridSquare.prototype.removepotential = function() {
-        return this.potentialmove = false;
+        var bitmaphit;
+        this.$el.removeClass("potentialmove");
+        this.potentialmoves = false;
+        bitmaphit = this.model.bitmap.hitArea;
+        console.log(bitmaphit);
+        bitmaphit.off("click");
+        console.log(bitmaphit);
+        return stage.removeChild(bitmaphit);
       };
 
       GridSquare.prototype.events = function() {
         return {
+          "click": function() {
+            return console.log("hitarea");
+          },
           mouseover: function(e) {
             if (this.potentialmove) {
               return this.$el.addClass("selecting-move");
