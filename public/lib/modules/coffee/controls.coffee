@@ -42,7 +42,7 @@ define ["utilities", "globals", "dialog", "npc", "mapper", "mapcreator", "battle
 
 		generalFns =
 			# G
-			71: board.toggleGrid
+			71: battler.toggleGrid
 
 		stateFns = {
 			INTRO: (key) ->
@@ -68,13 +68,12 @@ define ["utilities", "globals", "dialog", "npc", "mapper", "mapcreator", "battle
 					when kc["LEFT"]  then PC.moveLeft()
 					when kc['CLEAR'] then mapper.clearChunk window.stage
 					when kc['BATTLE'] 
-						board.addState "battle"
-						board.removeState "travel"
+						board.addState("battle").removeState "travel"
 						menus.closeAll()
 					when kc['SPACE'] then menus.toggleMenu("travel")
 					when kc['MAPCREATOR'] then mapcreator.toggleOverlay()
 					when kc['EXPORTMAP'] then mapcreator.exportMap()
-					when kc['DEFAULT'] then mapcreator.getDefaultChunk()
+					when kc['DEFAULT'] then ut.launchModal mapcreator.getDefaultChunk().export()
 					when kc['ZOOMIN'] then board.zoomIn 1
 					when kc['ZOOMOUT'] then board.zoomOut 1
 					when kc['STATE'] then console.log board.getState()

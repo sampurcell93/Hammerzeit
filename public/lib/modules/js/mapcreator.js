@@ -3,50 +3,17 @@
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
   define(["globals", "utilities", "mapper", "backbone", "jquery", "jquery-ui", "underscore"], function(globals, ut, mapper) {
-    var Chunk, Overlay, OverlayItem, Row, Tile, exportMap, getNextTile, t, toggleOverlay, _chunk, _enterInfo, _overlay, _ref, _ref1, _ref2, _ref3, _ref4, _selected;
+    var Chunk, Overlay, OverlayItem, Row, Tile, exportMap, getNextTile, i, t, toggleOverlay, _cached_chunks, _chunk, _enterInfo, _i, _overlay, _ref, _ref1, _selected;
     t = ut.tileEntryCheckers;
     _enterInfo = $("#modify-tile").html();
     _overlay = null;
-    Tile = (function(_super) {
-      __extends(Tile, _super);
-
-      function Tile() {
-        _ref = Tile.__super__.constructor.apply(this, arguments);
-        return _ref;
-      }
-
-      Tile.prototype.defaults = {
-        t: 'e',
-        e: '',
-        elv: 0
-      };
-
-      Tile.prototype.initialize = function(attrs) {
-        this.on("expose", this.expose);
-        attrs.x = this.x;
-        return attrs.y = this.y;
-      };
-
-      Tile.prototype.expose = function() {
-        return mapper.setTile(this.attributes);
-      };
-
-      return Tile;
-
-    })(Backbone.Model);
-    Row = (function(_super) {
-      __extends(Row, _super);
-
-      function Row() {
-        _ref1 = Row.__super__.constructor.apply(this, arguments);
-        return _ref1;
-      }
-
-      Row.prototype.model = Tile;
-
-      return Row;
-
-    })(Backbone.Collection);
+    _cached_chunks = [];
+    for (i = _i = 0; _i <= 3; i = ++_i) {
+      _cached_chunks[i] = [];
+    }
+    Tile = mapper.Tile;
+    Row = mapper.Row;
+    Chunk = mapper.Chunk;
     window._selected = _selected = new Row;
     $(".enterable-list").selectable({
       selecting: function(e, ui) {
@@ -65,61 +32,19 @@
       filter: 'li',
       delay: 100
     });
-    Chunk = (function(_super) {
-      __extends(Chunk, _super);
-
-      function Chunk() {
-        _ref2 = Chunk.__super__.constructor.apply(this, arguments);
-        return _ref2;
-      }
-
-      Chunk.prototype.defaults = function() {
-        var i, j, row, rows, tile, _i, _j, _ref3, _ref4;
-        rows = [];
-        for (i = _i = 0, _ref3 = globals.map.tileheight; 0 <= _ref3 ? _i < _ref3 : _i > _ref3; i = 0 <= _ref3 ? ++_i : --_i) {
-          rows[i] = row = new Row;
-          for (j = _j = 0, _ref4 = globals.map.tilewidth; 0 <= _ref4 ? _j < _ref4 : _j > _ref4; j = 0 <= _ref4 ? ++_j : --_j) {
-            row.add(tile = new Tile({
-              t: 'e'
-            }));
-            tile.x = j;
-            tile.y = i;
-          }
-        }
-        return {
-          rows: rows
-        };
-      };
-
-      Chunk.prototype["export"] = function() {
-        var str;
-        str = "[";
-        _.each(this.get("rows"), function(row) {
-          str += "[";
-          _.each(row.models, function(tile) {
-            return str += JSON.stringify(tile.toJSON()) + ",";
-          });
-          str = str.substring(0, str.length - 1);
-          return str += "],";
-        });
-        return str.substring(0, str.length - 1) + "]";
-      };
-
-      return Chunk;
-
-    })(Backbone.Model);
     _chunk = new Chunk;
     Overlay = (function(_super) {
       __extends(Overlay, _super);
 
       function Overlay() {
-        _ref3 = Overlay.__super__.constructor.apply(this, arguments);
-        return _ref3;
+        _ref = Overlay.__super__.constructor.apply(this, arguments);
+        return _ref;
       }
 
       Overlay.prototype.el = '.enterable-list';
 
-      Overlay.prototype.initialize = function() {
+      Overlay.prototype.initialize = function(opts) {
+        this.child = opts.child;
         _.bindAll(this, "render");
         return this.render();
       };
@@ -130,7 +55,8 @@
         return _.each(this.model.get("rows"), function(row) {
           return _.each(row.models, function(tile) {
             var item;
-            item = new OverlayItem({
+            item = _this.child || OverlayItem;
+            item = new item({
               model: tile
             });
             item.parent = _this;
@@ -155,8 +81,8 @@
       __extends(OverlayItem, _super);
 
       function OverlayItem() {
-        _ref4 = OverlayItem.__super__.constructor.apply(this, arguments);
-        return _ref4;
+        _ref1 = OverlayItem.__super__.constructor.apply(this, arguments);
+        return _ref1;
       }
 
       OverlayItem.prototype.template = "<%= typeof e !== 'undefined' && e ? e : '&nbsp;' %><span class='elevation'><%= elv %></span>";
@@ -310,9 +236,24 @@
       getDefaultChunk: function() {
         return JSON.parse(new Chunk()["export"]());
       },
-      bindCreators: function(tile) {},
-      loadChunk: function(precursor_chunk) {
+      bindModels: function(bitmaparray, x, y) {
+        var chunk;
+        chunk = _cached_chunks[y][x];
+        _.each(bitmaparray, function(row, j) {
+          return _.each(row, function(tile, i) {
+            var model;
+            model = chunk.get("rows")[j].at(i);
+            tile.tileModel = model;
+            return model.bitmap = tile;
+          });
+        });
+        return chunk;
+      },
+      loadChunk: function(precursor_chunk, x, y) {
         var allRows, chunk;
+        if (_cached_chunks[y][x]) {
+          return _cached_chunks[y][x];
+        }
         chunk = new Chunk;
         allRows = [];
         _.each(precursor_chunk, function(row, i) {
@@ -320,10 +261,11 @@
           rowCollection = new Row;
           _.each(row, function(tile, j) {
             var TileModel;
-            tile = _.pick(tile, "t", "e", "elv");
+            tile = _.pick(tile, "t", "e", "elv", "end", "m");
             rowCollection.add(TileModel = new Tile(tile));
             TileModel.x = j;
             TileModel.y = i;
+            tile.model = TileModel;
             return TileModel.set({
               x: j,
               y: i
@@ -333,11 +275,14 @@
         });
         chunk.set("rows", allRows);
         _chunk = chunk;
-        toggleOverlay();
-        toggleOverlay();
-        return _chunk = chunk;
+        return _cached_chunks[y][x] = _chunk = chunk;
       },
-      exportMap: exportMap
+      getChunk: function() {
+        return _chunk;
+      },
+      exportMap: exportMap,
+      Overlay: Overlay,
+      OverlayItem: OverlayItem
     };
   });
 

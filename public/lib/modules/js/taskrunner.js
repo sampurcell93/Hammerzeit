@@ -12,12 +12,13 @@
           board.removeState("LOADING");
           level.initialize();
           return PC.on("change:current_chunk", function() {
-            var newchunk;
+            var full_chunk, newchunk;
             ut.c("CHUNK CHANGE REGISTERED IN TASKRUNNER");
             newchunk = PC.get("current_chunk");
-            console.log(newchunk);
-            mapcreator.loadChunk(level.getMap()[newchunk.y][newchunk.x].tiles);
-            return mapper.renderChunk(level.fullMap[newchunk.y][newchunk.x], board.getStage());
+            mapcreator.loadChunk(level.getMap()[newchunk.y][newchunk.x].tiles, newchunk.x, newchunk.y);
+            full_chunk = level.fullMap[newchunk.y][newchunk.x];
+            mapper.renderChunk(full_chunk, board.getStage());
+            return mapcreator.bindModels(full_chunk, newchunk.x, newchunk.y);
           });
         });
       }

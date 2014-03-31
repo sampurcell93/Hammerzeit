@@ -5,21 +5,14 @@ define ["globals", "utilities", "mapper", "backbone", "jquery", "jquery-ui", "un
     _enterInfo = $("#modify-tile").html()
     # Reference to the currently open map overlay
     _overlay = null
+    # Prevent reloading of chunks
+    _cached_chunks = []
+    for i in [0..3]
+        _cached_chunks[i] = []
 
-    class Tile extends Backbone.Model
-        defaults: 
-            t: 'e'
-            e: ''
-            elv: 0
-        initialize: (attrs) ->
-            @on "expose", @expose
-            attrs.x = @x
-            attrs.y = @y
-        expose: ->
-            mapper.setTile @attributes
-
-    class Row extends Backbone.Collection
-        model: Tile
+    Tile = mapper.Tile
+    Row = mapper.Row
+    Chunk = mapper.Chunk
 
     # Reference to all currently selected tiles
     window._selected = _selected = new Row
@@ -38,39 +31,22 @@ define ["globals", "utilities", "mapper", "backbone", "jquery", "jquery-ui", "un
         filter: 'li'
         delay: 100
 
-    class Chunk extends Backbone.Model
-        defaults: ->
-            rows = []
-            for i in [0...globals.map.tileheight]
-                rows[i] = row = new Row
-                for j in [0...globals.map.tilewidth] 
-                    row.add tile = new Tile({t: 'e'})
-                    tile.x = j
-                    tile.y = i
-            return rows: rows
-        export: ->
-            str = "["
-            _.each @get("rows"), (row) ->
-                str += "["
-                _.each row.models, (tile) ->
-                    str += JSON.stringify(tile.toJSON()) + ","
-                str = str.substring(0,str.length-1)
-                str += "],"
-            str.substring(0,str.length-1) + "]"
 
     # Instantiate empty chunk of enterable spaces
     _chunk = new Chunk
 
     class Overlay extends Backbone.View
         el: '.enterable-list'
-        initialize: () ->
+        initialize: (opts) ->
+            @child = opts.child
             _.bindAll @, "render"
             @render()
         render: ->
             @$el.empty()
             _.each @model.get("rows"), (row) =>
                 _.each row.models, (tile) =>
-                    item = new OverlayItem model: tile
+                    item = @child || OverlayItem
+                    item = new item model: tile
                     item.parent = @
                     tile.modifier = item
                     @$el.append(item.render().el)
@@ -175,25 +151,39 @@ define ["globals", "utilities", "mapper", "backbone", "jquery", "jquery-ui", "un
         toggleOverlay: toggleOverlay
         getDefaultChunk: ->
             JSON.parse new Chunk().export()
-        bindCreators: (tile) ->
-        loadChunk: (precursor_chunk) ->
+        # Accepts a bitmaparray and binds a tile model to each bitmap. Easel js needs a DisplayObject format
+        # to render properly, but some features require backbone models. this binds a model to each bitmap
+        bindModels: (bitmaparray, x, y) ->
+            chunk = _cached_chunks[y][x]
+            _.each bitmaparray, (row, j) ->
+                _.each row, (tile, i) ->
+                    model = chunk.get("rows")[j].at(i)
+                    tile.tileModel = model
+                    model.bitmap = tile
+            chunk
+        loadChunk: (precursor_chunk, x, y) ->   
+            if _cached_chunks[y][x] then return _cached_chunks[y][x]
             chunk = new Chunk
             allRows = []
             # Deep copy
             _.each precursor_chunk, (row, i) ->
                 rowCollection = new Row
                 _.each row, (tile, j) ->
-                    tile = _.pick tile, "t", "e", "elv"
+                    tile = _.pick tile, "t", "e", "elv", "end", "m"
                     rowCollection.add TileModel = new Tile(tile)
                     TileModel.x = j
                     TileModel.y = i
+                    tile.model = TileModel
                     TileModel.set {x: j, y: i}
                 allRows[i] = rowCollection
             chunk.set("rows", allRows)
             _chunk = chunk
-            toggleOverlay()
-            toggleOverlay()
-            _chunk = chunk
-        exportMap: exportMap
+            # toggleOverlay()
+            # toggleOverlay()
+            _cached_chunks[y][x] = _chunk = chunk
 
+        getChunk: -> _chunk
+        exportMap: exportMap
+        Overlay: Overlay
+        OverlayItem: OverlayItem
     }   

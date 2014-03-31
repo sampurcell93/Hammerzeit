@@ -7,7 +7,6 @@ define ["globals", "utilities", "dialog", "battler", "player", "npc", "board", "
         type: 'default'
         showInventory: ->
             list = new InventoryList collection: @model.get "inventory"
-            console.log list.collection
             list.render()
             @
         selectThis: ($item) ->
@@ -18,7 +17,7 @@ define ["globals", "utilities", "dialog", "battler", "player", "npc", "board", "
             @selectThis @$el.children(".selected").next()
         selectPrev: ->
             @selectThis @$el.children(".selected").prev()
-        events: 
+        events:
             "click .js-close-menu": ->
                 toggleMenu @type
             "click .js-show-inventory": (e) ->
@@ -37,6 +36,7 @@ define ["globals", "utilities", "dialog", "battler", "player", "npc", "board", "
         clickActiveItem: ->
             @$el.children(".selected").trigger "click"
         close: ->
+            console.log @
             @showing = false
             @$el.effect "slide", _.extend({mode: 'hide'}, {direction: 'right', easing: 'easeInOutQuart'}), 300
             board.unpause().$canvas.focus()
@@ -57,7 +57,6 @@ define ["globals", "utilities", "dialog", "battler", "player", "npc", "board", "
         el: "#travel-menu"
         type: 'travel'
         initialize: ->
-            console.log @model
         render: ->
             super
 
@@ -65,9 +64,24 @@ define ["globals", "utilities", "dialog", "battler", "player", "npc", "board", "
     class BattleMenu extends Menu
         el: "#battle-menu"
         type: 'battle'
+        open: ->
+            super
+            board.unpause()
         render: ->
+            super
+        initialize: ->
+            @events = _.extend @events, @child_events
+            console.log @events
+        child_events:
+            # Creates an overlay on the 
+            "click .js-virtual-move": -> 
+                console.clear()
+                # Reflected in the battler grid via observation pattern
+                p = battler.getActivePlayer().virtualMovePossibilities(false)
+                ut.c p
 
-    _menus = {
+
+    _menus = window._menus = {
         travel: new TravelMenu model: player.PC
         battle: new BattleMenu model: battler.getActivePlayer()
     }
@@ -75,12 +89,10 @@ define ["globals", "utilities", "dialog", "battler", "player", "npc", "board", "
 
 
     toggleMenu = (menu) ->
-        _menus[menu].toggle()
         other = if menu == "battle" then "travel" else "battle"
-        other = _menus[other]
+        _menus[other].close()
+        _menus[menu].toggle()
         board.toggleState("MENUOPEN")
-        other.showing = false
-        other.$el.hide()
 
     closeAll = ->
         _.each _menus, (menu) -> 

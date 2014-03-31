@@ -1,6 +1,6 @@
 (function() {
   define(['globals', 'utilities', 'jquery', 'underscore', 'easel'], function(globals, ut) {
-    var $canvas, addMarker, addState, blurBoard, board, canvas, clear, flashStateChange, hasState, initialize, introSlider, removeState, scenecount, scenelen, setPresetBackground, setState, stage, startSlideshow, state, stateChangeEvents, states, textshadow, toggleGrid, unblurBoard, walkingMan, zoomIn, zoomOut, _gridded, _mapheight, _mapwidth, _ticker, _zoom,
+    var $canvas, addMarker, addState, blurBoard, board, canvas, clear, flashStateChange, hasState, initialize, introSlider, removeState, scenecount, scenelen, setPresetBackground, setState, stage, startSlideshow, state, stateChangeEvents, states, textshadow, unblurBoard, walkingMan, zoomIn, zoomOut, _gridded, _mapheight, _mapwidth, _ticker, _zoom,
       _this = this;
     canvas = document.getElementById("game-board");
     $canvas = $(canvas);
@@ -59,35 +59,6 @@
       sprite.y = 0;
       sprite.scaleY = sprite.scaleX = 1;
       return stage.addChild(sprite);
-    };
-    toggleGrid = function() {
-      var bh, bw, context, p, x;
-      if (_gridded === false) {
-        ut.c("toggle grid");
-        bw = globals.map.width;
-        bh = globals.map.height;
-        p = 0;
-        x = 0;
-        context = canvas.getContext("2d");
-        while (x <= bw) {
-          context.moveTo(0.5 + x + p, p);
-          context.lineTo(0.5 + x + p, bh + p);
-          x += 50;
-        }
-        x = 0;
-        while (x <= bh) {
-          context.moveTo(p, 0.5 + x + p);
-          context.lineTo(bw + p, 0.5 + x + p);
-          x += 50;
-        }
-        context.strokeStyle = "#666";
-        context.stroke();
-        _gridded = true;
-        return _ticker.setPaused(true);
-      } else {
-        _gridded = false;
-        return _ticker.setPaused(false);
-      }
     };
     initialize = function() {
       var copyright, loadgame, newgame, title;
@@ -297,7 +268,10 @@
         return this;
       },
       removeState: function(removeme) {
-        removeState(removeme.toUpperCase());
+        removeme = removeme.toUpperCase();
+        if (hasState(removeme)) {
+          removeState(removeme);
+        }
         return this;
       },
       toggleState: function(state) {
@@ -327,9 +301,6 @@
         }
         $canvas.css("background-image", "url(" + url + ")");
         return this;
-      },
-      toggleGrid: function() {
-        return toggleGrid();
       },
       getZoom: function() {
         return _zoom;

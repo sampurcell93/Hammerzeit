@@ -74,27 +74,26 @@ define "player", ["utilities", "npc", "board", "globals", "mapper", "items", "ba
 				{ x: x, y: y }
 			change: (dx, dy)->
 				# console.log "change :)"
-
 		move: (dx, dy) ->
 			# board.addState("battle").removeState("travel")
 			# Call super move function then do native bound checking when animation done
 			super(dx, dy)
 		defaults: ->
+			defaults = super
 			Item = items.Item
-			# For some reason array notation not working.... todo
-			inventory = new items.Inventory 
+			inventory = defaults.inventory
 			inventory.add new Item name: 'Wooden Sword'
 			inventory.add new Item name: "Tattered Cloak"
 			inventory.add new Item name: "Bread"
 			inventory.add new Item name: "Worn Boots"
+			inventory.at(2).set("equipped", true)
 			_.each inventory.models, (item) => item.set("belongsTo", @)
-			return {
+			inventory.sort()
+			return _.extend defaults, {
 				current_chunk: { x: 0, y: 0 }
+				inventory: inventory
 				type: "PC"
 				name: "Hero"
-				inventory: inventory
-				level: 1
-				HP: 10
 				attrs:
 					spd: 6
 					ac: 10

@@ -20,7 +20,6 @@
         list = new InventoryList({
           collection: this.model.get("inventory")
         });
-        console.log(list.collection);
         list.render();
         return this;
       };
@@ -72,6 +71,7 @@
       };
 
       Menu.prototype.close = function() {
+        console.log(this);
         this.showing = false;
         this.$el.effect("slide", _.extend({
           mode: 'hide'
@@ -119,9 +119,7 @@
 
       TravelMenu.prototype.type = 'travel';
 
-      TravelMenu.prototype.initialize = function() {
-        return console.log(this.model);
-      };
+      TravelMenu.prototype.initialize = function() {};
 
       TravelMenu.prototype.render = function() {
         return TravelMenu.__super__.render.apply(this, arguments);
@@ -142,12 +140,33 @@
 
       BattleMenu.prototype.type = 'battle';
 
-      BattleMenu.prototype.render = function() {};
+      BattleMenu.prototype.open = function() {
+        BattleMenu.__super__.open.apply(this, arguments);
+        return board.unpause();
+      };
+
+      BattleMenu.prototype.render = function() {
+        return BattleMenu.__super__.render.apply(this, arguments);
+      };
+
+      BattleMenu.prototype.initialize = function() {
+        this.events = _.extend(this.events, this.child_events);
+        return console.log(this.events);
+      };
+
+      BattleMenu.prototype.child_events = {
+        "click .js-virtual-move": function() {
+          var p;
+          console.clear();
+          p = battler.getActivePlayer().virtualMovePossibilities(false);
+          return ut.c(p);
+        }
+      };
 
       return BattleMenu;
 
     })(Menu);
-    _menus = {
+    _menus = window._menus = {
       travel: new TravelMenu({
         model: player.PC
       }),
@@ -158,12 +177,10 @@
     _activemenu = _menus['travel'];
     toggleMenu = function(menu) {
       var other;
-      _menus[menu].toggle();
       other = menu === "battle" ? "travel" : "battle";
-      other = _menus[other];
-      board.toggleState("MENUOPEN");
-      other.showing = false;
-      return other.$el.hide();
+      _menus[other].close();
+      _menus[menu].toggle();
+      return board.toggleState("MENUOPEN");
     };
     closeAll = function() {
       return _.each(_menus, function(menu) {

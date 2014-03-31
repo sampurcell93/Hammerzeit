@@ -67,34 +67,6 @@ define ['globals', 'utilities', 'jquery', 'underscore', 'easel'], (globals, ut) 
         sprite.scaleY = sprite.scaleX = 1
         stage.addChild(sprite);
 
-
-    toggleGrid = () ->
-        if _gridded == false
-            ut.c "toggle grid"
-            bw = globals.map.width
-            bh = globals.map.height
-            p = 0
-            x = 0
-            context = canvas.getContext "2d"
-            while x <= bw
-                context.moveTo 0.5 + x + p, p
-                context.lineTo 0.5 + x + p, bh + p
-                x += 50
-            x = 0
-
-            while x <= bh
-                context.moveTo p, 0.5 + x + p
-                context.lineTo bw + p, 0.5 + x + p
-                x += 50
-            context.strokeStyle = "#666"
-            context.stroke()
-            _gridded = true
-            _ticker.setPaused true
-        else
-            _gridded = false
-            _ticker.setPaused false
-
-
     initialize = ->
         startSlideshow()
         # Make title text
@@ -251,7 +223,8 @@ define ['globals', 'utilities', 'jquery', 'underscore', 'easel'], (globals, ut) 
             @
         # Give an string state to remove
         removeState: (removeme) ->
-            removeState removeme.toUpperCase()
+            removeme = removeme.toUpperCase()
+            if hasState removeme then removeState removeme
             @
         toggleState: (state) ->
             if hasState(state) then removeState state
@@ -270,8 +243,6 @@ define ['globals', 'utilities', 'jquery', 'underscore', 'easel'], (globals, ut) 
             if !url then return @
             $canvas.css("background-image", "url(" + url + ")")
             @
-        toggleGrid: () ->
-            toggleGrid()
         getZoom: -> _zoom
         zoomIn: ->
             zoomIn()

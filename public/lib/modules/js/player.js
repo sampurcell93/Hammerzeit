@@ -117,10 +117,11 @@
       };
 
       player.prototype.defaults = function() {
-        var Item, inventory,
+        var Item, defaults, inventory,
           _this = this;
+        defaults = player.__super__.defaults.apply(this, arguments);
         Item = items.Item;
-        inventory = new items.Inventory;
+        inventory = defaults.inventory;
         inventory.add(new Item({
           name: 'Wooden Sword'
         }));
@@ -133,26 +134,26 @@
         inventory.add(new Item({
           name: "Worn Boots"
         }));
+        inventory.at(2).set("equipped", true);
         _.each(inventory.models, function(item) {
           return item.set("belongsTo", _this);
         });
-        return {
+        inventory.sort();
+        return _.extend(defaults, {
           current_chunk: {
             x: 0,
             y: 0
           },
+          inventory: inventory,
           type: "PC",
           name: "Hero",
-          inventory: inventory,
-          level: 1,
-          HP: 10,
           attrs: {
             spd: 6,
             ac: 10,
             jmp: 2,
             atk: 3
           }
-        };
+        });
       };
 
       return player;

@@ -1,5 +1,9 @@
 # The beginning of the game! Woot! This module sets up the story and gets the play up and running.
 define ["mapcreator", "utilities", "board", "dialog", "globals", "taskrunner", "player", "mapper", "controls", "underscore", "jquery"], (mapcreator, ut, board, dialog, globals, runner, player, mapper, controls) ->
+	# Store map triggers for this map in an object
+	_triggers = {
+		"test": -> alert("you triggered my trap")
+	}
 	PC = player.PC
 	stage = board.getStage()
 	# This is the bare array of map identifiers, elevation, enterable, triggers, etc
@@ -69,10 +73,17 @@ define ["mapcreator", "utilities", "board", "dialog", "globals", "taskrunner", "
 		for i in [0..._stageObj.width] then for j in [0..._stageObj.height]
 			chunk = map[j][i]
 			chunk.background_position = generateChunkSprite chunk, j, i
-			if !chunk.tiles then chunk.tiles = mapcreator.getDefaultChunk()
+			if !chunk.tiles 
+				chunk.tiles = mapcreator.getDefaultChunk()
+			else 
+				console.log "getting chunk for first one"
+				console.log chunk
+				_.each chunk.tiles, (row) ->
+					_.each row, (tile) ->
+						if tile.trigger 
+							tile.trigger = _triggers[tile.trigger]
 			_fullMap[j][i] = mapper.loadChunk(chunk)
 			# mapcreator.loadChunk map[j][i].tiles
-		console.log map
 		do _initialize
 
 

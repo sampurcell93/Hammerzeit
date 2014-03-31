@@ -32,7 +32,7 @@
         return true;
       };
       generalFns = {
-        71: board.toggleGrid
+        71: battler.toggleGrid
       };
       stateFns = {
         INTRO: function(key) {
@@ -73,8 +73,7 @@
             case kc['CLEAR']:
               return mapper.clearChunk(window.stage);
             case kc['BATTLE']:
-              board.addState("battle");
-              board.removeState("travel");
+              board.addState("battle").removeState("travel");
               return menus.closeAll();
             case kc['SPACE']:
               return menus.toggleMenu("travel");
@@ -83,7 +82,7 @@
             case kc['EXPORTMAP']:
               return mapcreator.exportMap();
             case kc['DEFAULT']:
-              return mapcreator.getDefaultChunk();
+              return ut.launchModal(mapcreator.getDefaultChunk()["export"]());
             case kc['ZOOMIN']:
               return board.zoomIn(1);
             case kc['ZOOMOUT']:

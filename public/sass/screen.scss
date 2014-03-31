@@ -111,7 +111,7 @@ ol {
 		li {
 			display: inline-block;
 			width: 50px;
-			margin: 0 -2px;
+			margin: 0px;
 			padding: 0;
 			text-align: center;
 		}
@@ -123,7 +123,7 @@ ol {
 		margin-left: -530px;
 		height: 700px;
 		top: 40px;
-        width: 100px;
+        width: 30px;
 
 		li {
 			line-height: 50px;
@@ -132,7 +132,7 @@ ol {
 	}
 }
 
-.enterable-list {
+.enterable-list, .battle-grid-overlay {
     position: absolute;
     top: 30px;
     max-width: $boardwidth;
@@ -161,7 +161,6 @@ ol {
         position: relative;
 
         &:hover {
-            background: #333;
             color: #aaa;
         }
 
@@ -177,6 +176,22 @@ ol {
             font-size: .7em;
             color: #fff;
         }
+    }
+}
+
+.battle-grid-overlay {
+    li {
+        outline: 1px solid rgba(0,0,0,.2); 
+
+        &.highlight-potentialmove {
+            background: rgba(214,70,70,.6);
+        }
+        &.selecting-move {
+            background: rgba(107,247,59,.6);
+            cursor: pointer;
+        }
+    }
+    li:hover {
     }
 }
 
@@ -204,7 +219,7 @@ textarea {
 
     li {
         display: block;
-        line-height: 1.7;
+        line-height: 1.9rem;
         color: #bbb;
         text-align: center;
         font-size: 1.1em;
@@ -232,7 +247,9 @@ textarea {
         display: none;
 
         li {
-            min-width: 200px;
+            text-align: left;
+            text-indent: 1.2em;
+            min-width: 300px;
         }
     }
 

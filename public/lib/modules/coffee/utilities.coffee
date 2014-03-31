@@ -142,4 +142,5 @@ define  ["jquery", "underscore"], ->
 		floorToOne: (val) ->
 			if val < 0 then -1 else if val > 0 then 1 else 0
 		$inputChanged: $.fn.inputChanged
+		slice: Array.prototype.slice
 	}

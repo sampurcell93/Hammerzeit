@@ -1,7 +1,12 @@
 (function() {
   define(["mapcreator", "utilities", "board", "dialog", "globals", "taskrunner", "player", "mapper", "controls", "underscore", "jquery"], function(mapcreator, ut, board, dialog, globals, runner, player, mapper, controls) {
-    var PC, generateChunkSprite, stage, _fullMap, _initialize, _stageObj,
+    var PC, generateChunkSprite, stage, _fullMap, _initialize, _stageObj, _triggers,
       _this = this;
+    _triggers = {
+      "test": function() {
+        return alert("you triggered my trap");
+      }
+    };
     PC = player.PC;
     stage = board.getStage();
     _stageObj = {};
@@ -55,11 +60,20 @@
           chunk.background_position = generateChunkSprite(chunk, j, i);
           if (!chunk.tiles) {
             chunk.tiles = mapcreator.getDefaultChunk();
+          } else {
+            console.log("getting chunk for first one");
+            console.log(chunk);
+            _.each(chunk.tiles, function(row) {
+              return _.each(row, function(tile) {
+                if (tile.trigger) {
+                  return tile.trigger = _triggers[tile.trigger];
+                }
+              });
+            });
           }
           _fullMap[j][i] = mapper.loadChunk(chunk);
         }
       }
-      console.log(map);
       return _initialize();
     });
     return {

@@ -8,15 +8,15 @@ define ["globals", "utilities", "board", "player", "controls", "mapper", "mapcre
 			board.addState "LOADING"
 			# Stage not to be confused with "level": Rename todo
 			require ["lib/modules/js/stage" + module], (level) ->
-				board.removeState "LOADING"
+				board.removeState("LOADING")
 				level.initialize()
 				PC.on "change:current_chunk", () ->
 					ut.c "CHUNK CHANGE REGISTERED IN TASKRUNNER"
 					newchunk = PC.get "current_chunk"
-					console.log newchunk
-					mapcreator.loadChunk level.getMap()[newchunk.y][newchunk.x].tiles
-					mapper.renderChunk level.fullMap[newchunk.y][newchunk.x], board.getStage()
-
+					mapcreator.loadChunk level.getMap()[newchunk.y][newchunk.x].tiles, newchunk.x, newchunk.y
+					full_chunk = level.fullMap[newchunk.y][newchunk.x]
+					mapper.renderChunk full_chunk, board.getStage()
+					mapcreator.bindModels full_chunk, newchunk.x, newchunk.y
 
 	}
 	taskrunner

@@ -28,7 +28,8 @@
           weight: 1,
           belongsTo: null,
           level: 1,
-          role: 1
+          role: 1,
+          equipped: false
         };
       };
 
@@ -53,6 +54,10 @@
           return item.wear = _wearfns[item.name] || function() {};
         });
         return resp;
+      };
+
+      Inventory.prototype.comparator = function(model) {
+        return -model.get("equipped");
       };
 
       return Inventory;

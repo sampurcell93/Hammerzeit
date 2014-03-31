@@ -202,7 +202,8 @@
           return 0;
         }
       },
-      $inputChanged: $.fn.inputChanged
+      $inputChanged: $.fn.inputChanged,
+      slice: Array.prototype.slice
     };
   });
 

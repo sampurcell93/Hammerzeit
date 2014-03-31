@@ -1,9 +1,55 @@
-define ["globals", "utilities", "board", "underscore", "backbone", "easel", "jquery"], (globals, ut, board) ->
+define ["globals", "utilities", "board", "mapper", "underscore", "backbone", "easel", "jquery"], (globals, ut, board, mapper) ->
 	tileurl 	 = 'images/tiles/<%=name%>.<%=typeof filetype !== "undefined" ? filetype : "jpg" %>'
 	tilewidth    = tileheight = 50
 	tiles 		 = null
 	_activechunk = null
 	_activeprecursor = null
+	_backbone = null
+
+	class Tile extends Backbone.Model
+        defaults: 
+            # Type of tile (gets image if there is one)
+            t: 'e'
+            # Enterable? String points to direction checking functions
+            e: ''
+            # Elevation - checked against character's jump score
+            elv: 0
+            # Can a user end their move here?
+            end: true
+            # Difficulty - how many moves does it take to get through? Do not use "d" as key here
+            m: 1
+        initialize: (attrs) ->
+            @on "expose", @expose
+        expose: ->
+            setTile @attributes
+
+    class Row extends Backbone.Collection
+        model: Tile
+
+    class Chunk extends Backbone.Model
+        defaults: ->
+            rows = []
+            for i in [0...globals.map.tileheight]
+                rows[i] = row = new Row
+                for j in [0...globals.map.tilewidth] 
+                    row.add tile = new Tile({t: 'e'})
+                    tile.x = j
+                    tile.y = i
+            return rows: rows
+        export: ->
+            str = "["
+            _.each @get("rows"), (row) ->
+                str += "["
+                _.each row.models, (tile) ->
+                    str += JSON.stringify(tile.toJSON()) + ","
+                str = str.substring(0,str.length-1)
+                str += "],"
+            str.substring(0,str.length-1) + "]"
+        # Takes in x,y pixel coords and returns the model at that position
+        getFromCoords: (x, y)->
+        	x /= 50
+        	y /= 50
+        	@get("rows")[y].at(x)
 
 	$.getJSON "lib/json_packs/tiles.json", {}, (t) ->
 		tiles = t
@@ -13,15 +59,16 @@ define ["globals", "utilities", "board", "underscore", "backbone", "easel", "jqu
 	setDefaultTileAttrs = (tile, key) -> 
 		tile.url = _.template tileurl, tile
 		tile.loaded = false
-		if tile.hasOwnProperty("subtypes")
+		if _.has tile, "subtypes"
 			_.each tile["subtypes"], setDefaultTileAttrs
 
 	# Takes in a string, for example "gwbr" and walks through the tiles object
 	# until it finds an object and it returns the url for that parent
 	getFromShorthand = (chars, nestedobj) ->
-		if nestedobj.hasOwnProperty(chars) then return nestedobj[chars]
+		if _.has(nestedobj, chars) then return nestedobj[chars]
 		parent = chars.charAt 0
-		if nestedobj[parent].hasOwnProperty("subtypes")
+		console.log chars, nestedobj
+		if _.has nestedobj[parent], "subtypes"
 			getFromShorthand chars.slice(1), nestedobj[parent].subtypes
 		else nestedobj[parent]
 
@@ -35,6 +82,9 @@ define ["globals", "utilities", "board", "underscore", "backbone", "easel", "jqu
 
 	loadChunkFromURL: (url) ->
 		# $.getJSON "lib/json_packs/hometown.json"
+
+	setTile = (tile) ->
+		_.extend(_activechunk.children[tile.y].children[tile.x], _.omit(tile, "x", "y"))
 
 
 	loadChunk = (map) ->
@@ -82,7 +132,7 @@ define ["globals", "utilities", "board", "underscore", "backbone", "easel", "jqu
 		board.setBackground(bitmap.background || "")
 		board.setBackgroundPosition(bitmap.background_position || "top left")
 
-	return {
+	return window.mapper = {
 		# Expects an array of 14x14 2D arrays, or chunks, each of which represents one full view in the map. 
 		loadChunk: (chunk) ->
 			if typeof chunk is "string" then loadChunkFromURL chunk
@@ -101,7 +151,8 @@ define ["globals", "utilities", "board", "underscore", "backbone", "easel", "jqu
 		getVisibleChunk: () ->
 			_activechunk
 		setTile: (tile) ->
-			ut.c tile
-			ut.c _activechunk
-			_.extend(_activechunk.children[tile.y].children[tile.x], _.omit(tile, "x", "y"))
+			setTile tile
+		Tile: Tile
+		Row: Row
+		Chunk: Chunk
 	}

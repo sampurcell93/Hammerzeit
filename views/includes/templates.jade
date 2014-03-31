@@ -11,4 +11,7 @@ script#modify-tile(type='text/template')
         </label>
 
 script#inventory-item(type='text/template')
-        <%= name %>
+        <%= name %> 
+        <% if (equipped) { %> 
+        span.js-item-equipped E 
+        <% } %>

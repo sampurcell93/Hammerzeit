@@ -21,8 +21,10 @@ define ["globals", "utilities", "underscore", "backbone"], (globals, ut) ->
             belongsTo: null
             level: 1
             role: 1
+            equipped: false
         idAttribute: 'name'
 
+    # Simply a collection of items, regardless of context
     class Inventory extends Backbone.Collection
         model: Item
         parse: (resp) ->
@@ -30,6 +32,8 @@ define ["globals", "utilities", "underscore", "backbone"], (globals, ut) ->
                 item.use  = _usefns[item.name]  || ->
                 item.wear = _wearfns[item.name] || ->
             resp
+        comparator: (model) ->
+            -model.get("equipped")
 
     # Inventory List View
     class InventoryList extends Backbone.View
