@@ -2,6 +2,9 @@ define  ["jquery", "underscore"], ->
 
 	_c = -> for arg in arguments then console.log arg
 
+		
+	
+
 	# Thanks to stackoverflow user Will for this handy class splitter
 	(($) ->
 	  $.fn.classes = (callback) ->

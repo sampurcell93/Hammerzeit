@@ -76,7 +76,7 @@ define ["utilities", "globals", "dialog", "npc", "mapper", "mapcreator", "battle
 						board.addState("battle").removeState "travel"
 						menus.closeAll()
 					when kc['SPACE'] then menus.toggleMenu("travel")
-					when kc['DEFAULT'] then ut.launchModal mapcreator.getDefaultChunk().export()
+					when kc['DEFAULT'] then ut.launchModal JSON.stringify(mapcreator.getDefaultChunk())
 					when kc['ZOOMIN'] then board.zoomIn 1
 					when kc['ZOOMOUT'] then board.zoomOut 1
 					when kc['STATE'] then console.log board.getState()

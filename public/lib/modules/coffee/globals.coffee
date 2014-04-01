@@ -27,4 +27,6 @@ define ["underscore", "backbone"], =>
 			tileside: 50
 		shared_events: _.extend {}, Backbone.Events
 		tile_url: "lib/json_packs/tiles.json"
+		stage_dir: "lib/json_packs/stages/"
+		battle_dir: "lib/json_packs/battles/"
 	}

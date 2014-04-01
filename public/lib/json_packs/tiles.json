@@ -105,6 +105,22 @@
     },
     "s": {
         "e": true,
-        "name": "sand"
+        "name": "sand",
+        "subtypes": {
+            "h": {
+                "e": true,
+                "name": "shadow",
+                "subtypes": {
+                    "r": {
+                        "name": "shadowright",
+                        "filetype": "png"
+                    },
+                    "l": {
+                        "name": "shadowleft",
+                        "filetype": "png"
+                    }
+                }
+            }
+        }
     }
 }

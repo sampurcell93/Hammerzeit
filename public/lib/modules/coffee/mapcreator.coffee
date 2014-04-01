@@ -42,6 +42,7 @@ define ["globals", "utilities", "mapper", "backbone", "jquery", "jquery-ui", "un
             _.bindAll @, "render"
             @render()
         render: ->
+            if !@model then return @
             @$el.empty()
             _.each @model.get("rows"), (row) =>
                 _.each row.models, (tile) =>

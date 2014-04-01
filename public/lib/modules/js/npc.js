@@ -3,10 +3,9 @@
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
   define(["globals", "utilities", "board", "items", "mapper", "underscore", "backbone"], function(globals, ut, board, items, mapper) {
-    var NPC, Row, Tile, coordToDir, _checkEntry, _p, _ref, _ts;
+    var CharacterArray, NPC, Row, coordToDir, _checkEntry, _p, _ref, _ref1, _ts;
     _checkEntry = ut.tileEntryCheckers;
     _ts = globals.map.tileside;
-    Tile = mapper.Tile;
     Row = mapper.Row;
     coordToDir = function(coord, orientation) {
       orientation || (orientation = "1");
@@ -42,6 +41,41 @@
       NPC.prototype.move_callbacks = {
         done: function() {},
         change: function() {}
+      };
+
+      NPC.prototype.frames = {
+        down: [[0, 0, 55, 55, 0], [55, 0, 55, 55, 0], [110, 0, 55, 55, 0], [165, 0, 55, 55, 0]],
+        left: [[0, 55, 55, 55, 0], [55, 55, 55, 55, 0], [110, 55, 55, 55, 0], [165, 55, 55, 55, 0]],
+        right: [[0, 110, 55, 55, 0], [55, 110, 55, 55, 0], [110, 110, 55, 55, 0], [165, 110, 55, 55, 0]],
+        up: [[0, 165, 55, 55, 0], [55, 165, 55, 55, 0], [110, 165, 55, 55, 0], [165, 165, 55, 55, 0]]
+      };
+
+      NPC.prototype.initialize = function() {
+        var sheet, sprite;
+        _.bind(this.move_callbacks.done, this);
+        _.bind(this.move_callbacks.change, this);
+        this.walkopts = _.extend(this.getPrivate("walkopts"), {
+          images: ["images/sprites/hero.png"]
+        });
+        this.sheets = {
+          "-1,0": new createjs.SpriteSheet(_.extend(this.walkopts, {
+            frames: this.frames.left
+          })),
+          "1,0": new createjs.SpriteSheet(_.extend(this.walkopts, {
+            frames: this.frames.right
+          })),
+          "0,-1": new createjs.SpriteSheet(_.extend(this.walkopts, {
+            frames: this.frames.up
+          })),
+          "0,1": new createjs.SpriteSheet(_.extend(this.walkopts, {
+            frames: this.frames.down
+          }))
+        };
+        sheet = this.sheets["0,1"];
+        sheet.getAnimation("run").speed = .13;
+        sheet.getAnimation("run").next = "run";
+        sprite = new createjs.Sprite(sheet, "run");
+        return this.marker = sprite;
       };
 
       NPC.prototype.setChunk = function(y, x) {
@@ -116,7 +150,7 @@
         this.currentspace = target;
         target.occupied = true;
         target.occupiedBy = this.marker;
-        if (target.end === false || target.end === "false") {
+        if (target.end === false || target.end === "false" && (dx !== 0 && dy !== 0)) {
           return this.move(dx, dy, 0);
         }
       };
@@ -272,11 +306,12 @@
         chunk = mapper.getVisibleChunk().children;
         y = start ? start.y : this.marker.y;
         x = start ? start.x : this.marker.x;
+        console.log("got target tile");
         return ((_ref1 = chunk[(y + (50 * dy)) / 50]) != null ? _ref1.children[(x + (50 * dx)) / 50] : void 0) || {};
       };
 
       NPC.prototype.virtualMove = function(dx, dy, start, extra) {
-        var m, target;
+        var target;
         extra || (extra = 0);
         if (board.getPaused()) {
           return false;
@@ -290,20 +325,6 @@
         }
         if (!this.checkEnterable(target, dx, dy, start)) {
           return false;
-        }
-        m = target.tileModel.m += extra;
-        if (target.tileModel.get("end") === false) {
-          if (dx !== 0) {
-            dx *= 2;
-          } else if (dy !== 0) {
-            dy *= 2;
-          }
-          target = this.virtualMove(dx, dy, start, extra + 1);
-          if (target) {
-            target.tileModel.distance = m;
-          } else {
-            return false;
-          }
         }
         return target;
       };
@@ -358,6 +379,16 @@
         return this.set("attrs", _.extend(current, attrs));
       };
 
+      NPC.prototype.dead = false;
+
+      NPC.prototype.die = function() {
+        return this.dead = true;
+      };
+
+      NPC.prototype.isDead = function() {
+        return this.dead;
+      };
+
       NPC.prototype.defaults = function() {
         return {
           name: "NPC",
@@ -384,10 +415,49 @@
         return _p[id];
       };
 
+      NPC.prototype.setCurrentSpace = function() {
+        var target;
+        target = this.getTargetTile(0, 0);
+        if (target) {
+          this.currentspace = target;
+          target.occupied = true;
+          target.occupiedBy = this.marker;
+        }
+        return target;
+      };
+
       return NPC;
 
     })(Backbone.Model);
-    return window.NPC = NPC;
+    CharacterArray = (function(_super) {
+      __extends(CharacterArray, _super);
+
+      function CharacterArray() {
+        _ref1 = CharacterArray.__super__.constructor.apply(this, arguments);
+        return _ref1;
+      }
+
+      CharacterArray.prototype.model = NPC;
+
+      CharacterArray.prototype.getAverageLevel = function() {
+        var sum,
+          _this = this;
+        sum = 0;
+        _.each(this.models, function(PC) {
+          if (!PC.isDead()) {
+            return sum += PC.get("level");
+          }
+        });
+        return Math.ceil(sum / this.length);
+      };
+
+      return CharacterArray;
+
+    })(Backbone.Collection);
+    return {
+      NPC: NPC,
+      NPCArray: CharacterArray
+    };
   });
 
 }).call(this);

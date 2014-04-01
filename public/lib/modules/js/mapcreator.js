@@ -51,6 +51,9 @@
 
       Overlay.prototype.render = function() {
         var _this = this;
+        if (!this.model) {
+          return this;
+        }
         this.$el.empty();
         return _.each(this.model.get("rows"), function(row) {
           return _.each(row.models, function(tile) {

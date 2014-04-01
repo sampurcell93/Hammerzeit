@@ -58,14 +58,14 @@ define ["mapcreator", "utilities", "board", "dialog", "globals", "taskrunner", "
 						dialog.destroy()
 						board.addMarker PC
 						mapper.renderChunk _bitmap[c.y][c.x], stage
-						board.addState("TRAVEL").removeState("WAITING")
+						board.addState("BATTLE").removeState("WAITING")
 						board.setMapSize(_stageObj.width*globals.map.width, _stageObj.height*globals.map.height)
 						PC.marker.y = 500
 
 			}
 		])
 	# t = ut.tileEntryCheckers
-	$.getJSON "lib/json_packs/stage1.json", (json) =>
+	$.getJSON globals.stage_dir + "stage1.json", (json) =>
 		_stageObj = json
 		for f in [0..._stageObj.height]
 			_bitmap[f] = []

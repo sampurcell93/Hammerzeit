@@ -40,7 +40,7 @@
               dialog.destroy();
               board.addMarker(PC);
               mapper.renderChunk(_bitmap[c.y][c.x], stage);
-              board.addState("TRAVEL").removeState("WAITING");
+              board.addState("BATTLE").removeState("WAITING");
               board.setMapSize(_stageObj.width * globals.map.width, _stageObj.height * globals.map.height);
               return PC.marker.y = 500;
             }
@@ -48,7 +48,7 @@
         }
       ]);
     };
-    $.getJSON("lib/json_packs/stage1.json", function(json) {
+    $.getJSON(globals.stage_dir + "stage1.json", function(json) {
       var chunk, f, i, j, map, _i, _j, _k, _ref, _ref1, _ref2;
       _stageObj = json;
       for (f = _i = 0, _ref = _stageObj.height; 0 <= _ref ? _i < _ref : _i > _ref; f = 0 <= _ref ? ++_i : --_i) {

@@ -1,41 +1,9 @@
 define "player", ["utilities", "npc", "board", "globals", "mapper", "items", "backbone", "easel", "underscore"], (ut, NPC, board, globals, mapper, items) ->
 	stage = board.getStage()
-	class player extends NPC
-		frames: {
-			# The in place animation frames for the PC
-			down: [[0, 0, 55, 55, 0]
-					[55, 0, 55, 55, 0]
-					[110, 0, 55, 55, 0]
-					[165, 0, 55, 55, 0]]
-			left: [[0, 55, 55, 55, 0]
-				[55, 55, 55, 55, 0]
-				[110, 55, 55, 55, 0]
-				[165, 55, 55, 55, 0]]
-			right: [[0, 110, 55, 55, 0]
-				[55, 110, 55, 55, 0]
-				[110, 110, 55, 55, 0]
-				[165, 110, 55, 55, 0]]
-			up: [[0, 165, 55, 55, 0]
-				[55, 165, 55, 55, 0]
-				[110, 165, 55, 55, 0]
-				[165, 165, 55, 55, 0]]
-		}
+	class player extends NPC.NPC
 		initialize: (attrs) ->
+			super
 			_.bindAll @, "contextualize", "insideChunkBounds", "move", "defaults"
-			_.bind @move_callbacks.done, @
-			_.bind @move_callbacks.change, @
-			@walkopts = _.extend @getPrivate("walkopts"), {images: ["images/sprites/hero.png"]}
-			@sheets = {
-				"-1,0" : new createjs.SpriteSheet(_.extend @walkopts, {frames: @frames.left})
-				"1,0": new createjs.SpriteSheet(_.extend @walkopts, {frames: @frames.right})
-				"0,-1": new createjs.SpriteSheet(_.extend @walkopts, {frames: @frames.up})
-				"0,1" : new createjs.SpriteSheet(_.extend @walkopts, {frames: @frames.down})
-			}
-			sheet = @sheets["0,1"]
-			sheet.getAnimation("run").speed = .13
-			sheet.getAnimation("run").next = "run"
-			sprite = new createjs.Sprite(sheet, "run")
-			@marker = sprite
 			@marker.name = "Player"
 		# Expects x, y which normalizes negative values to board dimensions. So x=-50 beomes x=650
 		contextualize: (x, y) ->
@@ -100,8 +68,14 @@ define "player", ["utilities", "npc", "board", "globals", "mapper", "items", "ba
 					atk: 3
 			}
 
+	PCs = new NPC.NPCArray
+	PCs.add new player
+	PCs.add new player
+	PCs.add new player
+	PCs.add new player
 
 	return {
 		model: player
-		PC: new player()
+		PC: PCs.at(0)
+		PCs: PCs
 	}

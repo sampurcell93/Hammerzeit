@@ -2,7 +2,6 @@ define ["globals", "utilities", "board","items", "mapper", "underscore", "backbo
 	_checkEntry = ut.tileEntryCheckers
 
 	_ts = globals.map.tileside
-	Tile = mapper.Tile
 	Row = mapper.Row
 
 	# Converts left/right/up/down to x y
@@ -28,6 +27,40 @@ define ["globals", "utilities", "board","items", "mapper", "underscore", "backbo
 		move_callbacks: 
 			done: -> 
 			change: ->
+		frames: {
+			# The in place animation frames for the PC
+			down: [[0, 0, 55, 55, 0]
+					[55, 0, 55, 55, 0]
+					[110, 0, 55, 55, 0]
+					[165, 0, 55, 55, 0]]
+			left: [[0, 55, 55, 55, 0]
+				[55, 55, 55, 55, 0]
+				[110, 55, 55, 55, 0]
+				[165, 55, 55, 55, 0]]
+			right: [[0, 110, 55, 55, 0]
+				[55, 110, 55, 55, 0]
+				[110, 110, 55, 55, 0]
+				[165, 110, 55, 55, 0]]
+			up: [[0, 165, 55, 55, 0]
+				[55, 165, 55, 55, 0]
+				[110, 165, 55, 55, 0]
+				[165, 165, 55, 55, 0]]
+		}
+		initialize:  ->
+			_.bind @move_callbacks.done, @
+			_.bind @move_callbacks.change, @
+			@walkopts = _.extend @getPrivate("walkopts"), {images: ["images/sprites/hero.png"]}
+			@sheets = {
+				"-1,0" : new createjs.SpriteSheet(_.extend @walkopts, {frames: @frames.left})
+				"1,0": new createjs.SpriteSheet(_.extend @walkopts, {frames: @frames.right})
+				"0,-1": new createjs.SpriteSheet(_.extend @walkopts, {frames: @frames.up})
+				"0,1" : new createjs.SpriteSheet(_.extend @walkopts, {frames: @frames.down})
+			}
+			sheet = @sheets["0,1"]
+			sheet.getAnimation("run").speed = .13
+			sheet.getAnimation("run").next = "run"
+			sprite = new createjs.Sprite(sheet, "run")
+			@marker = sprite
 		# Note the argument order - reflects 2D array notation
 		setChunk: (y,x) ->
 			chunk = @get "current_chunk"
@@ -85,7 +118,7 @@ define ["globals", "utilities", "board","items", "mapper", "underscore", "backbo
 			@currentspace = target
 			target.occupied = true
 			target.occupiedBy = @marker
-			if target.end is false or target.end is "false"
+			if target.end is false or target.end is "false" and (dx isnt 0 and dy isnt 0)
 				@move(dx, dy, 0);
 		# Wrapper functions for basic moves
 		moveRight: -> @move 1, 0
@@ -184,6 +217,7 @@ define ["globals", "utilities", "board","items", "mapper", "underscore", "backbo
 			chunk = mapper.getVisibleChunk().children
 			y = if start then start.y else @marker.y
 			x = if start then start.x else @marker.x
+			console.log "got target tile"
 			chunk[(y+(50*dy))/50]?.children[(x+(50*dx))/50] || {}
 
 		# Like move, but lightweight and with no transitions - simple arithmetic check
@@ -197,11 +231,11 @@ define ["globals", "utilities", "board","items", "mapper", "underscore", "backbo
 			if !@checkEnterable(target, dx, dy, start) then return false
 			# If we can't end in the examined sqaure, don't enqueue it -
 			# rather, check where the square will take us if we step into it
-			m = target.tileModel.m += extra
-			if target.tileModel.get("end") is false 
-				if dx != 0 then dx*=2 else if dy != 0 then dy *= 2
-				target = @virtualMove(dx, dy, start, extra+1)
-				if target then target.tileModel.distance = m else return false
+			# m = target.tileModel.m += extra
+			# if target.tileModel.get("end") is false 
+				# if dx != 0 then dx*=2 else if dy != 0 then dy *= 2
+				# target = @virtualMove(dx, dy, start, extra+1)
+				# if target then target.tileModel.distance = m else return false
 			target
 		# Runs through the currently visible tiles in a battle and determines which moves are possible
 		# Returns array of tiles. If true, silent prevents observation 
@@ -241,7 +275,14 @@ define ["globals", "utilities", "board","items", "mapper", "underscore", "backbo
 		setAttrs: (attrs) ->
 			current = @get "attrs"
 			@set "attrs", _.extend(current, attrs)
-
+		# Default to not dead
+		dead: false
+		# Kill NPC
+		die: ->
+			@dead = true
+		# Is the NPC dead?
+		isDead: ->
+			@dead
 		defaults: ->
 			return {
 				name: "NPC"
@@ -262,10 +303,32 @@ define ["globals", "utilities", "board","items", "mapper", "underscore", "backbo
 
 		getPrivate: (id) ->
 			_p[id]
+		# Given pixel x and y coordinates (ie 400, 300), set the current space object
+		setCurrentSpace: ->
+			target = @getTargetTile 0, 0
+			# Would use @enterSquare, but throws unexpected errors: todo, debug
+			if target 
+				@currentspace = target
+				target.occupied = true
+				target.occupiedBy = @marker
+			target
+
+
+	class CharacterArray extends Backbone.Collection
+		model: NPC
+		getAverageLevel: () ->
+			sum = 0
+			_.each @models, (PC) =>
+				unless PC.isDead()
+					sum += PC.get "level"
+			Math.ceil sum/@length
 
 	# Bind all the private functions to the public object.... invisibly 0_0
 	# _.each move_fns, (fn) ->
 		# if typeof fn == "function" then _.bind fn, NPC
 
 	# instead of returning the npc object directly, return a function which instantiates one.
-	window.NPC = NPC
+	{
+		NPC: NPC
+		NPCArray: CharacterArray
+	}

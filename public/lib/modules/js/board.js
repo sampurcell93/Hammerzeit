@@ -178,6 +178,7 @@
       if (at) {
         stage.addChildAt(obj, at);
       } else {
+        console.log(obj.marker);
         stage.addChild(obj.marker);
       }
       return obj.stage = stage;

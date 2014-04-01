@@ -79,7 +79,7 @@
             case kc['SPACE']:
               return menus.toggleMenu("travel");
             case kc['DEFAULT']:
-              return ut.launchModal(mapcreator.getDefaultChunk()["export"]());
+              return ut.launchModal(JSON.stringify(mapcreator.getDefaultChunk()));
             case kc['ZOOMIN']:
               return board.zoomIn(1);
             case kc['ZOOMOUT']:

@@ -66,7 +66,6 @@ canvas {
 	margin: 0 auto;
 	padding: 0;
 	background: #f9f9f9;
-	border: 1px solid #f9f9f9;
     outline: none;
 	// @include transition(background-size .5s ease-in-out);
 	@include border-radius(3px);
@@ -90,6 +89,10 @@ canvas {
 	&[bg='image-6'] {
 		background: url("../images/Munashichi/cropped/dove.jpg") no-repeat;
 	}
+
+    &.nocorners {
+        @include border-radius(3px 3px 0 0);
+    }
 }
 
 .wrapper {
@@ -270,4 +273,51 @@ textarea {
     left: 50%;
     margin-left: -250px;
     margin-top: -150px;
+}
+
+
+#turn-progress-number {
+    // @include border-radius(3px);
+    width: 5%;
+    position: absolute;
+    right: 0;
+    display: block;
+    text-align: center;
+    line-height: 1.7;
+    color: #ddd;
+    background: #333;
+    bottom: 0;
+    z-index: 99;
+}
+
+#turn-progress {
+     /* Reset the default appearance */
+    -webkit-appearance: none;
+    appearance: none;
+    position: absolute;
+    bottom: -16px;
+    left: 0;
+    width: 100%;
+    padding: 0;
+    @include border-radius(0px);
+
+    &::-webkit-progress-bar {
+        background-color: #333;
+        padding: 3px;
+    }
+
+    // Thanks to chris coyier for the gradients
+    &::-webkit-progress-value {
+        background-image:
+       -webkit-linear-gradient(-45deg, 
+                               transparent 33%, rgba(0, 0, 0, .1) 33%, 
+                               rgba(0,0, 0, .1) 66%, transparent 66%),
+       -webkit-linear-gradient(top, 
+                               rgba(255, 255, 255, .25), 
+                               rgba(0, 0, 0, .25)),
+       -webkit-linear-gradient(left, #09c, #f44);
+
+        background-size: 35px 20px, 100% 100%, 100% 100%;
+        @include border-radius(2px);
+    }
 }

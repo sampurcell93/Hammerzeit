@@ -1,19 +1,126 @@
 define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player", "backbone", "underscore", "jquery"], (board, globals, ut, mapper, NPC, mapcreator, player) ->
 
+    PCs = player.PCs
+    NPCArray = NPC.NPCArray
+    NPC = NPC.NPC
+    stage = board.getStage()
+    map = globals.map
+
+
+    class Battle extends Backbone.Model
+        battleDir: globals.battle_dir
+        defaults: 
+            NPCs: new NPCArray
+            avglevel: PCs.getAverageLevel()
+            numenemies: Math.ceil(Math.random() * PCs.length * 2 + 1)
+            enemyBounds: {
+                min_x: 0
+                max_x: map.c_width
+                min_y: 0
+                max_y: map.c_height
+            }
+
+        load: (id) ->
+            $.getJSON @battle_dir + id, (battle) ->
+                console.log battle
+        # A function for creating a random battle, within parameters (or NOT?!!)
+        randomize: (o) ->
+            o = _.extend @defaults, o
+            console.log o
+            for i in [0...o.numenemies]
+                @get("NPCs").add(n = new NPC level: o.avglevel)
+                n.marker.x = 50*i
+                n.marker.y = 50*i
+                square =  n.setCurrentSpace()
+                console.log square
+                ct = 0
+                while square.end is false or square.e is "f"
+                    n.marker.x = 50*(i+ct)
+                    n.marker.y = 50*(i+ct)
+                    ct++
+                    square = n.setCurrentSpace()
+                board.addMarker n
+
+            @
+        destroy: ->
+            @destructor()
+            super
+        destructor: ->
+            NPCs = @get("NPCs")
+            while npc = NPCs.first()
+                npc.leaveSquare()
+                stage.removeChild npc.marker
+                npc.destroy()
+
+
+    _active_chars = PCs
+    # _active_chars.add player.PCs
+    console.log _active_chars
     _shared = globals.shared_events
     _shared.on "battle", ->
-        activateGrid()
-    _grid = null
-    _gridded = false
+        _grid.activate()
     _activemap = null
-    stage = board.getStage()
     _side = globals.map.tileside
+    _currentbattle = null
 
-    class Overlay extends mapcreator.Overlay
+    # Keeps track of timed events in the battle field
+    # When done, triggers a shared event so other modules know
+    class Timer
+        constructor: (@el, @number) -> 
+        interval: null
+        totaltime: 20000
+        stop: -> if @interval then clearInterval @interval
+        start: ->
+            @show()
+            value  = parseInt @el.attr("value")
+            @number.text((@totaltime*.001 - value*.001) + "s")
+            @interval = setInterval =>
+                value += 50
+                @el.attr("value", value)
+                if value % 1000 is 0 then @number.text((@totaltime*.001 - value*.001) + "s")
+                if value >= @totaltime
+                    clearInterval @interval
+                    globals.shared_events.trigger "timerdone"
+            , 50
+        reset: -> 
+            @stop()
+            @el.attr("value", 0)
+        show: -> 
+            board.$canvas.addClass("nocorners")
+            @el.fadeIn "fast"
+            @number.fadeIn "fast"
+        hide: -> 
+            board.$canvas.removeClass("nocorners")
+            @number.fadeOut "fast"
+            @el.fadeOut "fast"
+        set: (time) ->
+            if time >= 0 and time <= @totaltime
+                @el.attr("value", time)
+ 
+    _timer = new Timer($("#turn-progress"),$("#turn-progress-number"))
+
+
+    class GridOverlay extends mapcreator.Overlay
         show: -> @$el.fadeIn  "fast"
         hide: -> @$el.fadeOut "fast"
+        el: ".battle-grid-overlay"
+        showing: false
         modifyAllTiles: ->
-
+        render: -> 
+            super
+            console.log "rendering"
+            console.log @model
+        toggle: ->
+            if @showing is false then @activate()
+            else @deactivate()
+        activate:  ->
+            @model = _activemap
+            @render()
+            @show()
+            @showing = true
+        deactivate: ->
+            @hide()
+            @showing = false
 
     class GridSquare extends Backbone.View
         tagName: 'li'
@@ -26,7 +133,6 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
             @listenTo @model,
                 potentialmove: @potentialmoves
                 removemove: @removepotential
-
         render: ->
             @model.square = @
             @$el.html(_.template @template, @model.toJSON())
@@ -79,48 +185,49 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
             mouseout: ->
                 if @potentialmove then @$el.removeClass("selecting-move")
 
-    _board = null
+    _grid = new GridOverlay child: GridSquare
 
-    # Functions for toggling grid functionality....
-    toggleGrid = ->
-        if _gridded is false then activateGrid()
-        else deactivateGrid()
-
-    activateGrid = ->
-        _activemap = mapcreator.getChunk()
-        console.log _activemap
-        if !_grid
-            _grid = new Overlay 
-                model: _activemap,
-                el: ".battle-grid-overlay",
-                child: GridSquare
-        else 
-            _grid.model = _activemap
-            _grid.render()
-            _grid.show()
-        _gridded = true
-
-    deactivateGrid = ->
-        _grid.hide()
-        _gridded = false
-
-    {
-        loadBoard: (board) ->
-            _board = board
+    window.battler = {
         getActivePlayer: ->
             # getActivePlayer()
             player.PC
-        # Add npc to current board
-        addNPC: (NPC, x, y) ->
         toggleGrid: ->
-            toggleGrid()
+            _activemap = mapcreator.getChunk()
+            _grid.toggle()
         activateGrid: ->
-            activateGrid()
+            _activemap = mapcreator.getChunk()
+            _grid.activate()
         deactivateGrid: ->
-            deactivateGrid()
+            _grid.deactivate()
         getActiveMap: -> 
-            console.log "getting activemap"
-            console.log _activemap
             _activemap
-
+        # Because of the game's combination of real time and RPG playing, we're using a timer! 
+        # Will be an HTML5 progress element
+        showTimer: ->
+            _timer.show()
+            @
+        hideTimer: ->
+            _timer.hide()
+            @
+        # Set the timer to some ms value - this does not change the total runtime of the timer
+        setTimer: (time) ->
+            _timer.set time
+            @
+        startTimer: ->
+            _timer.start()
+            @
+        stopTimer: ->
+            _timer.stop()
+            @
+        resetTimer: ->
+            _timer.reset()
+            @
+        setTotalTime: (total) ->
+            _timer.setTotalTime()
+            @
+        Battle: Battle
+        randomBattle: ->
+            if _currentbattle then _currentbattle.destroy()
+            _currentbattle = b = new Battle()
+            b.randomize()
     }   
