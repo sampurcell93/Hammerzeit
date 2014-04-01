@@ -81,10 +81,12 @@ define ["globals", "utilities", "board","items", "mapper", "underscore", "backbo
 			@currentspace.occupiedBy = null
 			@
 		# Pass in a tile DisplayObject, and link it to this NPC
-		enterSquare: (target) ->
+		enterSquare: (target, dx, dy) ->
 			@currentspace = target
 			target.occupied = true
 			target.occupiedBy = @marker
+			if target.end is false or target.end is "false"
+				@move(dx, dy, 0);
 		# Wrapper functions for basic moves
 		moveRight: -> @move 1, 0
 		moveLeft: -> @move -1, 0
@@ -107,7 +109,7 @@ define ["globals", "utilities", "board","items", "mapper", "underscore", "backbo
 			if dir is "x" then "y" else if dir is "y" then "x" else ""
 		# expects x and inverse-y deltas, IE move(0, 1) would be a downward move by 1 "square"
 		# Returns false if the move will not work, or returns the new coords if it does.
-		move: (dx, dy) ->
+		move: (dx, dy, walkspeed) ->
 			# if board.hasState("battle") then return false
 			if board.getPaused() then return false
 			cbs = @move_callbacks
@@ -130,11 +132,11 @@ define ["globals", "utilities", "board","items", "mapper", "underscore", "backbo
 					@moving = false
 					@checkTrigger target
 					do @leaveSquare
-					@enterSquare target
+					@enterSquare target, dx, dy
 					@reanimate "run", .13, "run"
 					cbs.done.call(@, dx, dy)
 				count++
-			, _p.walkspeed
+			, walkspeed || _p.walkspeed
 			true
 
 		### Battle functions! ###
@@ -186,12 +188,20 @@ define ["globals", "utilities", "board","items", "mapper", "underscore", "backbo
 
 		# Like move, but lightweight and with no transitions - simple arithmetic check
 		# Because we're not updating marker, we can pass in a start object (x:,y:) to be virtualized from
-		virtualMove: (dx, dy, start) ->
+		virtualMove: (dx, dy, start, extra) ->
+			extra || extra = 0
 			if board.getPaused() then return false
 			target = @getTargetTile dx, dy, start
 			if _.isEmpty(target) then return false
 			if target.tileModel.discovered then return false
 			if !@checkEnterable(target, dx, dy, start) then return false
+			# If we can't end in the examined sqaure, don't enqueue it -
+			# rather, check where the square will take us if we step into it
+			m = target.tileModel.m += extra
+			if target.tileModel.get("end") is false 
+				if dx != 0 then dx*=2 else if dy != 0 then dy *= 2
+				target = @virtualMove(dx, dy, start, extra+1)
+				if target then target.tileModel.distance = m else return false
 			target
 		# Runs through the currently visible tiles in a battle and determines which moves are possible
 		# Returns array of tiles. If true, silent prevents observation 
@@ -208,8 +218,9 @@ define ["globals", "utilities", "board","items", "mapper", "underscore", "backbo
 			# Enqueue a target node
 			enqueue = (distance, target) ->
 				if !target then return
-				if distance + 1 > speed then return
-				else target.tileModel.distance = distance + 1
+				d = if target.m then target.m else 1
+				if distance + d > speed then return
+				else target.tileModel.distance = distance + d
 				target.tileModel.discovered = true
 				checkQueue.unshift target
 				done.call(@, target)

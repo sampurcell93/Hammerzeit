@@ -1,6 +1,7 @@
 (function() {
   define(["utilities", "globals", "dialog", "npc", "mapper", "mapcreator", "battler", "menus", "player", "jquery"], function(ut, globals, dialog, NPC, mapper, mapcreator, battler, menus, player) {
-    var PC, kc, keysdisabled, _activeplayer;
+    var PC, kc, keysdisabled, _activeplayer, _priority_queue;
+    _priority_queue = ["CUTSCENE", "MENUOPEN", "DIALOG", "BATTLE", "TRAVEL", "INTRO", "WAITING", "DRAWING", "LOADING"];
     kc = {
       ENTER: 13,
       SPACE: 32,
@@ -32,7 +33,9 @@
         return true;
       };
       generalFns = {
-        71: battler.toggleGrid
+        71: battler.toggleGrid,
+        77: mapcreator.toggleOverlay,
+        69: mapcreator.exportMap
       };
       stateFns = {
         INTRO: function(key) {
@@ -44,23 +47,21 @@
         WAITING: function(key) {},
         BATTLE: function(key) {
           _activeplayer = battler.getActivePlayer();
-          ut.c(_activeplayer);
           switch (key) {
             case kc["UP"]:
-              return PC.moveUp();
+              return _activeplayer.moveUp();
             case kc["RIGHT"]:
-              return PC.moveRight();
+              return _activeplayer.moveRight();
             case kc["DOWN"]:
-              return PC.moveDown();
+              return _activeplayer.moveDown();
             case kc["LEFT"]:
-              return PC.moveLeft();
+              return _activeplayer.moveLeft();
             case kc['SPACE']:
               return menus.toggleMenu("battle");
           }
         },
         CUTSCENE: function(key) {},
         TRAVEL: function(key) {
-          ut.c(PC);
           switch (key) {
             case kc["UP"]:
               return PC.moveUp();
@@ -77,10 +78,6 @@
               return menus.closeAll();
             case kc['SPACE']:
               return menus.toggleMenu("travel");
-            case kc['MAPCREATOR']:
-              return mapcreator.toggleOverlay();
-            case kc['EXPORTMAP']:
-              return mapcreator.exportMap();
             case kc['DEFAULT']:
               return ut.launchModal(mapcreator.getDefaultChunk()["export"]());
             case kc['ZOOMIN']:
@@ -118,10 +115,18 @@
         }
       };
       delegate = function(key, state, e) {
+        var queue;
+        queue = [];
         if (key.isStateDependent()) {
           if ($.isArray(state)) {
             _.each(state, function(ins) {
-              return stateFns[ins](key);
+              stateFns[ins].state = ins;
+              return queue[_priority_queue.indexOf(ins)] = stateFns[ins];
+            });
+            _.each(queue, function(fn) {
+              if (fn) {
+                return fn(key);
+              }
             });
           } else {
             stateFns[state](key);

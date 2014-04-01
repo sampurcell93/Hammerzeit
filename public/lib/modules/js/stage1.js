@@ -1,7 +1,8 @@
 (function() {
   define(["mapcreator", "utilities", "board", "dialog", "globals", "taskrunner", "player", "mapper", "controls", "underscore", "jquery"], function(mapcreator, ut, board, dialog, globals, runner, player, mapper, controls) {
-    var PC, generateChunkSprite, stage, _fullMap, _initialize, _stageObj, _triggers,
+    var PC, generateChunkSprite, stage, _bitmap, _events, _initialize, _stageObj, _triggers,
       _this = this;
+    _events = _.extend({}, Backbone.Events);
     _triggers = {
       "test": function() {
         return alert("you triggered my trap");
@@ -10,7 +11,7 @@
     PC = player.PC;
     stage = board.getStage();
     _stageObj = {};
-    _fullMap = [];
+    _bitmap = [];
     generateChunkSprite = function(chunk, j, i) {
       var str;
       if (chunk.background_position === true) {
@@ -32,15 +33,15 @@
             delay: 1000,
             speed: 82,
             after: function() {
+              var c;
+              PC.trigger("change:current_chunk");
+              c = PC.get("current_chunk");
               board.setPresetBackground("");
               dialog.destroy();
-              mapper.renderChunk(_fullMap[0][0], stage);
-              board.addState("TRAVEL").removeState("WAITING");
               board.addMarker(PC);
-              console.log("loaded board");
-              console.log(_stageObj);
+              mapper.renderChunk(_bitmap[c.y][c.x], stage);
+              board.addState("TRAVEL").removeState("WAITING");
               board.setMapSize(_stageObj.width * globals.map.width, _stageObj.height * globals.map.height);
-              PC.trigger("change:current_chunk");
               return PC.marker.y = 500;
             }
           }
@@ -51,7 +52,7 @@
       var chunk, f, i, j, map, _i, _j, _k, _ref, _ref1, _ref2;
       _stageObj = json;
       for (f = _i = 0, _ref = _stageObj.height; 0 <= _ref ? _i < _ref : _i > _ref; f = 0 <= _ref ? ++_i : --_i) {
-        _fullMap[f] = [];
+        _bitmap[f] = [];
       }
       map = _stageObj.map;
       for (i = _j = 0, _ref1 = _stageObj.width; 0 <= _ref1 ? _j < _ref1 : _j > _ref1; i = 0 <= _ref1 ? ++_j : --_j) {
@@ -61,8 +62,6 @@
           if (!chunk.tiles) {
             chunk.tiles = mapcreator.getDefaultChunk();
           } else {
-            console.log("getting chunk for first one");
-            console.log(chunk);
             _.each(chunk.tiles, function(row) {
               return _.each(row, function(tile) {
                 if (tile.trigger) {
@@ -71,17 +70,24 @@
               });
             });
           }
-          _fullMap[j][i] = mapper.loadChunk(chunk);
+          _bitmap[j][i] = mapper.loadChunk(chunk, j, i);
+          _bitmap[j][i].background_position = chunk.background_position;
         }
       }
-      return _initialize();
+      return _events.trigger("doneloading");
     });
     return {
-      fullMap: _fullMap,
-      getMap: function() {
+      getBackground: function() {
+        return _stageObj.background;
+      },
+      getBitmap: function() {
+        return _bitmap;
+      },
+      getPrecursor: function() {
         return _stageObj.map;
       },
-      initialize: _initialize
+      initialize: _initialize,
+      events: _events
     };
   });
 

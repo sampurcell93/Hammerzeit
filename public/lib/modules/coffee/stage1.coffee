@@ -1,16 +1,18 @@
 # The beginning of the game! Woot! This module sets up the story and gets the play up and running.
 define ["mapcreator", "utilities", "board", "dialog", "globals", "taskrunner", "player", "mapper", "controls", "underscore", "jquery"], (mapcreator, ut, board, dialog, globals, runner, player, mapper, controls) ->
+	# Expose shared events
+	_events = _.extend {}, Backbone.Events
 	# Store map triggers for this map in an object
 	_triggers = {
 		"test": -> alert("you triggered my trap")
 	}
 	PC = player.PC
 	stage = board.getStage()
-	# This is the bare array of map identifiers, elevation, enterable, triggers, etc
+	# This is the bare array of map identifiers, elevation, enterable, trigger IDs, etc
 	_stageObj = {}
 	# This is the parsed map with bitmaps - has not been added to the 
 	# stage at all after loading, only created
-	_fullMap = []
+	_bitmap = []
 
 	generateChunkSprite = (chunk, j, i) ->
 		if chunk.background_position is true
@@ -50,15 +52,14 @@ define ["mapcreator", "utilities", "board", "dialog", "globals", "taskrunner", "
 					delay: 1000
 					speed: 82
 					after: ->
+						PC.trigger("change:current_chunk")
+						c = PC.get("current_chunk")
 						board.setPresetBackground ""
 						dialog.destroy()
-						mapper.renderChunk _fullMap[0][0], stage
-						board.addState("TRAVEL").removeState("WAITING")
 						board.addMarker PC
-						console.log "loaded board"
-						console.log _stageObj
+						mapper.renderChunk _bitmap[c.y][c.x], stage
+						board.addState("TRAVEL").removeState("WAITING")
 						board.setMapSize(_stageObj.width*globals.map.width, _stageObj.height*globals.map.height)
-						PC.trigger("change:current_chunk")
 						PC.marker.y = 500
 
 			}
@@ -67,7 +68,7 @@ define ["mapcreator", "utilities", "board", "dialog", "globals", "taskrunner", "
 	$.getJSON "lib/json_packs/stage1.json", (json) =>
 		_stageObj = json
 		for f in [0..._stageObj.height]
-			_fullMap[f] = []
+			_bitmap[f] = []
 		map = _stageObj.map
 		# Take each chunk defined above (will move to JSON map files) and load it into a full array of bitmaps
 		for i in [0..._stageObj.width] then for j in [0..._stageObj.height]
@@ -76,23 +77,22 @@ define ["mapcreator", "utilities", "board", "dialog", "globals", "taskrunner", "
 			if !chunk.tiles 
 				chunk.tiles = mapcreator.getDefaultChunk()
 			else 
-				console.log "getting chunk for first one"
-				console.log chunk
 				_.each chunk.tiles, (row) ->
 					_.each row, (tile) ->
 						if tile.trigger 
 							tile.trigger = _triggers[tile.trigger]
-			_fullMap[j][i] = mapper.loadChunk(chunk)
+			_bitmap[j][i] = mapper.loadChunk(chunk, j, i)
+			_bitmap[j][i].background_position = chunk.background_position
+		_events.trigger "doneloading"
 			# mapcreator.loadChunk map[j][i].tiles
-		do _initialize
-
-
 
 
 	return {
-		fullMap: _fullMap
-		getMap: -> _stageObj.map
+		getBackground: ->
+			_stageObj.background
+		getBitmap: -> _bitmap
+		getPrecursor: -> _stageObj.map
 		initialize: _initialize
-
+		events: _events
 		
 	}

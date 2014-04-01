@@ -4,7 +4,7 @@
 
   define(["globals", "utilities", "dialog", "battler", "player", "npc", "board", "underscore", "backbone", "jquery-ui"], function(globals, ut, dialog, battler, player, NPC, board) {
     var BattleMenu, InventoryList, Menu, TravelMenu, closeAll, toggleMenu, _activemenu, _menus, _potential_moves, _ref, _ref1, _ref2;
-    board.$canvas.focus();
+    board.focus();
     InventoryList = items.InventoryList;
     _potential_moves = null;
     Menu = (function(_super) {
@@ -32,7 +32,6 @@
       };
 
       Menu.prototype.selectNext = function() {
-        console.log("next");
         return this.selectThis(this.$el.children(".selected").next());
       };
 
@@ -55,25 +54,23 @@
         "keyup": function(e) {
           var key;
           key = e.keyCode || e.which;
-          console.log(key);
           switch (key) {
-            case key === 38:
+            case 38:
               return this.selectPrev();
-            case key === 40:
+            case 40:
               return this.selectNext();
-            case key === 32:
+            case 32:
               return this.toggle();
-            case key === 27:
+            case 27:
               return this.close();
+            case 13:
+              return this.$el.children(".selected").trigger("click");
           }
         }
       };
 
       Menu.prototype.render = function() {
-        var PC;
-        this.showInventory();
-        PC = this.model.toJSON();
-        return this.$(".HP").text(PC.HP);
+        return this.showInventory();
       };
 
       Menu.prototype.clickActiveItem = function() {
@@ -91,7 +88,8 @@
       };
 
       Menu.prototype.close = function() {
-        console.log(this);
+        var _activemenu;
+        _activemenu = null;
         this.showing = false;
         this.$el.effect("slide", _.extend({
           mode: 'hide'
@@ -99,7 +97,7 @@
           direction: 'right',
           easing: 'easeInOutQuart'
         }), 300);
-        board.unpause().$canvas.focus();
+        board.unpause().focus();
         return this.clearPotentialMoves();
       };
 
@@ -109,7 +107,7 @@
         this.showing = true;
         this.render();
         board.pause();
-        return this.$el.focus().effect("slide", _.extend({
+        return this.$el.focus().select().effect("slide", _.extend({
           mode: 'show'
         }, {
           direction: 'right',
@@ -140,10 +138,15 @@
 
       TravelMenu.prototype.type = 'travel';
 
-      TravelMenu.prototype.initialize = function() {};
+      TravelMenu.prototype.initialize = function() {
+        return _.bindAll(this, "close", "open", "toggle", "selectNext", "selectThis", "selectPrev");
+      };
 
       TravelMenu.prototype.render = function() {
-        return TravelMenu.__super__.render.apply(this, arguments);
+        var PC;
+        TravelMenu.__super__.render.apply(this, arguments);
+        PC = this.model.toJSON();
+        return this.$(".HP").text(PC.HP);
       };
 
       return TravelMenu;
@@ -171,8 +174,8 @@
       };
 
       BattleMenu.prototype.initialize = function() {
-        this.events = _.extend(this.events, this.child_events);
-        return console.log(this.events);
+        _.bindAll(this, "close", "open", "toggle", "selectNext", "selectThis", "selectPrev");
+        return this.events = _.extend(this.events, this.child_events);
       };
 
       BattleMenu.prototype.child_events = {
@@ -194,12 +197,13 @@
         model: battler.getActivePlayer()
       })
     };
-    _activemenu = _menus['travel'];
+    _activemenu = _menus['battle'];
     toggleMenu = function(menu) {
       var other;
+      _activemenu = _menus[menu];
       other = menu === "battle" ? "travel" : "battle";
+      _activemenu.toggle();
       _menus[other].close();
-      _menus[menu].toggle();
       return board.toggleState("MENUOPEN");
     };
     closeAll = function() {

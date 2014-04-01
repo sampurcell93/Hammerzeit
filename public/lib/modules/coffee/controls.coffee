@@ -1,4 +1,8 @@
 define ["utilities", "globals", "dialog", "npc", "mapper", "mapcreator", "battler", "menus", "player", "jquery"], (ut, globals, dialog, NPC, mapper, mapcreator, battler, menus, player) ->
+
+	# When the board has multiple states, sometimes commands have to be resolved in a certain order
+	_priority_queue = ["CUTSCENE", "MENUOPEN", "DIALOG", "BATTLE", "TRAVEL", "INTRO", "WAITING", "DRAWING", "LOADING"]
+
 	# Keycodes
 	kc = {
 		ENTER: 13
@@ -43,6 +47,9 @@ define ["utilities", "globals", "dialog", "npc", "mapper", "mapcreator", "battle
 		generalFns =
 			# G
 			71: battler.toggleGrid
+			77: mapcreator.toggleOverlay
+			69: mapcreator.exportMap
+
 
 		stateFns = {
 			INTRO: (key) ->
@@ -51,16 +58,14 @@ define ["utilities", "globals", "dialog", "npc", "mapper", "mapcreator", "battle
 			WAITING: (key) ->
 			BATTLE: (key) ->
 				_activeplayer = battler.getActivePlayer()
-				ut.c _activeplayer
 				switch key
-					when kc["UP"] 	 then PC.moveUp()
-					when kc["RIGHT"] then PC.moveRight()
-					when kc["DOWN"]  then PC.moveDown()
-					when kc["LEFT"]  then PC.moveLeft()
+					when kc["UP"] 	 then _activeplayer.moveUp()
+					when kc["RIGHT"] then _activeplayer.moveRight()
+					when kc["DOWN"]  then _activeplayer.moveDown()
+					when kc["LEFT"]  then _activeplayer.moveLeft()
 					when kc['SPACE'] then menus.toggleMenu("battle")
 			CUTSCENE: (key) ->
-			TRAVEL: (key) ->
-				ut.c PC
+			TRAVEL: (key) -> 
 				switch key
 					when kc["UP"] 	 then PC.moveUp()
 					when kc["RIGHT"] then PC.moveRight()
@@ -71,8 +76,6 @@ define ["utilities", "globals", "dialog", "npc", "mapper", "mapcreator", "battle
 						board.addState("battle").removeState "travel"
 						menus.closeAll()
 					when kc['SPACE'] then menus.toggleMenu("travel")
-					when kc['MAPCREATOR'] then mapcreator.toggleOverlay()
-					when kc['EXPORTMAP'] then mapcreator.exportMap()
 					when kc['DEFAULT'] then ut.launchModal mapcreator.getDefaultChunk().export()
 					when kc['ZOOMIN'] then board.zoomIn 1
 					when kc['ZOOMOUT'] then board.zoomOut 1
@@ -94,10 +97,14 @@ define ["utilities", "globals", "dialog", "npc", "mapper", "mapcreator", "battle
 
 		# High level delegator based on the key pressed and the current board state.
 		delegate = (key, state, e) ->
+			queue = []
 			if key.isStateDependent()
 				if $.isArray state
 					_.each state, (ins) ->
-						stateFns[ins](key)
+						stateFns[ins].state = ins
+						queue[_priority_queue.indexOf(ins)] = stateFns[ins]
+					_.each queue, (fn) ->  
+						if fn then fn(key)
 				else 
 					stateFns[state](key)
 			if _.has generalFns, key

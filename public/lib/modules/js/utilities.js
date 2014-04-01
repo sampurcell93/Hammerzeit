@@ -226,7 +226,17 @@
         }
       },
       $inputChanged: $.fn.inputChanged,
-      slice: Array.prototype.slice
+      slice: Array.prototype.slice,
+      parseBool: function(str) {
+        str = str.toLowerCase();
+        if (str === "true") {
+          return true;
+        } else if (str === "false") {
+          return false;
+        } else {
+          return str;
+        }
+      }
     };
   });
 

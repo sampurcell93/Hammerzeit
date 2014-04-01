@@ -60,7 +60,9 @@
               model: tile
             });
             item.parent = _this;
-            tile.modifier = item;
+            if (item instanceof OverlayItem) {
+              tile.modifier = item;
+            }
             return _this.$el.append(item.render().el);
           });
         });
@@ -116,7 +118,7 @@
         })));
         modal.find(".js-add-elevation").select();
         self = this;
-        modal.on("keydown", ".js-add-dirs, .js-add-elevation, .js-add-type", function(e) {
+        modal.on("keydown", ".js-change", function(e) {
           var key;
           key = e.keyCode || e.which;
           if (key !== 9) {
@@ -135,7 +137,14 @@
       };
 
       OverlayItem.prototype.applyChanges = function(modal, proceed) {
-        var next;
+        var next, self;
+        self = this;
+        if (modal.find(".js-diff").inputChanged()) {
+          this.model.set("m", parseInt(modal.find(".js-diff").val()));
+        }
+        if (modal.find(".js-can-end").inputChanged()) {
+          this.model.set("end", ut.parseBool(modal.find(".js-can-end").val()));
+        }
         if (modal.find(".js-add-type").inputChanged()) {
           this.model.set("t", modal.find(".js-add-type").val());
         }
@@ -214,10 +223,12 @@
     };
     toggleOverlay = function() {
       if (!_overlay) {
-        return _overlay = new Overlay({
+        _overlay = new Overlay({
           model: _chunk
         });
+        return _overlay.showing = true;
       } else {
+        _overlay.showing = false;
         _overlay.$el.empty();
         return _overlay = null;
       }
@@ -235,27 +246,20 @@
       return m.find("textarea").select();
     };
     return {
+      render: function() {
+        if (_overlay && _overlay.showing) {
+          _overlay.model = _chunk;
+          return _overlay.render();
+        }
+      },
       toggleOverlay: toggleOverlay,
       getDefaultChunk: function() {
         return JSON.parse(new Chunk()["export"]());
       },
-      bindModels: function(bitmaparray, x, y) {
-        var chunk;
-        chunk = _cached_chunks[y][x];
-        _.each(bitmaparray, function(row, j) {
-          return _.each(row, function(tile, i) {
-            var model;
-            model = chunk.get("rows")[j].at(i);
-            tile.tileModel = model;
-            return model.bitmap = tile;
-          });
-        });
-        return chunk;
-      },
       loadChunk: function(precursor_chunk, x, y) {
         var allRows, chunk;
         if (_cached_chunks[y][x]) {
-          return _cached_chunks[y][x];
+          return _chunk = _cached_chunks[y][x];
         }
         chunk = new Chunk;
         allRows = [];
@@ -263,13 +267,11 @@
           var rowCollection;
           rowCollection = new Row;
           _.each(row, function(tile, j) {
-            var TileModel;
-            tile = _.pick(tile, "t", "e", "elv", "end", "m");
-            rowCollection.add(TileModel = new Tile(tile));
-            TileModel.x = j;
-            TileModel.y = i;
-            tile.model = TileModel;
-            return TileModel.set({
+            var m;
+            rowCollection.add(m = tile.tileModel);
+            m.x = j;
+            m.y = i;
+            return m.set({
               x: j,
               y: i
             });

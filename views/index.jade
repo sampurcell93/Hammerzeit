@@ -48,8 +48,8 @@ html
         li 13
       ul.battle-grid-overlay
       ul.enterable-list
-      canvas#game-board(tabindex='1', width='1000', height='697')
-      ul#travel-menu.game-menu(tabindex=1)
+      canvas#game-board(tabindex=1, width='1000', height='697')
+      ul#travel-menu.game-menu(tabindex=0)
         li.header
           span.player-name Hero
           | - Level
@@ -59,14 +59,14 @@ html
           | - HP
           span.HP 45
         //- li(tabindex=2).js-show-equipped.selected Equipped
-        li(tabindex=2).js-show-inventory Inventory
+        li(tabindex=2).js-show-inventory.selected Inventory
           ul.inventory-list
         li(tabindex=2).js-show-attributes Attributes
         li(tabindex=2).js-show-teammate-menus Teammates
         li(tabindex=2).js-close-menu Close
-      ul#battle-menu.game-menu(tabindex=1)
+      ul#battle-menu.game-menu(tabindex=0)
+        li(tabindex=2).js-virtual-move.selected Move
         li(tabindex=2).js-attack Attack
-        li(tabindex=2).js-virtual-move Move
         li(tabindex=2).js-defend Defend
         li(tabindex=2).js-show-inventory Inventory
           ul.inventory-list

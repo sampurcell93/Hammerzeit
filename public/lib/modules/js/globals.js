@@ -15,7 +15,8 @@
         4: "TRAVEL",
         5: "DRAWING",
         6: "LOADING",
-        7: "MENUOPEN"
+        7: "MENUOPEN",
+        8: "DIALOG"
       },
       map: {
         width: 1000,

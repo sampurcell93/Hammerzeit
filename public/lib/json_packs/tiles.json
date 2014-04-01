@@ -78,6 +78,10 @@
                 "width": 3,
                 "height": 6,
                 "name": "mtcorner"
+            },
+            "z": {
+                "filetype": "png",
+                "name": "zeldamt"
             }
         }
     },

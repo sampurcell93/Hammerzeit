@@ -3,15 +3,19 @@
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
   define(["globals", "utilities", "board", "mapper", "underscore", "backbone", "easel", "jquery"], function(globals, ut, board, mapper) {
-    var Chunk, Row, Tile, clearChunk, createBitEventRegister, getFromShorthand, loadChunk, modifyBackground, renderChunk, setDefaultTileAttrs, setTile, stage, tileheight, tiles, tileurl, tilewidth, _3dtiles, _activechunk, _activeprecursor, _backbone, _ref, _ref1, _ref2;
+    var Chunk, Row, Tile, bindModel, clearChunk, createBitEventRegister, getFromShorthand, i, loadChunk, modifyBackground, renderChunk, setDefaultTileAttrs, setTile, stage, tileheight, tiles, tileurl, tilewidth, _3dtiles, _activebitmap, _activechunk, _backbone, _cached_chunks, _i, _ref, _ref1, _ref2;
     tileurl = 'images/tiles/<%=name%>.<%=typeof filetype !== "undefined" ? filetype : "jpg" %>';
     tilewidth = tileheight = 50;
     tiles = null;
     _activechunk = null;
-    _activeprecursor = null;
+    _activebitmap = null;
     _backbone = null;
     stage = board.getStage();
     _3dtiles = null;
+    _cached_chunks = [];
+    for (i = _i = 0; _i <= 3; i = ++_i) {
+      _cached_chunks[i] = [];
+    }
     Tile = (function(_super) {
       __extends(Tile, _super);
 
@@ -61,11 +65,11 @@
       }
 
       Chunk.prototype.defaults = function() {
-        var i, j, row, rows, tile, _i, _j, _ref3, _ref4;
+        var j, row, rows, tile, _j, _k, _ref3, _ref4;
         rows = [];
-        for (i = _i = 0, _ref3 = globals.map.tileheight; 0 <= _ref3 ? _i < _ref3 : _i > _ref3; i = 0 <= _ref3 ? ++_i : --_i) {
+        for (i = _j = 0, _ref3 = globals.map.tileheight; 0 <= _ref3 ? _j < _ref3 : _j > _ref3; i = 0 <= _ref3 ? ++_j : --_j) {
           rows[i] = row = new Row;
-          for (j = _j = 0, _ref4 = globals.map.tilewidth; 0 <= _ref4 ? _j < _ref4 : _j > _ref4; j = 0 <= _ref4 ? ++_j : --_j) {
+          for (j = _k = 0, _ref4 = globals.map.tilewidth; 0 <= _ref4 ? _k < _ref4 : _k > _ref4; j = 0 <= _ref4 ? ++_k : --_k) {
             row.add(tile = new Tile({
               t: 'e'
             }));
@@ -118,7 +122,6 @@
         return nestedobj[chars];
       }
       parent = chars.charAt(0);
-      console.log(chars, nestedobj);
       if (_.has(nestedobj[parent], "subtypes")) {
         return getFromShorthand(chars.slice(1), nestedobj[parent].subtypes);
       } else {
@@ -137,15 +140,21 @@
     setTile = function(tile) {
       return _.extend(_activechunk.children[tile.y].children[tile.x], _.omit(tile, "x", "y"));
     };
+    bindModel = function(bitmap) {
+      var model;
+      model = bitmap.tileModel = new Tile(_.pick(bitmap, "x", "y", "e", "t", "end", "elv", "m"));
+      model.bitmap = bitmap;
+      return bitmap;
+    };
     loadChunk = function(map) {
       var bitmaparray;
       bitmaparray = [];
       _.each(map, function(tile) {
-        var extend, h, i, temp, type, w, _i, _ref3;
+        var bitmap, extend, h, temp, type, w, _j, _ref3;
         if ($.isArray(tile)) {
           if (tile.length === 1) {
             extend = [];
-            for (i = _i = 0, _ref3 = globals.map.width / tilewidth; 0 <= _ref3 ? _i < _ref3 : _i > _ref3; i = 0 <= _ref3 ? ++_i : --_i) {
+            for (i = _j = 0, _ref3 = globals.map.width / tilewidth; 0 <= _ref3 ? _j < _ref3 : _j > _ref3; i = 0 <= _ref3 ? ++_j : --_j) {
               extend.push(tile[0]);
             }
           }
@@ -159,7 +168,9 @@
           temp = getFromShorthand(type, tiles);
           w = tile.width || 1;
           h = tile.height || 1;
-          return bitmaparray.push(_.extend(new createjs.Bitmap(temp.url), temp || {}, tile || {}));
+          bitmap = new createjs.Bitmap(temp.url);
+          bitmap = _.extend(bitmap, temp || {}, tile || {});
+          return bitmaparray.push(bindModel(bitmap));
         }
       });
       return bitmaparray;
@@ -193,16 +204,16 @@
       return container;
     };
     modifyBackground = function(bitmap) {
-      board.setBackground(bitmap.background || "");
-      return board.setBackgroundPosition(bitmap.background_position || "top left");
+      board.setBackgroundPosition(bitmap.background_position || "top left");
+      return board.setBackground(bitmap.background || false);
     };
     return window.mapper = {
-      loadChunk: function(chunk) {
-        if (typeof chunk === "string") {
-          return loadChunkFromURL(chunk);
+      loadChunk: function(chunk, x, y) {
+        if (_cached_chunks[y][x]) {
+          return _cached_chunks[y][x];
         } else {
-          _activeprecursor = loadChunk(chunk.tiles);
-          return _.extend(_activeprecursor, _.omit(chunk, "tiles"));
+          _activebitmap = loadChunk(chunk.tiles);
+          return _activebitmap = _cached_chunks[y][x] = _.extend(_activebitmap, _.omit(chunk, "tiles"));
         }
       },
       renderChunk: function(bitmap) {

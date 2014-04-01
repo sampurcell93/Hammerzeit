@@ -72,7 +72,6 @@ define ["utilities", "board", "globals", "underscore", "jquery"], (ut, board, gl
 				@dialogSetHelper set, ++i
 			, blurb.options.delay
 		loadDialogSet: (set) ->
-			ut.c "wrapper"
 			if !set.length then return
 			@dialogSetHelper set, 0
 

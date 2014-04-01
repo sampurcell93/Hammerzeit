@@ -46,6 +46,11 @@
 
       GridSquare.prototype.template = "&nbsp;";
 
+      GridSquare.prototype.colors = {
+        selected_move: "green",
+        potential_move: "#ea0000"
+      };
+
       GridSquare.prototype.initialize = function() {
         return this.listenTo(this.model, {
           potentialmove: this.potentialmoves,
@@ -64,12 +69,29 @@
         return console.log(arguments);
       };
 
-      GridSquare.prototype.bindMoveFns = function(area) {
-        return area.on("click", this.clickHandler, this, false);
+      GridSquare.prototype.mouseoverHandler = function(e, data) {
+        return data.area.graphics.clear().beginFill(this.colors.selected_move).drawRect(0, 0, _side - 2, _side - 2).endFill();
       };
 
-      GridSquare.prototype.potentialmoves = function(type) {
+      GridSquare.prototype.mouseoutHandler = function(e, data) {
+        return data.area.graphics.clear().beginFill(this.colors.potential_move).drawRect(0, 0, _side - 2, _side - 2).endFill();
+      };
+
+      GridSquare.prototype.bindMoveFns = function(area) {
+        area.on("click", this.clickHandler, this, false, {
+          area: area
+        });
+        area.on("mouseover", this.mouseoverHandler, this, false, {
+          area: area
+        });
+        return area.on("mouseout", this.mouseoutHandler, this, false, {
+          area: area
+        });
+      };
+
+      GridSquare.prototype.potentialmoves = function() {
         var area, bitmap, g;
+        console.log("highlighting potential");
         this.$el.addClass("potentialmove");
         this.potentialmoves = true;
         bitmap = this.model.bitmap;
@@ -82,7 +104,7 @@
         g = area.graphics;
         area.x = bitmap.x - 1;
         area.y = bitmap.y - 1;
-        g.beginFill("#ea0000").drawRect(0, 0, _side - 2, _side - 2).endFill();
+        g.clear().beginFill(this.colors.potential_move).drawRect(0, 0, _side - 2, _side - 2).endFill();
         area.alpha = 0.3;
         this.bindMoveFns(area);
         stage.addChildAt(area, 0);
@@ -95,9 +117,7 @@
         this.$el.removeClass("potentialmove");
         this.potentialmoves = false;
         bitmaphit = this.model.bitmap.hitArea;
-        console.log(bitmaphit);
         bitmaphit.off("click");
-        console.log(bitmaphit);
         return stage.removeChild(bitmaphit);
       };
 
@@ -132,6 +152,7 @@
     };
     activateGrid = function() {
       _activemap = mapcreator.getChunk();
+      console.log(_activemap);
       if (!_grid) {
         _grid = new Overlay({
           model: _activemap,
@@ -139,6 +160,8 @@
           child: GridSquare
         });
       } else {
+        _grid.model = _activemap;
+        _grid.render();
         _grid.show();
       }
       return _gridded = true;

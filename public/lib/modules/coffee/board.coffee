@@ -130,9 +130,10 @@ define ['globals', 'utilities', 'jquery', 'underscore', 'easel'], (globals, ut) 
     }
 
     addState = (newstate) ->
-        state.push newstate
-        fn = stateChangeEvents.add[newstate]
-        if fn? then fn()
+        if hasState(newstate) is false
+            state.push newstate
+            fn = stateChangeEvents.add[newstate]
+            if fn? then fn()
 
     setState = (newstate) ->
         state = [newstate]
@@ -268,8 +269,15 @@ define ['globals', 'utilities', 'jquery', 'underscore', 'easel'], (globals, ut) 
         slowTo: (interval) ->
             _ticker.setInterval interval
             @
-        blur: (amount) -> blurBoard()
-        unblur: -> unblurBoard()
+        blur: (amount) -> 
+            blurBoard()
+            @
+        unblur: -> 
+            unblurBoard() 
+            @
+        focus: -> 
+            $canvas.focus()
+            @
     }
 
     board.initialize()

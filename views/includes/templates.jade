@@ -4,13 +4,19 @@ script#modify-tile(type='text/template')
         Y: <%= y %>
         </h2>
         <label>
-        Elevation: <input type="text" class='js-add-elevation' placeholder='add an elevation - positive integer 1-10' value='<%= typeof elv !== "undefined" ? elv : 0 %>'/>
+        Elevation: <input type="text"  data-changeme='elevation' class='js-change js-add-elevation' placeholder='add an elevation - positive integer 1-10' value='<%= typeof elv !== "undefined" ? elv : 0 %>'/>
         </label>
         <label>
-        Enterable Directions: <input type="text" class='js-add-dirs' placeholder='add directions' value='<%= typeof e !== "undefined" ? e : "" %>'/>
+        Enterable Directions: <input type="text" data-changeme='e'  class='js-change js-add-dirs' placeholder='add directions' value='<%= typeof e !== "undefined" ? e : "" %>'/>
         </label>
         <label>
-        Tile type: <input type="text" class='js-add-type' placeholder='add type' value='<%= typeof t !== "undefined" ? t : "e" %>'/>
+        Tile type: <input type="text" data-changeme='t'  class='js-change js-add-type' placeholder='add type' value='<%= typeof t !== "undefined" ? t : "e" %>'/>
+        </label>
+        <label>
+        End? <input type="text" data-changeme='end'  class='js-change js-can-end' placeholder='can a player end here?' value='<%= end %>'/>
+        </label>
+        <label>
+        Difficult? <input type="text" data-changeme='m'  class='js-change js-diff' placeholder='diff terrain (squares)' value='<%= m %>'/>
         </label>
 
 script#inventory-item(type='text/template')
@@ -22,4 +28,4 @@ script#inventory-item(type='text/template')
 script#mapcreate-item(type='text/template')
         <%= typeof e !== 'undefined' && e ? e : '&nbsp;' %>
         <span class='elevation'><%= elv %></span>
-        <span class='type'><%= t || "" %></span>
+        <span class='type'><%= t !== "e" ? t : "" %></span>

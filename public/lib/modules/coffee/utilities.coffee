@@ -165,4 +165,9 @@ define  ["jquery", "underscore"], ->
 			if val < 0 then -1 else if val > 0 then 1 else 0
 		$inputChanged: $.fn.inputChanged
 		slice: Array.prototype.slice
+		parseBool: (str) ->
+			str = str.toLowerCase()
+			if str is "true" then true 
+			else if str is "false" then false
+			else str
 	}

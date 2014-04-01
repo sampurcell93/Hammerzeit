@@ -48,7 +48,7 @@ define ["globals", "utilities", "mapper", "backbone", "jquery", "jquery-ui", "un
                     item = @child || OverlayItem
                     item = new item model: tile
                     item.parent = @
-                    tile.modifier = item
+                    if item instanceof OverlayItem then tile.modifier = item
                     @$el.append(item.render().el)
         modifyAllTiles: (modal) ->
             ut.c "modding all", _selected
@@ -74,7 +74,7 @@ define ["globals", "utilities", "mapper", "backbone", "jquery", "jquery-ui", "un
             modal = ut.launchModal(str + _.template(_enterInfo, _.extend(tile.toJSON(), {x: tile.x, y: tile.y})))
             modal.find(".js-add-elevation").select()
             self = @
-            modal.on("keydown", ".js-add-dirs, .js-add-elevation, .js-add-type", (e) ->
+            modal.on("keydown", ".js-change", (e) ->
                 key = e.keyCode || e.which
                 if key != 9 then $(@).attr("changed", true)
                 if key == 13
@@ -87,6 +87,15 @@ define ["globals", "utilities", "mapper", "backbone", "jquery", "jquery-ui", "un
             tile
          # grab the content of the dir box and set to tiler
         applyChanges: (modal, proceed) ->
+            self = @
+            # modal.find(".js-change").each >
+            #     $t = $ @
+            #     if $t.inputChanged()
+            #         self.model.set $t.data("changeme"), $t.val()
+            if modal.find(".js-diff").inputChanged()
+                @model.set "m", parseInt(modal.find(".js-diff").val())
+            if modal.find(".js-can-end").inputChanged()
+                @model.set "end", ut.parseBool(modal.find(".js-can-end").val())
             if modal.find(".js-add-type").inputChanged()
                 @model.set "t", modal.find(".js-add-type").val()
             if modal.find(".js-add-dirs").inputChanged()
@@ -137,11 +146,11 @@ define ["globals", "utilities", "mapper", "backbone", "jquery", "jquery-ui", "un
     toggleOverlay = ->
         if !_overlay
             _overlay = new Overlay model: _chunk
+            _overlay.showing = true
         else 
+            _overlay.showing = false
             _overlay.$el.empty()
             _overlay = null
-
-
     exportMap = ->
         _.each _chunk.get("rows"), (row) ->
             _.each row.models, (tile) ->
@@ -150,40 +159,30 @@ define ["globals", "utilities", "mapper", "backbone", "jquery", "jquery-ui", "un
         # ut.c _chunk
         m.find("textarea").select()
     return {
+        render: -> if _overlay and _overlay.showing
+            _overlay.model = _chunk
+            _overlay.render()
         toggleOverlay: toggleOverlay
         getDefaultChunk: ->
             JSON.parse new Chunk().export()
         # Accepts a bitmaparray and binds a tile model to each bitmap. Easel js needs a DisplayObject format
         # to render properly, but some features require backbone models. this binds a model to each bitmap
-        bindModels: (bitmaparray, x, y) ->
-            chunk = _cached_chunks[y][x]
-            _.each bitmaparray, (row, j) ->
-                _.each row, (tile, i) ->
-                    model = chunk.get("rows")[j].at(i)
-                    tile.tileModel = model
-                    model.bitmap = tile
-            chunk
         loadChunk: (precursor_chunk, x, y) ->   
-            if _cached_chunks[y][x] then return _cached_chunks[y][x]
+            if _cached_chunks[y][x] then return _chunk = _cached_chunks[y][x]
             chunk = new Chunk
             allRows = []
             # Deep copy
             _.each precursor_chunk, (row, i) ->
                 rowCollection = new Row
                 _.each row, (tile, j) ->
-                    tile = _.pick tile, "t", "e", "elv", "end", "m"
-                    rowCollection.add TileModel = new Tile(tile)
-                    TileModel.x = j
-                    TileModel.y = i
-                    tile.model = TileModel
-                    TileModel.set {x: j, y: i}
+                    rowCollection.add m = tile.tileModel
+                    m.x = j
+                    m.y = i
+                    m.set {x: j, y: i}
                 allRows[i] = rowCollection
             chunk.set("rows", allRows)
             _chunk = chunk
-            # toggleOverlay()
-            # toggleOverlay()
             _cached_chunks[y][x] = _chunk = chunk
-
         getChunk: -> _chunk
         exportMap: exportMap
         Overlay: Overlay

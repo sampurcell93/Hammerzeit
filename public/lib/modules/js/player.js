@@ -115,10 +115,6 @@
         change: function(dx, dy) {}
       };
 
-      player.prototype.move = function(dx, dy) {
-        return player.__super__.move.call(this, dx, dy);
-      };
-
       player.prototype.defaults = function() {
         var Item, defaults, inventory,
           _this = this;
@@ -145,7 +141,7 @@
         return _.extend(defaults, {
           current_chunk: {
             x: 0,
-            y: 0
+            y: 1
           },
           inventory: inventory,
           type: "PC",

@@ -112,10 +112,13 @@
         return this;
       };
 
-      NPC.prototype.enterSquare = function(target) {
+      NPC.prototype.enterSquare = function(target, dx, dy) {
         this.currentspace = target;
         target.occupied = true;
-        return target.occupiedBy = this.marker;
+        target.occupiedBy = this.marker;
+        if (target.end === false || target.end === "false") {
+          return this.move(dx, dy, 0);
+        }
       };
 
       NPC.prototype.moveRight = function() {
@@ -168,7 +171,7 @@
         }
       };
 
-      NPC.prototype.move = function(dx, dy) {
+      NPC.prototype.move = function(dx, dy, walkspeed) {
         var cbs, count, m_i, marker, sheet, target,
           _this = this;
         if (board.getPaused()) {
@@ -199,12 +202,12 @@
             _this.moving = false;
             _this.checkTrigger(target);
             _this.leaveSquare();
-            _this.enterSquare(target);
+            _this.enterSquare(target, dx, dy);
             _this.reanimate("run", .13, "run");
             cbs.done.call(_this, dx, dy);
           }
           return count++;
-        }, _p.walkspeed);
+        }, walkspeed || _p.walkspeed);
         return true;
       };
 
@@ -272,8 +275,9 @@
         return ((_ref1 = chunk[(y + (50 * dy)) / 50]) != null ? _ref1.children[(x + (50 * dx)) / 50] : void 0) || {};
       };
 
-      NPC.prototype.virtualMove = function(dx, dy, start) {
-        var target;
+      NPC.prototype.virtualMove = function(dx, dy, start, extra) {
+        var m, target;
+        extra || (extra = 0);
         if (board.getPaused()) {
           return false;
         }
@@ -286,6 +290,20 @@
         }
         if (!this.checkEnterable(target, dx, dy, start)) {
           return false;
+        }
+        m = target.tileModel.m += extra;
+        if (target.tileModel.get("end") === false) {
+          if (dx !== 0) {
+            dx *= 2;
+          } else if (dy !== 0) {
+            dy *= 2;
+          }
+          target = this.virtualMove(dx, dy, start, extra + 1);
+          if (target) {
+            target.tileModel.distance = m;
+          } else {
+            return false;
+          }
         }
         return target;
       };
@@ -303,13 +321,15 @@
         start.tileModel.discovered = true;
         start.tileModel.distance = 0;
         enqueue = function(distance, target) {
+          var d;
           if (!target) {
             return;
           }
-          if (distance + 1 > speed) {
+          d = target.m ? target.m : 1;
+          if (distance + d > speed) {
             return;
           } else {
-            target.tileModel.distance = distance + 1;
+            target.tileModel.distance = distance + d;
           }
           target.tileModel.discovered = true;
           checkQueue.unshift(target);

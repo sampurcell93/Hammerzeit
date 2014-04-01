@@ -3,11 +3,14 @@ define ["globals", "utilities", "board", "mapper", "underscore", "backbone", "ea
 	tilewidth    = tileheight = 50
 	tiles 		 = null
 	_activechunk = null
-	_activeprecursor = null
+	_activebitmap = null
 	_backbone = null
 	stage = board.getStage()
 	# 3d tiles have to be drawn after the players and npcs, because they overshadow them
 	_3dtiles = null
+
+	_cached_chunks = []
+	for i in [0..3] then _cached_chunks[i] = []
 
 	class Tile extends Backbone.Model
         defaults: 
@@ -70,7 +73,6 @@ define ["globals", "utilities", "board", "mapper", "underscore", "backbone", "ea
 	getFromShorthand = (chars, nestedobj) ->
 		if _.has(nestedobj, chars) then return nestedobj[chars]
 		parent = chars.charAt 0
-		console.log chars, nestedobj
 		if _.has nestedobj[parent], "subtypes"
 			getFromShorthand chars.slice(1), nestedobj[parent].subtypes
 		else nestedobj[parent]
@@ -89,6 +91,10 @@ define ["globals", "utilities", "board", "mapper", "underscore", "backbone", "ea
 	setTile = (tile) ->
 		_.extend(_activechunk.children[tile.y].children[tile.x], _.omit(tile, "x", "y"))
 
+	bindModel = (bitmap) ->
+        model = bitmap.tileModel = new Tile(_.pick(bitmap, "x", "y", "e", "t", "end", "elv", "m"))
+        model.bitmap = bitmap
+        bitmap
 
 	loadChunk = (map) ->
 		bitmaparray = []
@@ -106,8 +112,10 @@ define ["globals", "utilities", "board", "mapper", "underscore", "backbone", "ea
 				temp = getFromShorthand type, tiles
 				w = tile.width  || 1
 				h = tile.height || 1
+				bitmap = new createjs.Bitmap(temp.url)
+				bitmap = _.extend(bitmap, (temp || {}), (tile || {}))
 				# Create a new bitmap image, and extend the generic tile defaults onto it, followed by the specific tile settings
-				bitmaparray.push(_.extend(new createjs.Bitmap(temp.url), (temp || {}), (tile || {})))
+				bitmaparray.push(bindModel(bitmap))
 		bitmaparray
 
 	# We have wrapper each chunk in a container, so a simple remove (0) should suffice here
@@ -135,16 +143,17 @@ define ["globals", "utilities", "board", "mapper", "underscore", "backbone", "ea
 		container
 
 	modifyBackground = (bitmap) ->
-		board.setBackground(bitmap.background || "")
 		board.setBackgroundPosition(bitmap.background_position || "top left")
+		board.setBackground(bitmap.background || false)
 
 	return window.mapper = {
 		# Expects an array of 14x14 2D arrays, or chunks, each of which represents one full view in the map. 
-		loadChunk: (chunk) ->
-			if typeof chunk is "string" then loadChunkFromURL chunk
+		# Returns the bitmap 2d array for rendering by easel
+		loadChunk: (chunk, x, y) ->
+			if _cached_chunks[y][x] then return _cached_chunks[y][x]
 			else 
-				_activeprecursor = loadChunk chunk.tiles
-				_.extend _activeprecursor, _.omit(chunk, "tiles")
+				_activebitmap = loadChunk chunk.tiles
+				_activebitmap = _cached_chunks[y][x] = _.extend _activebitmap, _.omit(chunk, "tiles")
 		# Expects a bitmap (can be generated with loadMap) and a createjs stage. Will render the map to the stage
 		# Returns a Container object with the bitmap inside it
 		renderChunk: (bitmap) ->
@@ -157,6 +166,7 @@ define ["globals", "utilities", "board", "mapper", "underscore", "backbone", "ea
 			_activechunk = container 
 		clearChunk: ->
 			clearChunk()
+		# Returns the container objects which have been rendered to the canvas
 		getVisibleChunk: () ->
 			_activechunk
 		setTile: (tile) ->

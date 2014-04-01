@@ -1,6 +1,6 @@
 define ["globals", "utilities", "dialog", "battler", "player", "npc", "board", "underscore", "backbone", "jquery-ui"], (globals, ut, dialog, battler, player, NPC, board) ->
 
-    board.$canvas.focus()
+    board.focus()
 
     InventoryList = items.InventoryList
     _potential_moves = null
@@ -17,7 +17,6 @@ define ["globals", "utilities", "dialog", "battler", "player", "npc", "board", "
             siblings(".selected").removeClass("selected")
             @
         selectNext: ->
-            console.log "next"
             @selectThis @$el.children(".selected").next()
         selectPrev: ->
             console.log "prev"
@@ -32,17 +31,15 @@ define ["globals", "utilities", "dialog", "battler", "player", "npc", "board", "
                 @selectThis $(e.currentTarget)
             "keyup": (e) ->
                 key = e.keyCode || e.which
-                console.log key
                 switch key
-                    when key == 38 then @selectPrev()
-                    when key == 40 then @selectNext()
-                    when key == 32 then @toggle()
-                    when key == 27 then @close()
+                    when 38 then @selectPrev()
+                    when 40 then @selectNext()
+                    when 32 then @toggle()
+                    when 27 then @close()
+                    when 13 then @$el.children(".selected").trigger "click"
             # "click": -> board.$canvas.focus()
         render: ->
             @showInventory()
-            PC = @model.toJSON()
-            @$(".HP").text PC.HP
         clickActiveItem: ->
             @$el.children(".selected").trigger "click"
         clearPotentialMoves: ->
@@ -52,17 +49,17 @@ define ["globals", "utilities", "dialog", "battler", "player", "npc", "board", "
                 # console.log tile
                 tile.trigger "removemove"
         close: ->
-            console.log @
+            _activemenu = null
             @showing = false
             @$el.effect "slide", _.extend({mode: 'hide'}, {direction: 'right', easing: 'easeInOutQuart'}), 300
-            board.unpause().$canvas.focus()
+            board.unpause().focus()
             @clearPotentialMoves()
         open: ->
             _activemenu = @
             @showing = true 
             @render()
             board.pause()
-            @$el.focus().effect "slide", _.extend({mode: 'show'}, {direction: 'right', easing: 'easeInOutQuart'}) , 300
+            @$el.focus().select().effect "slide", _.extend({mode: 'show'}, {direction: 'right', easing: 'easeInOutQuart'}) , 300
         toggle: ->
             if @showing then @close()
             else @open()    
@@ -74,8 +71,11 @@ define ["globals", "utilities", "dialog", "battler", "player", "npc", "board", "
         el: "#travel-menu"
         type: 'travel'
         initialize: ->
+            _.bindAll @, "close", "open", "toggle", "selectNext", "selectThis", "selectPrev"
         render: ->
             super
+            PC = @model.toJSON()
+            @$(".HP").text PC.HP
 
     # Sub classed battle menu
     class BattleMenu extends Menu
@@ -87,8 +87,8 @@ define ["globals", "utilities", "dialog", "battler", "player", "npc", "board", "
         render: ->
             super
         initialize: ->
+            _.bindAll @, "close", "open", "toggle", "selectNext", "selectThis", "selectPrev"
             @events = _.extend @events, @child_events
-            console.log @events
         child_events:
             # Creates an overlay on the 
             "click .js-virtual-move": -> 
@@ -101,13 +101,14 @@ define ["globals", "utilities", "dialog", "battler", "player", "npc", "board", "
         travel: new TravelMenu model: player.PC
         battle: new BattleMenu model: battler.getActivePlayer()
     }
-    _activemenu = _menus['travel']
+    _activemenu = _menus['battle']
 
 
     toggleMenu = (menu) ->
+        _activemenu = _menus[menu]
         other = if menu == "battle" then "travel" else "battle"
+        _activemenu.toggle()
         _menus[other].close()
-        _menus[menu].toggle()
         board.toggleState("MENUOPEN")
 
     closeAll = ->

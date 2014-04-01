@@ -77,10 +77,6 @@ define "player", ["utilities", "npc", "board", "globals", "mapper", "items", "ba
 				{ x: x, y: y }
 			change: (dx, dy)->
 				# console.log "change :)"
-		move: (dx, dy) ->
-			# board.addState("battle").removeState("travel")
-			# Call super move function then do native bound checking when animation done
-			super(dx, dy)
 		defaults: ->
 			defaults = super
 			Item = items.Item
@@ -93,7 +89,7 @@ define "player", ["utilities", "npc", "board", "globals", "mapper", "items", "ba
 			_.each inventory.models, (item) => item.set("belongsTo", @)
 			inventory.sort()
 			return _.extend defaults, {
-				current_chunk: { x: 0, y: 0 }
+				current_chunk: { x: 0, y: 1 }
 				inventory: inventory
 				type: "PC"
 				name: "Hero"

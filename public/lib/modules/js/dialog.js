@@ -112,7 +112,6 @@
         }, blurb.options.delay);
       },
       loadDialogSet: function(set) {
-        ut.c("wrapper");
         if (!set.length) {
           return;
         }

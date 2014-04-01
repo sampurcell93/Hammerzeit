@@ -147,10 +147,12 @@
     };
     addState = function(newstate) {
       var fn;
-      state.push(newstate);
-      fn = stateChangeEvents.add[newstate];
-      if (fn != null) {
-        return fn();
+      if (hasState(newstate) === false) {
+        state.push(newstate);
+        fn = stateChangeEvents.add[newstate];
+        if (fn != null) {
+          return fn();
+        }
       }
     };
     setState = function(newstate) {
@@ -340,10 +342,16 @@
         return this;
       },
       blur: function(amount) {
-        return blurBoard();
+        blurBoard();
+        return this;
       },
       unblur: function() {
-        return unblurBoard();
+        unblurBoard();
+        return this;
+      },
+      focus: function() {
+        $canvas.focus();
+        return this;
       }
     };
     board.initialize();
