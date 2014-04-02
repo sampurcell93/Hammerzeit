@@ -5,6 +5,12 @@
   define(["globals", "utilities", "dialog", "battler", "player", "npc", "board", "underscore", "backbone", "jquery-ui"], function(globals, ut, dialog, battler, player, NPC, board) {
     var BattleMenu, InventoryList, Menu, TravelMenu, closeAll, toggleMenu, _activemenu, _menus, _potential_moves, _ref, _ref1, _ref2;
     board.focus();
+    globals.shared_events.on("closemenus", function() {
+      return closeAll();
+    });
+    globals.shared_events.on("openmenu", function() {
+      return _activemenu.open();
+    });
     InventoryList = items.InventoryList;
     _potential_moves = null;
     Menu = (function(_super) {
@@ -102,7 +108,13 @@
       };
 
       Menu.prototype.open = function() {
-        var _activemenu;
+        var active, _activemenu;
+        active = battler.getActive({
+          player: true
+        });
+        if (active) {
+          this.model = active;
+        }
         _activemenu = this;
         this.showing = true;
         this.render();
@@ -181,7 +193,7 @@
       BattleMenu.prototype.child_events = {
         "click .js-virtual-move": function() {
           this.clearPotentialMoves();
-          _potential_moves = battler.getActivePlayer().virtualMovePossibilities();
+          _potential_moves = battler.getActive().virtualMovePossibilities();
           return console.log(_potential_moves);
         }
       };
@@ -194,7 +206,9 @@
         model: player.PC
       }),
       battle: new BattleMenu({
-        model: battler.getActivePlayer()
+        model: battler.getActive({
+          player: true
+        })
       })
     };
     _activemenu = _menus['battle'];
@@ -213,20 +227,33 @@
       });
     };
     return {
+      open: function() {
+        _activemenu.open();
+        return this;
+      },
+      close: function() {
+        _activemenu.close();
+        return this;
+      },
       toggleMenu: function(menu) {
-        return toggleMenu(menu);
+        toggleMenu(menu);
+        return this;
       },
       selectNext: function() {
-        return _activemenu.selectNext();
+        _activemenu.selectNext();
+        return this;
       },
       selectPrev: function() {
-        return _activemenu.selectPrev();
+        _activemenu.selectPrev();
+        return this;
       },
       activateMenuItem: function() {
-        return _activemenu.clickActiveItem();
+        _activemenu.clickActiveItem();
+        return this;
       },
       closeAll: function() {
-        return closeAll();
+        closeAll();
+        return this;
       },
       battleMenu: _menus["battle"],
       travelMenu: _menus['travel']

@@ -2,9 +2,6 @@ define  ["jquery", "underscore"], ->
 
 	_c = -> for arg in arguments then console.log arg
 
-		
-	
-
 	# Thanks to stackoverflow user Will for this handy class splitter
 	(($) ->
 	  $.fn.classes = (callback) ->
@@ -173,4 +170,15 @@ define  ["jquery", "underscore"], ->
 			if str is "true" then true 
 			else if str is "false" then false
 			else str
+		array_shuffle: (o) ->
+		  j = undefined
+		  x = undefined
+		  i = o.length
+
+		  while i
+		    j = Math.floor(Math.random() * i)
+		    x = o[--i]
+		    o[i] = o[j]
+		    o[j] = x
+		  o
 	}

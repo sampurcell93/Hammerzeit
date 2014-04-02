@@ -1,7 +1,8 @@
-define ["globals", "utilities", "board","items", "mapper", "underscore", "backbone"], (globals, ut, board, items, mapper) ->
+define ["globals", "utilities", "board", "items", "mapper", "underscore", "backbone"], (globals, ut, board, items, mapper) ->
 	_checkEntry = ut.tileEntryCheckers
 
 	_ts = globals.map.tileside
+	_events = globals.shared_events
 	Row = mapper.Row
 
 	# Converts left/right/up/down to x y
@@ -24,6 +25,23 @@ define ["globals", "utilities", "board","items", "mapper", "underscore", "backbo
 
 	class NPC extends Backbone.Model
 		currentspace: {}
+		defaults: ->
+			return {
+				name: "NPC"
+				inventory: new items.Inventory 
+				init: 1
+				type: 'NPC'
+				sprite: null
+				level: 1
+				HP: 10
+				attrs:
+					spd: 6
+					ac: 10
+					jmp: 2
+					atk: 3
+				# powers: 
+				current_chunk: { x: 0, y: 0 }
+			}
 		type: 'npc'
 		move_callbacks: 
 			done: -> 
@@ -62,6 +80,11 @@ define ["globals", "utilities", "board","items", "mapper", "underscore", "backbo
 			sheet.getAnimation("run").next = "run"
 			sprite = new createjs.Sprite(sheet, "run")
 			@marker = sprite
+		cursor: board.newCursor()
+		showCursor: ->
+			sprite.on "click", => 
+				@cursor.show().move sprite
+				@highlightTile("blue")
 		# Note the argument order - reflects 2D array notation
 		setChunk: (y,x) ->
 			chunk = @get "current_chunk"
@@ -102,8 +125,7 @@ define ["globals", "utilities", "board","items", "mapper", "underscore", "backbo
 				, 0
 			else null
 
-		canMoveOffChunk: (x, y) ->
-			return !board.hasState("battle") and (x < globals.map.width or y < globals.map.height)
+		canMoveOffChunk: -> !(board.hasState("battle"))
 
 		# Set the sprite sheet to the direction given by the x,y coords. 
 		setSpriteSheet: (dx,dy) ->
@@ -154,6 +176,7 @@ define ["globals", "utilities", "board","items", "mapper", "underscore", "backbo
 			if !@checkEnterable(target, dx, dy) then return false
 			if !@stage or !marker
 				throw new Error("There is no stage or marker assigned to this NPC!")
+			if !@canMoveOffChunk() then return false
 			count = 0
 			@moving = true
 			m_i = setInterval =>
@@ -218,7 +241,6 @@ define ["globals", "utilities", "board","items", "mapper", "underscore", "backbo
 			chunk = mapper.getVisibleChunk()?.children
 			y = if start then start.y else @marker.y
 			x = if start then start.x else @marker.x
-			console.log "got target tile"
 			chunk[(y+(50*dy))/50]?.children[(x+(50*dx))/50] || {}
 
 		# Like move, but lightweight and with no transitions - simple arithmetic check
@@ -284,24 +306,6 @@ define ["globals", "utilities", "board","items", "mapper", "underscore", "backbo
 		# Is the NPC dead?
 		isDead: ->
 			@dead
-		defaults: ->
-			return {
-				name: "NPC"
-				inventory: new items.Inventory 
-				init: 1
-				type: 'NPC'
-				sprite: null
-				level: 1
-				HP: 10
-				attrs:
-					spd: 6
-					ac: 10
-					jmp: 2
-					atk: 3
-				# powers: 
-				current_chunk: { x: 0, y: 0 }
-			}
-
 		getPrivate: (id) ->
 			_p[id]
 		# Given pixel x and y coordinates (ie 400, 300), set the current space object
@@ -313,12 +317,14 @@ define ["globals", "utilities", "board","items", "mapper", "underscore", "backbo
 				target.occupied = true
 				target.occupiedBy = @marker
 			target
+		# Checks if a given target can be occupied. Does not account for entrance vectors, only current state.
 		canOccupy: (t) ->
 			console.log t.end, t.e, t.occupied
 			if t.end is false then return false
 			if t.e is "f" then return false
 			if t.occupied is true then return false
 			true
+		# Adds the NPC's marker to the current map at a random valid square
 		addToMap: () ->
 			chunk = mapper.getVisibleChunk()?.children
 			x = Math.abs Math.ceil(Math.random()*globals.map.c_width/_ts - 1)
@@ -331,6 +337,27 @@ define ["globals", "utilities", "board","items", "mapper", "underscore", "backbo
 			@marker.x = x*_ts
 			@marker.y = y*_ts
 			@
+		# Pass in a color to highlight the current space of the NPC
+		highlightTile: (color) ->
+			currenttile =  @currentspace
+			if !currenttile then return @
+			currenttile.tileModel.trigger("generalhighlight", color)
+			@
+		# What phase of the user's turn are they at? Max 3
+		turnPhase: 0
+		initTurn: ->
+			@turnPhase = 0
+			console.log "starting a character's turn"
+			globals.shared_events.trigger "closemenus"
+			globals.shared_events.trigger "openmenu"
+			battler.resetTimer().startTimer @i
+			@listenTo _events, "timerdone", => 
+				console.log "the timer is done :("
+				@nextPhase()
+			console.log "the timer is running!!"
+		nextPhase: ->
+			t = ++@turnPhase
+			console.log t
 
 
 	class CharacterArray extends Backbone.Collection
@@ -346,7 +373,7 @@ define ["globals", "utilities", "board","items", "mapper", "underscore", "backbo
 	# _.each move_fns, (fn) ->
 		# if typeof fn == "function" then _.bind fn, NPC
 
-	# instead of returning the npc object directly, return a function which instantiates one.
+	# We return the objects directly so we can subclass them
 	{
 		NPC: NPC
 		NPCArray: CharacterArray

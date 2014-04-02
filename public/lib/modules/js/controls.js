@@ -1,6 +1,6 @@
 (function() {
   define(["utilities", "globals", "dialog", "npc", "mapper", "mapcreator", "battler", "menus", "player", "jquery"], function(ut, globals, dialog, NPC, mapper, mapcreator, battler, menus, player) {
-    var PC, kc, keysdisabled, _activeplayer, _priority_queue;
+    var PC, kc, keysdisabled, _priority_queue;
     _priority_queue = ["CUTSCENE", "MENUOPEN", "DIALOG", "BATTLE", "TRAVEL", "INTRO", "WAITING", "DRAWING", "LOADING"];
     kc = {
       ENTER: 13,
@@ -24,7 +24,6 @@
     };
     PC = player.PC;
     keysdisabled = false;
-    _activeplayer = null;
     require(["board", "taskrunner"], function(board, taskrunner) {
       var $c, delegate, generalFns, stateFns,
         _this = this;
@@ -46,18 +45,26 @@
         },
         WAITING: function(key) {},
         BATTLE: function(key) {
-          _activeplayer = battler.getActivePlayer();
-          switch (key) {
-            case kc["UP"]:
-              return _activeplayer.moveUp();
-            case kc["RIGHT"]:
-              return _activeplayer.moveRight();
-            case kc["DOWN"]:
-              return _activeplayer.moveDown();
-            case kc["LEFT"]:
-              return _activeplayer.moveLeft();
-            case kc['SPACE']:
-              return menus.toggleMenu("battle");
+          var activeplayer;
+          activeplayer = battler.getActive({
+            player: true
+          });
+          if (activeplayer != null) {
+            switch (key) {
+              case kc["UP"]:
+                return activeplayer.moveUp();
+              case kc["RIGHT"]:
+                return activeplayer.moveRight();
+              case kc["DOWN"]:
+                return activeplayer.moveDown();
+              case kc["LEFT"]:
+                return activeplayer.moveLeft();
+              case kc['SPACE']:
+                return menus.toggleMenu("battle");
+            }
+          } else {
+            console.log("you can't go now: a player character is NOT active. The active player is ");
+            return console.log(battler.getActive());
           }
         },
         CUTSCENE: function(key) {},

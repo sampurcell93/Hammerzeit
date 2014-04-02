@@ -1,5 +1,5 @@
 # The beginning of the game! Woot! This module sets up the story and gets the play up and running.
-define ["mapcreator", "utilities", "board", "dialog", "globals", "taskrunner", "player", "mapper", "controls", "underscore", "jquery"], (mapcreator, ut, board, dialog, globals, runner, player, mapper, controls) ->
+define ["battler", "mapcreator", "utilities", "board", "dialog", "globals", "taskrunner", "player", "mapper", "controls", "underscore", "jquery"], (battler, mapcreator, ut, board, dialog, globals, runner, player, mapper, controls) ->
 	# Expose shared events
 	_events = _.extend {}, Backbone.Events
 	# Store map triggers for this map in an object
@@ -57,10 +57,9 @@ define ["mapcreator", "utilities", "board", "dialog", "globals", "taskrunner", "
 						PC.trigger("change:current_chunk")
 						c = PC.get("current_chunk")
 						board.addMarker PC
-						console.log 'bout to render'
 						mapper.renderChunk _bitmap[c.y][c.x], stage
 						board.addState("BATTLE").removeState("WAITING").removeState("TRAVEL")
-						console.log board.getState()
+						battler.activateGrid()
 						board.setMapSize(_stageObj.width*globals.map.width, _stageObj.height*globals.map.height)
 						PC.marker.y = 500
 

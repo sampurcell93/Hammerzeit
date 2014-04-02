@@ -236,6 +236,19 @@
         } else {
           return str;
         }
+      },
+      array_shuffle: function(o) {
+        var i, j, x;
+        j = void 0;
+        x = void 0;
+        i = o.length;
+        while (i) {
+          j = Math.floor(Math.random() * i);
+          x = o[--i];
+          o[i] = o[j];
+          o[j] = x;
+        }
+        return o;
       }
     };
   });

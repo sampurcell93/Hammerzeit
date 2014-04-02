@@ -3,9 +3,10 @@
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
   define(["globals", "utilities", "board", "items", "mapper", "underscore", "backbone"], function(globals, ut, board, items, mapper) {
-    var CharacterArray, NPC, Row, coordToDir, _checkEntry, _p, _ref, _ref1, _ts;
+    var CharacterArray, NPC, Row, coordToDir, _checkEntry, _events, _p, _ref, _ref1, _ts;
     _checkEntry = ut.tileEntryCheckers;
     _ts = globals.map.tileside;
+    _events = globals.shared_events;
     Row = mapper.Row;
     coordToDir = function(coord, orientation) {
       orientation || (orientation = "1");
@@ -37,6 +38,28 @@
       }
 
       NPC.prototype.currentspace = {};
+
+      NPC.prototype.defaults = function() {
+        return {
+          name: "NPC",
+          inventory: new items.Inventory,
+          init: 1,
+          type: 'NPC',
+          sprite: null,
+          level: 1,
+          HP: 10,
+          attrs: {
+            spd: 6,
+            ac: 10,
+            jmp: 2,
+            atk: 3
+          },
+          current_chunk: {
+            x: 0,
+            y: 0
+          }
+        };
+      };
 
       NPC.prototype.type = 'npc';
 
@@ -78,6 +101,16 @@
         sheet.getAnimation("run").next = "run";
         sprite = new createjs.Sprite(sheet, "run");
         return this.marker = sprite;
+      };
+
+      NPC.prototype.cursor = board.newCursor();
+
+      NPC.prototype.showCursor = function() {
+        var _this = this;
+        return sprite.on("click", function() {
+          _this.cursor.show().move(sprite);
+          return _this.highlightTile("blue");
+        });
       };
 
       NPC.prototype.setChunk = function(y, x) {
@@ -134,8 +167,8 @@
         }
       };
 
-      NPC.prototype.canMoveOffChunk = function(x, y) {
-        return !board.hasState("battle") && (x < globals.map.width || y < globals.map.height);
+      NPC.prototype.canMoveOffChunk = function() {
+        return !(board.hasState("battle"));
       };
 
       NPC.prototype.setSpriteSheet = function(dx, dy) {
@@ -226,6 +259,9 @@
         if (!this.stage || !marker) {
           throw new Error("There is no stage or marker assigned to this NPC!");
         }
+        if (!this.canMoveOffChunk()) {
+          return false;
+        }
         count = 0;
         this.moving = true;
         m_i = setInterval(function() {
@@ -308,7 +344,6 @@
         chunk = (_ref1 = mapper.getVisibleChunk()) != null ? _ref1.children : void 0;
         y = start ? start.y : this.marker.y;
         x = start ? start.x : this.marker.x;
-        console.log("got target tile");
         return ((_ref2 = chunk[(y + (50 * dy)) / 50]) != null ? _ref2.children[(x + (50 * dx)) / 50] : void 0) || {};
       };
 
@@ -391,28 +426,6 @@
         return this.dead;
       };
 
-      NPC.prototype.defaults = function() {
-        return {
-          name: "NPC",
-          inventory: new items.Inventory,
-          init: 1,
-          type: 'NPC',
-          sprite: null,
-          level: 1,
-          HP: 10,
-          attrs: {
-            spd: 6,
-            ac: 10,
-            jmp: 2,
-            atk: 3
-          },
-          current_chunk: {
-            x: 0,
-            y: 0
-          }
-        };
-      };
-
       NPC.prototype.getPrivate = function(id) {
         return _p[id];
       };
@@ -455,6 +468,38 @@
         this.marker.x = x * _ts;
         this.marker.y = y * _ts;
         return this;
+      };
+
+      NPC.prototype.highlightTile = function(color) {
+        var currenttile;
+        currenttile = this.currentspace;
+        if (!currenttile) {
+          return this;
+        }
+        currenttile.tileModel.trigger("generalhighlight", color);
+        return this;
+      };
+
+      NPC.prototype.turnPhase = 0;
+
+      NPC.prototype.initTurn = function() {
+        var _this = this;
+        this.turnPhase = 0;
+        console.log("starting a character's turn");
+        globals.shared_events.trigger("closemenus");
+        globals.shared_events.trigger("openmenu");
+        battler.resetTimer().startTimer(this.i);
+        this.listenTo(_events, "timerdone", function() {
+          console.log("the timer is done :(");
+          return _this.nextPhase();
+        });
+        return console.log("the timer is running!!");
+      };
+
+      NPC.prototype.nextPhase = function() {
+        var t;
+        t = ++this.turnPhase;
+        return console.log(t);
       };
 
       return NPC;

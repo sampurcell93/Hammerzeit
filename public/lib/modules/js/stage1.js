@@ -1,5 +1,5 @@
 (function() {
-  define(["mapcreator", "utilities", "board", "dialog", "globals", "taskrunner", "player", "mapper", "controls", "underscore", "jquery"], function(mapcreator, ut, board, dialog, globals, runner, player, mapper, controls) {
+  define(["battler", "mapcreator", "utilities", "board", "dialog", "globals", "taskrunner", "player", "mapper", "controls", "underscore", "jquery"], function(battler, mapcreator, ut, board, dialog, globals, runner, player, mapper, controls) {
     var PC, generateChunkSprite, stage, _bitmap, _events, _initialize, _stageObj, _triggers,
       _this = this;
     _events = _.extend({}, Backbone.Events);
@@ -39,10 +39,9 @@
               PC.trigger("change:current_chunk");
               c = PC.get("current_chunk");
               board.addMarker(PC);
-              console.log('bout to render');
               mapper.renderChunk(_bitmap[c.y][c.x], stage);
               board.addState("BATTLE").removeState("WAITING").removeState("TRAVEL");
-              console.log(board.getState());
+              battler.activateGrid();
               board.setMapSize(_stageObj.width * globals.map.width, _stageObj.height * globals.map.height);
               return PC.marker.y = 500;
             }

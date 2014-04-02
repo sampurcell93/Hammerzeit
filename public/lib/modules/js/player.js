@@ -2,7 +2,7 @@
   var __hasProp = {}.hasOwnProperty,
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
-  define("player", ["utilities", "npc", "board", "globals", "mapper", "items", "backbone", "easel", "underscore"], function(ut, NPC, board, globals, mapper, items) {
+  define(["utilities", "npc", "board", "globals", "mapper", "items", "backbone", "easel", "underscore"], function(ut, NPC, board, globals, mapper, items) {
     var PCs, player, stage, _ref;
     stage = board.getStage();
     player = (function(_super) {
@@ -84,6 +84,11 @@
           };
         },
         change: function(dx, dy) {}
+      };
+
+      player.prototype.initTurn = function() {
+        player.__super__.initTurn.apply(this, arguments);
+        return console.log("and it's a PC!");
       };
 
       player.prototype.defaults = function() {

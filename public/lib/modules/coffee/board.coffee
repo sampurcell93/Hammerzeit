@@ -5,6 +5,7 @@ define ['globals', 'utilities', 'jquery', 'underscore', 'easel'], (globals, ut) 
     _zoom = 0
     # The current pixel width and height of a loaded map
     _mapwidth = _mapheight = 0
+    _ts = globals.map.tileside
 
     # State enum
     states = globals.states
@@ -24,7 +25,7 @@ define ['globals', 'utilities', 'jquery', 'underscore', 'easel'], (globals, ut) 
 
     class Cursor 
         # The cursor sprite doesn't begin exactly at 0
-        offset: -13
+        offset: -7
         constructor: ->
             spritesheet = {
                 framerate: 30
@@ -54,17 +55,22 @@ define ['globals', 'utilities', 'jquery', 'underscore', 'easel'], (globals, ut) 
             @marker = new createjs.Sprite(sheet, "bounce")
             @marker.x = 0 
             @marker.y = @offset
+            @
         show: ->
             stage.addChild @marker
+            @
         hide: ->
             stage.removeChild @marker
+            @
+        # Either pass in a DisplayObject as the first parameter, or x,y pixel coords to move to
+        # If a displayobject is passed, the cursor will be set to one square ABOVE it (as an indicator).
         move: (x, y) ->
+            if _.isObject(x)
+                y = x.y - _ts + @offset
+                x = x.x 
             @marker.x = x
             @marker.y = y + @offset
-
-
-
-    _cursor = new Cursor()
+            @
 
     setPresetBackground = (bg) ->
         $canvas.attr "bg", bg
@@ -296,12 +302,9 @@ define ['globals', 'utilities', 'jquery', 'underscore', 'easel'], (globals, ut) 
         focus: -> 
             $canvas.focus()
             @
-        showCursor: ->
-            _cursor.show()
-        hideCursor: ->
-            _cursor.hide()
-        moveCursor: (x, y) ->
-            _cursor.move x, y
+        # Get a new cursor object
+        newCursor: ->
+            new Cursor
 
     }
 

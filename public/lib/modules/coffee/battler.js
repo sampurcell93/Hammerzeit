@@ -4,78 +4,178 @@
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
   define(["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player", "backbone", "underscore", "jquery"], function(board, globals, ut, mapper, NPC, mapcreator, player) {
-    var Battle, GridOverlay, GridSquare, NPCArray, PCs, Timer, stage, _active_chars, _activemap, _currentbattle, _grid, _ref, _ref1, _ref2, _shared, _side, _timer;
+    var ActivityQueue, Battle, GridOverlay, GridSquare, NPCArray, PCs, Timer, map, stage, _active_chars, _activebattle, _activemap, _b, _grid, _ref, _ref1, _ref2, _ref3, _shared, _side, _sm, _timer;
     PCs = player.PCs;
     NPCArray = NPC.NPCArray;
     NPC = NPC.NPC;
+    stage = board.getStage();
+    map = globals.map;
+    _sm = 20;
+    ActivityQueue = (function(_super) {
+      __extends(ActivityQueue, _super);
+
+      function ActivityQueue() {
+        _ref = ActivityQueue.__super__.constructor.apply(this, arguments);
+        return _ref;
+      }
+
+      ActivityQueue.prototype.current_index = 0;
+
+      ActivityQueue.prototype.initialize = function() {
+        _.bindAll(this, "next", "prev", "getActive");
+        return this.on({
+          "turndone": this.next
+        });
+      };
+
+      ActivityQueue.prototype.model = function(attrs, options) {
+        switch (attrs.type) {
+          case 'player':
+            return new player.model(attrs, options);
+          case 'npc':
+            return new NPC(attrs, options);
+        }
+      };
+
+      ActivityQueue.prototype.comparator = function(model) {
+        return model.get("init") + Math.ceil(Math.random() * _sm);
+      };
+
+      ActivityQueue.prototype.getActive = function(opts) {
+        var active;
+        opts = _.extend({
+          player: false
+        }, opts);
+        active = this.at(this.current_index);
+        if (opts.player === true && active instanceof player.model === false) {
+          return null;
+        } else {
+          return active;
+        }
+      };
+
+      ActivityQueue.prototype.next = function(init) {
+        var num;
+        num = this.current_index = ++this.current_index % this.length;
+        if (init !== false) {
+          this.getActive().initTurn();
+        }
+        return num;
+      };
+
+      ActivityQueue.prototype.prev = function() {
+        this.current_index--;
+        if (this.current_index < 0) {
+          return this.current_index = this.length - 1;
+        }
+      };
+
+      return ActivityQueue;
+
+    })(NPCArray);
     Battle = (function(_super) {
       __extends(Battle, _super);
 
       function Battle() {
-        _ref = Battle.__super__.constructor.apply(this, arguments);
-        return _ref;
+        _ref1 = Battle.__super__.constructor.apply(this, arguments);
+        return _ref1;
       }
 
-      Battle.prototype.battleDir = globals.battle_dir;
+      Battle.prototype.defaults = {
+        NPCs: new NPCArray,
+        AllCharacters: new ActivityQueue(PCs.models),
+        avglevel: PCs.getAverageLevel(),
+        numenemies: Math.ceil(Math.random() * PCs.length * 2 + 1),
+        enemyBounds: {
+          min_x: 0,
+          max_x: map.c_width,
+          min_y: 0,
+          max_y: map.c_height
+        }
+      };
 
-      Battle.prototype.defaults = function() {
-        return {
-          NPCs: new NPCArray
-        };
+      Battle.prototype.addPCs = function() {
+        return _.each(PCs.models, function(pc, i) {
+          if (i !== 0) {
+            pc.addToMap();
+            return board.addMarker(pc);
+          }
+        });
+      };
+
+      Battle.prototype.begin = function(type, opts) {
+        console.log("beginning battle with character");
+        this.addPCs();
+        if (type === "random") {
+          return this.randomize(opts);
+        } else {
+          return this.load(type);
+        }
       };
 
       Battle.prototype.load = function(id) {
-        return $.getJSON(this.battle_dir + id, function(battle) {
+        return $.getJSON(globals.battle_dir + id, function(battle) {
           return console.log(battle);
         });
       };
 
       Battle.prototype.randomize = function(o) {
-        var defaults, i, n, _i, _ref1;
-        defaults = {
-          avglevel: PCs.getAverageLevel(),
-          numenemies: Math.ceil(Math.random() * PCs.length * 2 + 1)
-        };
-        o = _.extend(defaults, o);
-        for (i = _i = 0, _ref1 = o.numenemies; 0 <= _ref1 ? _i < _ref1 : _i > _ref1; i = 0 <= _ref1 ? ++_i : --_i) {
+        var i, n, _i, _ref2;
+        o = _.extend(this.defaults, o);
+        console.log(this);
+        for (i = _i = 0, _ref2 = o.numenemies; 0 <= _ref2 ? _i < _ref2 : _i > _ref2; i = 0 <= _ref2 ? ++_i : --_i) {
           this.get("NPCs").add(n = new NPC({
             level: o.avglevel
           }));
-          n.marker.x = 50;
-          n.marker.y = 50 * i;
+          this.get("AllCharacters").add(n);
+          n.addToMap();
           board.addMarker(n);
-          n.setCurrentSpace();
         }
+        ut.c("before sort");
+        console.log(this.get("AllCharacters").models);
+        this.get("AllCharacters").sort();
+        ut.c("after sort");
+        console.log(this.get("AllCharacters").models);
         return this;
       };
 
       Battle.prototype.destroy = function() {
+        this.destructor();
         return Battle.__super__.destroy.apply(this, arguments);
       };
 
       Battle.prototype.destructor = function() {
-        return _.each(this.get("NPCs").models, function(npc) {
-          return board.removeChild(n.marker.id);
-        });
+        var NPCs, npc, _results;
+        NPCs = this.get("NPCs");
+        _results = [];
+        while (npc = NPCs.first()) {
+          npc.leaveSquare();
+          stage.removeChild(npc.marker);
+          _results.push(npc.destroy());
+        }
+        return _results;
       };
 
       return Battle;
 
     })(Backbone.Model);
+    _activebattle = new Battle;
     _active_chars = PCs;
     console.log(_active_chars);
     _shared = globals.shared_events;
     _shared.on("battle", function() {
-      return _grid.activate();
+      var b;
+      _grid.activate();
+      b = _activebattle = new Battle;
+      return b.begin("random");
     });
     _activemap = null;
-    stage = board.getStage();
     _side = globals.map.tileside;
-    _currentbattle = null;
     Timer = (function() {
-      function Timer(el, number) {
+      function Timer(el, number, trigger) {
         this.el = el;
         this.number = number;
+        this.trigger = trigger;
       }
 
       Timer.prototype.interval = null;
@@ -102,7 +202,7 @@
           }
           if (value >= _this.totaltime) {
             clearInterval(_this.interval);
-            return globals.shared_events.trigger("timerdone");
+            return globals.shared_events.trigger(_this.trigger || "timerdone");
           }
         }, 50);
       };
@@ -138,8 +238,8 @@
       __extends(GridOverlay, _super);
 
       function GridOverlay() {
-        _ref1 = GridOverlay.__super__.constructor.apply(this, arguments);
-        return _ref1;
+        _ref2 = GridOverlay.__super__.constructor.apply(this, arguments);
+        return _ref2;
       }
 
       GridOverlay.prototype.show = function() {
@@ -189,8 +289,8 @@
       __extends(GridSquare, _super);
 
       function GridSquare() {
-        _ref2 = GridSquare.__super__.constructor.apply(this, arguments);
-        return _ref2;
+        _ref3 = GridSquare.__super__.constructor.apply(this, arguments);
+        return _ref3;
       }
 
       GridSquare.prototype.tagName = 'li';
@@ -199,14 +299,26 @@
 
       GridSquare.prototype.colors = {
         selected_move: "green",
-        potential_move: "#ea0000"
+        potential_move: "#ea0000",
+        general: 'blue'
       };
 
       GridSquare.prototype.initialize = function() {
-        return this.listenTo(this.model, {
+        this.listenTo(this.model, {
           potentialmove: this.potentialmoves,
-          removemove: this.removepotential
+          removemove: this.removepotential,
+          generalhighlight: this.highlight
         });
+        return this.setUpHitArea();
+      };
+
+      GridSquare.prototype.setUpHitArea = function() {
+        var area, bitmap;
+        bitmap = this.model.bitmap;
+        area = bitmap.hitArea;
+        area.x = bitmap.x - 1;
+        area.y = bitmap.y - 1;
+        return this;
       };
 
       GridSquare.prototype.render = function() {
@@ -221,11 +333,13 @@
       };
 
       GridSquare.prototype.mouseoverHandler = function(e, data) {
-        return data.area.graphics.clear().beginFill(this.colors.selected_move).drawRect(0, 0, _side - 2, _side - 2).endFill();
+        data.area.graphics.clear().beginFill(this.colors.selected_move).drawRect(0, 0, _side - 2, _side - 2).endFill();
+        return this;
       };
 
       GridSquare.prototype.mouseoutHandler = function(e, data) {
-        return data.area.graphics.clear().beginFill(this.colors.potential_move).drawRect(0, 0, _side - 2, _side - 2).endFill();
+        data.area.graphics.clear().beginFill(this.colors.potential_move).drawRect(0, 0, _side - 2, _side - 2).endFill();
+        return this;
       };
 
       GridSquare.prototype.bindMoveFns = function(area) {
@@ -240,23 +354,25 @@
         });
       };
 
+      GridSquare.prototype.highlight = function() {
+        var area, bitmap, g;
+        console.log("highlighting");
+        console.log(arguments);
+        bitmap = this.model.bitmap;
+        area = bitmap.hitArea;
+        return g = area.graphics;
+      };
+
       GridSquare.prototype.potentialmoves = function() {
         var area, bitmap, g;
         console.log("highlighting potential");
-        this.$el.addClass("potentialmove");
         this.potentialmoves = true;
         bitmap = this.model.bitmap;
         area = bitmap.hitArea;
-        if (area.drawn != null) {
-          stage.addChildAt(area, 0);
-          return this;
-        }
-        area.drawn = true;
         g = area.graphics;
-        area.x = bitmap.x - 1;
-        area.y = bitmap.y - 1;
         g.clear().beginFill(this.colors.potential_move).drawRect(0, 0, _side - 2, _side - 2).endFill();
         area.alpha = 0.3;
+        area.drawn = true;
         this.bindMoveFns(area);
         stage.addChildAt(area, 0);
         this;
@@ -265,9 +381,9 @@
 
       GridSquare.prototype.removepotential = function() {
         var bitmaphit;
-        this.$el.removeClass("potentialmove");
         this.potentialmoves = false;
         bitmaphit = this.model.bitmap.hitArea;
+        bitmaphit.drawn = false;
         bitmaphit.off("click");
         return stage.removeChild(bitmaphit);
       };
@@ -296,15 +412,19 @@
     _grid = new GridOverlay({
       child: GridSquare
     });
-    return window.battler = {
-      getActivePlayer: function() {
-        return player.PC;
+    _b = window.battler = {
+      getActive: function(opts) {
+        return _activebattle.get("AllCharacters").getActive(opts);
       },
       toggleGrid: function() {
+        console.log("calling toggle grid from");
+        console.log(arguments.callee.caller.name);
         _activemap = mapcreator.getChunk();
         return _grid.toggle();
       },
       activateGrid: function() {
+        console.log("calling toggle grid from");
+        console.log(arguments.callee.caller.name);
         _activemap = mapcreator.getChunk();
         return _grid.activate();
       },
@@ -313,6 +433,9 @@
       },
       getActiveMap: function() {
         return _activemap;
+      },
+      getQueue: function() {
+        return _activebattle.get("AllCharacters");
       },
       showTimer: function() {
         _timer.show();
@@ -342,16 +465,16 @@
         _timer.setTotalTime();
         return this;
       },
-      Battle: Battle,
       randomBattle: function() {
         var b;
-        if (_currentbattle) {
-          _currentbattle.destructor();
+        if (_activebattle) {
+          _activebattle.destroy();
         }
-        _currentbattle = b = new Battle();
+        _activebattle = b = new Battle();
         return b.randomize();
       }
     };
+    return _b;
   });
 
 }).call(this);

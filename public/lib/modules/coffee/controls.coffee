@@ -36,7 +36,6 @@ define ["utilities", "globals", "dialog", "npc", "mapper", "mapcreator", "battle
 	}
 	PC = player.PC
 	keysdisabled = false
-	_activeplayer = null
 
 	require ["board", "taskrunner"], (board, taskrunner) ->
 		$c = board.$canvas.focus()
@@ -57,13 +56,19 @@ define ["utilities", "globals", "dialog", "npc", "mapper", "mapcreator", "battle
 					when kc["NEW"] then taskrunner.newGame()
 			WAITING: (key) ->
 			BATTLE: (key) ->
-				_activeplayer = battler.getActivePlayer()
-				switch key
-					when kc["UP"] 	 then _activeplayer.moveUp()
-					when kc["RIGHT"] then _activeplayer.moveRight()
-					when kc["DOWN"]  then _activeplayer.moveDown()
-					when kc["LEFT"]  then _activeplayer.moveLeft()
-					when kc['SPACE'] then menus.toggleMenu("battle")
+				# Only allow key presses when a player is active
+				activeplayer = battler.getActive({player: true})
+				if activeplayer?
+					switch key
+						when kc["UP"] 	 then activeplayer.moveUp()
+						when kc["RIGHT"] then activeplayer.moveRight()
+						when kc["DOWN"]  then activeplayer.moveDown()
+						when kc["LEFT"]  then activeplayer.moveLeft()
+						when kc['SPACE'] then menus.toggleMenu("battle")
+				else 
+					console.log "you can't go now: a player character is NOT active. The active player is "
+					console.log battler.getActive()
+
 			CUTSCENE: (key) ->
 			TRAVEL: (key) -> 
 				switch key

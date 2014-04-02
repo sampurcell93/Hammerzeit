@@ -1,11 +1,12 @@
 (function() {
   define(['globals', 'utilities', 'jquery', 'underscore', 'easel'], function(globals, ut) {
-    var $canvas, Cursor, addMarker, addState, blurBoard, board, canvas, clear, flashStateChange, hasState, initialize, introSlider, removeState, scenecount, scenelen, setPresetBackground, setState, stage, startSlideshow, state, stateChangeEvents, states, textshadow, unblurBoard, zoomIn, zoomOut, _cursor, _mapheight, _mapwidth, _ticker, _zoom,
+    var $canvas, Cursor, addMarker, addState, blurBoard, board, canvas, clear, flashStateChange, hasState, initialize, introSlider, removeState, scenecount, scenelen, setPresetBackground, setState, stage, startSlideshow, state, stateChangeEvents, states, textshadow, unblurBoard, zoomIn, zoomOut, _mapheight, _mapwidth, _ticker, _ts, _zoom,
       _this = this;
     canvas = document.getElementById("game-board");
     $canvas = $(canvas);
     _zoom = 0;
     _mapwidth = _mapheight = 0;
+    _ts = globals.map.tileside;
     states = globals.states;
     window.stage = stage = new createjs.Stage(canvas);
     stage.enableMouseOver(200);
@@ -21,7 +22,7 @@
     scenecount = 0;
     scenelen = 6;
     Cursor = (function() {
-      Cursor.prototype.offset = -13;
+      Cursor.prototype.offset = -7;
 
       function Cursor() {
         var sheet, spritesheet;
@@ -39,25 +40,32 @@
         this.marker = new createjs.Sprite(sheet, "bounce");
         this.marker.x = 0;
         this.marker.y = this.offset;
+        this;
       }
 
       Cursor.prototype.show = function() {
-        return stage.addChild(this.marker);
+        stage.addChild(this.marker);
+        return this;
       };
 
       Cursor.prototype.hide = function() {
-        return stage.removeChild(this.marker);
+        stage.removeChild(this.marker);
+        return this;
       };
 
       Cursor.prototype.move = function(x, y) {
+        if (_.isObject(x)) {
+          y = x.y - _ts + this.offset;
+          x = x.x;
+        }
         this.marker.x = x;
-        return this.marker.y = y + this.offset;
+        this.marker.y = y + this.offset;
+        return this;
       };
 
       return Cursor;
 
     })();
-    _cursor = new Cursor();
     setPresetBackground = function(bg) {
       return $canvas.attr("bg", bg);
     };
@@ -376,14 +384,8 @@
         $canvas.focus();
         return this;
       },
-      showCursor: function() {
-        return _cursor.show();
-      },
-      hideCursor: function() {
-        return _cursor.hide();
-      },
-      moveCursor: function(x, y) {
-        return _cursor.move(x, y);
+      newCursor: function() {
+        return new Cursor;
       }
     };
     board.initialize();

@@ -8,19 +8,39 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
     # Standard modifier (d20)
     _sm = 20
 
+    # Simple circular queue
     class ActivityQueue extends NPCArray
         current_index: 0
-        model:  model: (attrs, options) ->
+        initialize: ->
+            _.bindAll @, "next", "prev", "getActive"
+            # When a player/npc says theire turn is done, advance the queue
+            @on "turndone": @next
+        model: (attrs, options) ->
             switch attrs.type
               when 'player' then new player.model attrs, options
               when 'npc' then new NPC attrs, options
               # should probably add an 'else' here so there's a default if,
               # say, no attrs are provided to a Logbooks.create call
-        comparator: (model) -> model.get("init") + Math.ceil(Math.random()*_sm)
+        comparator: (model) -> model.i = model.get("init") + Math.ceil(Math.random()*_sm)
+        # returns the pc or npc at the top of the queue
+        getActive: (opts) -> 
+            opts = _.extend {player: false}, opts
+            active = @at @current_index
+            if opts.player is true and active instanceof player.model is false then return null
+            else return active
+        # Advance the queue and start the new character's turn by default. 
+        # Pass in false to prevent this.
+        next: (init) -> 
+            num = @current_index = ++@current_index % @length
+            unless init is false then @getActive().initTurn()
+            num
+        # Shifts the queue back by one!
+        prev: -> 
+            @current_index--
+            if @current_index < 0 then @current_index = @length - 1
 
 
     class Battle extends Backbone.Model
-        battleDir: globals.battle_dir
         defaults: 
             NPCs: new NPCArray
             AllCharacters: new ActivityQueue(PCs.models)
@@ -32,11 +52,19 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
                 min_y: 0
                 max_y: map.c_height
             }
-        begin: ->
-            
+        addPCs: ->
+            _.each PCs.models, (pc, i) ->
+                unless i is 0
+                    pc.addToMap()
+                    board.addMarker pc
+        begin: (type, opts)->
+            console.log "beginning battle with character"
+            @addPCs()
+            if type is "random" then @randomize(opts)
+            else @load type
 
         load: (id) ->
-            $.getJSON @battle_dir + id, (battle) ->
+            $.getJSON globals.battle_dir + id, (battle) ->
                 console.log battle
         # A function for creating a random battle, within parameters (or NOT?!!)
         randomize: (o) ->
@@ -63,39 +91,43 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
                 stage.removeChild npc.marker
                 npc.destroy()
 
+    _activebattle = new Battle
     _active_chars = PCs
     # _active_chars.add player.PCs
     console.log _active_chars
     _shared = globals.shared_events
     _shared.on "battle", ->
         _grid.activate()
-        ut.c "battle starting"
-        _.each PCs.models, (pc, i) ->
-            unless i is 0
-                pc.addToMap()
-                board.addMarker pc
+        b = _activebattle = new Battle
+        b.begin "random"
     _activemap = null
     _side = globals.map.tileside
-    _currentbattle = null
 
     # Keeps track of timed events in the battle field
     # When done, triggers a shared event so other modules know
     class Timer
-        constructor: (@el, @number) -> 
+        constructor: (@el, @number, @trigger) -> 
         interval: null
         totaltime: 20000
         stop: -> if @interval then clearInterval @interval
-        start: ->
+        start: (extra) ->
             @show()
             value  = parseInt @el.attr("value")
-            @number.text((@totaltime*.001 - value*.001) + "s")
+            extra || extra = 0
+            totaltime = @totaltime + extra*1000
+            @el.attr("max", totaltime)
             @interval = setInterval =>
                 value += 50
                 @el.attr("value", value)
-                if value % 1000 is 0 then @number.text((@totaltime*.001 - value*.001) + "s")
-                if value >= @totaltime
+                # The position of the number
+                numpos = ((totaltime-value)/totaltime)*100-1
+                console.log numpos
+                @number.text((Math.round((totaltime*.001 - value*.001)/.1)*.1).toFixed(1) + "s")
+                if numpos > 0
+                    @number.css("right", numpos + "%")
+                if value >= totaltime
                     clearInterval @interval
-                    globals.shared_events.trigger "timerdone"
+                    globals.shared_events.trigger @trigger || "timerdone"
             , 50
         reset: -> 
             @stop()
@@ -143,11 +175,20 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
         colors: {
             selected_move: "green"
             potential_move: "#ea0000"
+            general: 'blue'
         }
         initialize: ->
             @listenTo @model,
                 potentialmove: @potentialmoves
                 removemove: @removepotential
+                generalhighlight: @highlight
+            @setUpHitArea()
+        setUpHitArea: ->
+            bitmap = @model.bitmap
+            area = bitmap.hitArea
+            area.x = bitmap.x - 1
+            area.y = bitmap.y - 1
+            @
         render: ->
             @model.square = @
             @$el.html(_.template @template, @model.toJSON())
@@ -158,39 +199,39 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
             console.log arguments
         mouseoverHandler: (e, data) ->
             data.area.graphics.clear().beginFill(@colors.selected_move).drawRect(0, 0, _side-2, _side-2).endFill();
+            @
         mouseoutHandler: (e, data) ->
             data.area.graphics.clear().beginFill(@colors.potential_move).drawRect(0, 0, _side-2, _side-2).endFill();
+            @
         bindMoveFns: (area) ->
             area.on "click" , @clickHandler, @, false, area: area
             area.on "mouseover", @mouseoverHandler, @, false, area: area
             area.on "mouseout", @mouseoutHandler, @, false, area: area
+        highlight: ->
+            console.log "highlighting"
+            console.log arguments
+            bitmap = @model.bitmap
+            area = bitmap.hitArea
+            g = area.graphics
+
         # Pass in a stringto identify why a grid square should be highlighted
         potentialmoves: () ->
             console.log("highlighting potential")
-            @$el.addClass("potentialmove")
             @potentialmoves = true
             bitmap = @model.bitmap
             area = bitmap.hitArea
-            if area.drawn?
-                stage.addChildAt(area, 0)
-                return @
-            area.drawn = true
             g = area.graphics
-            area.x = bitmap.x - 1
-            area.y = bitmap.y - 1
             g.clear().beginFill(@colors.potential_move).drawRect(0, 0, _side - 2, _side - 2).endFill()
             area.alpha = 0.3
+            area.drawn = true
             @bindMoveFns(area)
             stage.addChildAt(area, 0)
             @
             console.log area
         removepotential: -> 
-            # classes = @$el.classes()
-            # _.each classes, (cl) =>
-            #     if cl.indexOf("highlight") != -1 then @$el.removeClass cl
-            @$el.removeClass("potentialmove")
             @potentialmoves = false
             bitmaphit = @model.bitmap.hitArea
+            bitmaphit.drawn = false
             bitmaphit.off "click"
             stage.removeChild bitmaphit
         events: ->
@@ -202,20 +243,28 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
 
     _grid = new GridOverlay child: GridSquare
 
-    window.battler = {
-        getActivePlayer: ->
-            # getActivePlayer()
-            player.PC
+    getActive = (opts) ->
+        _activebattle.get("AllCharacters").getActive(opts)
+
+    _b = window.battler = {
+        getActive: (opts) ->
+            getActive opts
         toggleGrid: ->
+            console.log "calling toggle grid from"
+            console.log arguments.callee.caller.name
             _activemap = mapcreator.getChunk()
             _grid.toggle()
         activateGrid: ->
+            console.log "calling toggle grid from"
+            console.log arguments.callee.caller.name
             _activemap = mapcreator.getChunk()
             _grid.activate()
         deactivateGrid: ->
             _grid.deactivate()
         getActiveMap: -> 
             _activemap
+        getQueue: ->
+            _activebattle.get("AllCharacters")
         # Because of the game's combination of real time and RPG playing, we're using a timer! 
         # Will be an HTML5 progress element
         showTimer: ->
@@ -228,8 +277,8 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
         setTimer: (time) ->
             _timer.set time
             @
-        startTimer: ->
-            _timer.start()
+        startTimer: (extra) ->
+            _timer.start extra
             @
         stopTimer: ->
             _timer.stop()
@@ -240,9 +289,15 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
         setTotalTime: (total) ->
             _timer.setTotalTime()
             @
-        Battle: Battle
         randomBattle: ->
-            if _currentbattle then _currentbattle.destroy()
-            _currentbattle = b = new Battle()
+            if _activebattle then _activebattle.destroy()
+            _activebattle = b = new Battle()
             b.randomize()
     }   
+
+    window.t = ->
+      b = _b.getActive()
+      b.trigger "turndone"
+      return
+
+    _b

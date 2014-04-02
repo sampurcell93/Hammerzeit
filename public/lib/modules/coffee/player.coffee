@@ -1,4 +1,4 @@
-define "player", ["utilities", "npc", "board", "globals", "mapper", "items", "backbone", "easel", "underscore"], (ut, NPC, board, globals, mapper, items) ->
+define ["utilities", "npc", "board", "globals", "mapper", "items", "backbone", "easel", "underscore"], (ut, NPC, board, globals, mapper, items) ->
 	stage = board.getStage()
 	class player extends NPC.NPC
 		type: 'player'
@@ -46,6 +46,9 @@ define "player", ["utilities", "npc", "board", "globals", "mapper", "items", "ba
 				{ x: x, y: y }
 			change: (dx, dy)->
 				# console.log "change :)"
+		initTurn: ->
+			super
+			console.log "and it's a PC!"
 		defaults: ->
 			defaults = super
 			Item = items.Item

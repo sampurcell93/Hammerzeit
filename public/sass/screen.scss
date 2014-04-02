@@ -211,7 +211,7 @@ textarea {
     display: none;
     position: absolute;
     right: 0;
-    top: 31px;
+    top: 30px;
     // border: 1px solid red;
     width: 230px;
     height: $boardheight;
@@ -280,14 +280,14 @@ textarea {
     // @include border-radius(3px);
     width: 5%;
     position: absolute;
-    right: 0;
     display: block;
     text-align: center;
-    line-height: 1.7;
+    line-height: 2.45;
+    font-size: .8em;
     color: #ddd;
-    background: #333;
-    bottom: 0;
+    bottom: -25px;
     z-index: 99;
+    text-shadow: 0px -1px 0px #000, 0px 1px 0px #000;
 }
 
 #turn-progress {

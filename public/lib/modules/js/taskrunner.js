@@ -20,14 +20,9 @@
             board.setBackground(level.getBackground());
             mapcreator.loadChunk(level.getBitmap()[newchunk.y][newchunk.x], newchunk.x, newchunk.y);
             mapcreator.render();
-            console.log(board.getState());
             full_chunk = level.getBitmap()[newchunk.y][newchunk.x];
             mapper.renderChunk(full_chunk, board.getStage());
-            menus.battleMenu.clearPotentialMoves();
-            if (board.hasState("battle")) {
-              battler.activateGrid();
-            }
-            return console.log(board.getState());
+            return menus.battleMenu.clearPotentialMoves();
           });
         });
       }

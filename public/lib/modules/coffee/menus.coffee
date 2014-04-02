@@ -2,6 +2,13 @@ define ["globals", "utilities", "dialog", "battler", "player", "npc", "board", "
 
     board.focus()
 
+    # Close all menus
+    globals.shared_events.on "closemenus", ->
+        closeAll()
+
+    globals.shared_events.on "openmenu", ->
+        _activemenu.open()
+
     InventoryList = items.InventoryList
     _potential_moves = null
 
@@ -55,6 +62,8 @@ define ["globals", "utilities", "dialog", "battler", "player", "npc", "board", "
             board.unpause().focus()
             @clearPotentialMoves()
         open: ->
+            active = battler.getActive player: true
+            if active then @model = active
             _activemenu = @
             @showing = true 
             @render()
@@ -93,13 +102,13 @@ define ["globals", "utilities", "dialog", "battler", "player", "npc", "board", "
             # Creates an overlay on the 
             "click .js-virtual-move": -> 
                 @clearPotentialMoves()
-                _potential_moves = battler.getActivePlayer().virtualMovePossibilities()
+                _potential_moves = battler.getActive().virtualMovePossibilities()
                 console.log _potential_moves
 
 
     _menus = window._menus = {
         travel: new TravelMenu model: player.PC
-        battle: new BattleMenu model: battler.getActivePlayer()
+        battle: new BattleMenu model: battler.getActive({player: true})
     }
     _activemenu = _menus['battle']
 
@@ -117,11 +126,27 @@ define ["globals", "utilities", "dialog", "battler", "player", "npc", "board", "
             board.removeState "MENUOPEN"
 
     {    
-        toggleMenu: (menu) -> toggleMenu menu
-        selectNext: -> _activemenu.selectNext()
-        selectPrev: -> _activemenu.selectPrev()
-        activateMenuItem: -> _activemenu.clickActiveItem()
-        closeAll: -> closeAll()
+        open: ->
+            _activemenu.open()
+            @
+        close: ->
+            _activemenu.close()
+            @
+        toggleMenu: (menu) -> 
+            toggleMenu menu
+            @
+        selectNext: -> 
+            _activemenu.selectNext()
+            @
+        selectPrev: -> 
+            _activemenu.selectPrev()
+            @
+        activateMenuItem: -> 
+            _activemenu.clickActiveItem()
+            @
+        closeAll: -> 
+            closeAll()
+            @
         battleMenu: _menus["battle"]
         travelMenu: _menus['travel']
     }
