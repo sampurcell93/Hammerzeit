@@ -24,6 +24,8 @@
     Cursor = (function() {
       Cursor.prototype.offset = -7;
 
+      Cursor.prototype.visible = false;
+
       function Cursor() {
         var sheet, spritesheet;
         spritesheet = {
@@ -44,11 +46,13 @@
       }
 
       Cursor.prototype.show = function() {
+        this.visible = true;
         stage.addChild(this.marker);
         return this;
       };
 
       Cursor.prototype.hide = function() {
+        this.visible = false;
         stage.removeChild(this.marker);
         return this;
       };
@@ -386,6 +390,10 @@
       },
       newCursor: function() {
         return new Cursor;
+      },
+      inBounds: function(x, y) {
+        console.log(x, y);
+        return x >= 0 && x <= globals.map.c_width && y >= 0 && y <= globals.map.c_height;
       }
     };
     board.initialize();

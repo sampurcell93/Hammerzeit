@@ -80,11 +80,15 @@ define ["globals", "utilities", "board", "items", "mapper", "underscore", "backb
 			sheet.getAnimation("run").next = "run"
 			sprite = new createjs.Sprite(sheet, "run")
 			@marker = sprite
-		cursor: board.newCursor()
-		showCursor: ->
-			sprite.on "click", => 
-				@cursor.show().move sprite
-				@highlightTile("blue")
+			@on "add", (model, coll) =>
+				console.log coll.type
+				if coll.type is "ActivityQueue" then @activity_queue = coll
+			@cursor()
+		cursor: -> 
+			c = @c || board.newCursor()
+			@c = c
+			c.hide().move @marker
+			c
 		# Note the argument order - reflects 2D array notation
 		setChunk: (y,x) ->
 			chunk = @get "current_chunk"
@@ -125,7 +129,8 @@ define ["globals", "utilities", "board", "items", "mapper", "underscore", "backb
 				, 0
 			else null
 
-		canMoveOffChunk: -> !(board.hasState("battle"))
+		canMoveOffChunk: (x, y) -> 
+			!(board.hasState("battle")) and board.inBounds(x) and board.inBounds(y)
 
 		# Set the sprite sheet to the direction given by the x,y coords. 
 		setSpriteSheet: (dx,dy) ->
@@ -200,18 +205,26 @@ define ["globals", "utilities", "board", "items", "mapper", "underscore", "backb
 		# Reset turn actions. Can take one standard, one move, one major OR
 		# one standard, two minor OR
 		# Two moves one minor
-		initTurn: ->
-			@actions = {
+		resetActions: ->
+			@actions = _.extend {
 				standard: 1
 				move: 2
 				minor: 2
-			}
+			}, Backbone.Events
+			@
 		# Default action values. Can be reset with initTurn or augmented with items
-		actions: {
+		actions: _.extend {
 				standard: 1
 				move: 2
 				minor: 2
-			}
+			}, Backbone.Events
+		# If a user doens't move before the timer runs out, they must burn an action
+		# Tries move first, then standard, then minor
+		burnAction: ->
+			if @takeMove() then true
+			else if @takeStandard() then true
+			else if @takeMinor() then true
+			false
 		# Take a standard action and adjust the other actions.
 		takeStandard: ->
 			actions = @actions
@@ -219,18 +232,22 @@ define ["globals", "utilities", "board", "items", "mapper", "underscore", "backb
 				actions.standard--
 				actions.move--
 				actions.minor--
-			@
+				true
+			false
 		# Take a move action
 		takeMove: ->
 			actions = @actions
 			if actions.move > 0
 				actions.move--
-			@
+				true
+			false
 		# Take a minor action
 		takeMinor: ->
 			actions = @actions
 			if actions.minor > 0
 				actions.minor--
+				true
+			false
 		# Can the user take any more actions?
 		canTakeAction: ->
 			flag = false
@@ -329,7 +346,6 @@ define ["globals", "utilities", "board", "items", "mapper", "underscore", "backb
 			chunk = mapper.getVisibleChunk()?.children
 			x = Math.abs Math.ceil(Math.random()*globals.map.c_width/_ts - 1)
 			y = Math.abs Math.ceil(Math.random()*globals.map.c_height/_ts - 1)
-			console.log x, y
 			tile = chunk[y]?.children[x] 
 			while @canOccupy(tile) is false
 				tile = chunk[++y]?.children[++x]
@@ -345,23 +361,39 @@ define ["globals", "utilities", "board", "items", "mapper", "underscore", "backb
 			@
 		# What phase of the user's turn are they at? Max 3
 		turnPhase: 0
-		initTurn: ->
+		turnDone: ->
 			@turnPhase = 0
+			@trigger "turndone"
+			@resetActions()
+			@
+		indicateActive: ->
+			_.each @activity_queue.models, (character) -> 
+				character.cursor().hide()
+			@cursor().show()
+			@
+		initTurn: ->
 			console.log "starting a character's turn"
+			@indicateActive()
 			globals.shared_events.trigger "closemenus"
 			globals.shared_events.trigger "openmenu"
-			battler.resetTimer().startTimer @i
-			@listenTo _events, "timerdone", => 
-				console.log "the timer is done :("
+			@nextPhase()
+		nextPhase: ->
+			t = @turnPhase
+			if t is 3 
+				return @turnDone()
+			battler.resetTimer().startTimer @i, => 
+				@burnAction()
+				console.log "the timer is done .... burning a move action"
+				@takeMove()
 				@nextPhase()
 			console.log "the timer is running!!"
-		nextPhase: ->
-			t = ++@turnPhase
-			console.log t
+			@turnPhase++
+
 
 
 	class CharacterArray extends Backbone.Collection
 		model: NPC
+		type: 'NPCArray'
 		getAverageLevel: () ->
 			sum = 0
 			_.each @models, (PC) =>

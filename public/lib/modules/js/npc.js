@@ -76,7 +76,8 @@
       };
 
       NPC.prototype.initialize = function() {
-        var sheet, sprite;
+        var sheet, sprite,
+          _this = this;
         _.bind(this.move_callbacks.done, this);
         _.bind(this.move_callbacks.change, this);
         this.walkopts = _.extend(this.getPrivate("walkopts"), {
@@ -100,17 +101,22 @@
         sheet.getAnimation("run").speed = .13;
         sheet.getAnimation("run").next = "run";
         sprite = new createjs.Sprite(sheet, "run");
-        return this.marker = sprite;
+        this.marker = sprite;
+        this.on("add", function(model, coll) {
+          console.log(coll.type);
+          if (coll.type === "ActivityQueue") {
+            return _this.activity_queue = coll;
+          }
+        });
+        return this.cursor();
       };
 
-      NPC.prototype.cursor = board.newCursor();
-
-      NPC.prototype.showCursor = function() {
-        var _this = this;
-        return sprite.on("click", function() {
-          _this.cursor.show().move(sprite);
-          return _this.highlightTile("blue");
-        });
+      NPC.prototype.cursor = function() {
+        var c;
+        c = this.c || board.newCursor();
+        this.c = c;
+        c.hide().move(this.marker);
+        return c;
       };
 
       NPC.prototype.setChunk = function(y, x) {
@@ -167,8 +173,8 @@
         }
       };
 
-      NPC.prototype.canMoveOffChunk = function() {
-        return !(board.hasState("battle"));
+      NPC.prototype.canMoveOffChunk = function(x, y) {
+        return !(board.hasState("battle")) && board.inBounds(x) && board.inBounds(y);
       };
 
       NPC.prototype.setSpriteSheet = function(dx, dy) {
@@ -286,18 +292,30 @@
       /* Battle functions!*/
 
 
-      NPC.prototype.initTurn = function() {
-        return this.actions = {
+      NPC.prototype.resetActions = function() {
+        this.actions = _.extend({
           standard: 1,
           move: 2,
           minor: 2
-        };
+        }, Backbone.Events);
+        return this;
       };
 
-      NPC.prototype.actions = {
+      NPC.prototype.actions = _.extend({
         standard: 1,
         move: 2,
         minor: 2
+      }, Backbone.Events);
+
+      NPC.prototype.burnAction = function() {
+        if (this.takeMove()) {
+          true;
+        } else if (this.takeStandard()) {
+          true;
+        } else if (this.takeMinor()) {
+          true;
+        }
+        return false;
       };
 
       NPC.prototype.takeStandard = function() {
@@ -307,8 +325,9 @@
           actions.standard--;
           actions.move--;
           actions.minor--;
+          true;
         }
-        return this;
+        return false;
       };
 
       NPC.prototype.takeMove = function() {
@@ -316,16 +335,19 @@
         actions = this.actions;
         if (actions.move > 0) {
           actions.move--;
+          true;
         }
-        return this;
+        return false;
       };
 
       NPC.prototype.takeMinor = function() {
         var actions;
         actions = this.actions;
         if (actions.minor > 0) {
-          return actions.minor--;
+          actions.minor--;
+          true;
         }
+        return false;
       };
 
       NPC.prototype.canTakeAction = function() {
@@ -459,7 +481,6 @@
         chunk = (_ref1 = mapper.getVisibleChunk()) != null ? _ref1.children : void 0;
         x = Math.abs(Math.ceil(Math.random() * globals.map.c_width / _ts - 1));
         y = Math.abs(Math.ceil(Math.random() * globals.map.c_height / _ts - 1));
-        console.log(x, y);
         tile = (_ref2 = chunk[y]) != null ? _ref2.children[x] : void 0;
         while (this.canOccupy(tile) === false) {
           tile = (_ref3 = chunk[++y]) != null ? _ref3.children[++x] : void 0;
@@ -482,24 +503,44 @@
 
       NPC.prototype.turnPhase = 0;
 
-      NPC.prototype.initTurn = function() {
-        var _this = this;
+      NPC.prototype.turnDone = function() {
         this.turnPhase = 0;
+        this.trigger("turndone");
+        this.resetActions();
+        return this;
+      };
+
+      NPC.prototype.indicateActive = function() {
+        _.each(this.activity_queue.models, function(character) {
+          return character.cursor().hide();
+        });
+        this.cursor().show();
+        return this;
+      };
+
+      NPC.prototype.initTurn = function() {
         console.log("starting a character's turn");
+        this.indicateActive();
         globals.shared_events.trigger("closemenus");
         globals.shared_events.trigger("openmenu");
-        battler.resetTimer().startTimer(this.i);
-        this.listenTo(_events, "timerdone", function() {
-          console.log("the timer is done :(");
-          return _this.nextPhase();
-        });
-        return console.log("the timer is running!!");
+        return this.nextPhase();
       };
 
       NPC.prototype.nextPhase = function() {
-        var t;
-        t = ++this.turnPhase;
-        return console.log(t);
+        var t,
+          _this = this;
+        t = this.turnPhase;
+        if (t === 3) {
+          return this.turnDone();
+        }
+        battler.resetTimer().startTimer(this.i, function() {
+          _this.burnAction();
+          console.log("the timer is done .... burning a move action");
+          _this.takeMove();
+          return _this.nextPhase();
+        });
+        console.log("the timer is running!!");
+        return this.turnPhase++;
       };
 
       return NPC;
@@ -514,6 +555,8 @@
       }
 
       CharacterArray.prototype.model = NPC;
+
+      CharacterArray.prototype.type = 'NPCArray';
 
       CharacterArray.prototype.getAverageLevel = function() {
         var sum,

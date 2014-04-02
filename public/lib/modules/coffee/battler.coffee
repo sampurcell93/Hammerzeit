@@ -11,14 +11,20 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
     # Simple circular queue
     class ActivityQueue extends NPCArray
         current_index: 0
-        initialize: ->
+        type: 'ActivityQueue'
+        initialize: (models) ->
             _.bindAll @, "next", "prev", "getActive"
             # When a player/npc says theire turn is done, advance the queue
-            @on "turndone": @next
+            @on 
+                "turndone": @next
+            _.each models, (character) => character.trigger("add", character, @, {})
         model: (attrs, options) ->
             switch attrs.type
-              when 'player' then new player.model attrs, options
-              when 'npc' then new NPC attrs, options
+              when 'player' then m = new player.model attrs, options
+              when 'npc' then m = new NPC attrs, options
+            # Deflects against multiple collections
+            m.queue = @
+            m
               # should probably add an 'else' here so there's a default if,
               # say, no attrs are provided to a Logbooks.create call
         comparator: (model) -> model.i = model.get("init") + Math.ceil(Math.random()*_sm)
@@ -106,28 +112,28 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
     # Keeps track of timed events in the battle field
     # When done, triggers a shared event so other modules know
     class Timer
-        constructor: (@el, @number, @trigger) -> 
+        constructor: (@el, @number) -> 
         interval: null
-        totaltime: 20000
+        totaltime: 1000
         stop: -> if @interval then clearInterval @interval
-        start: (extra) ->
+        start: (extra, done) ->
             @show()
             value  = parseInt @el.attr("value")
             extra || extra = 0
-            totaltime = @totaltime + extra*1000
+            totaltime = @totaltime + extra*100
             @el.attr("max", totaltime)
             @interval = setInterval =>
                 value += 50
                 @el.attr("value", value)
                 # The position of the number
                 numpos = ((totaltime-value)/totaltime)*100-1
-                console.log numpos
                 @number.text((Math.round((totaltime*.001 - value*.001)/.1)*.1).toFixed(1) + "s")
                 if numpos > 0
                     @number.css("right", numpos + "%")
                 if value >= totaltime
                     clearInterval @interval
-                    globals.shared_events.trigger @trigger || "timerdone"
+                    globals.shared_events.trigger "timerdone"
+                    if done? and _.isFunction(done) then done()
             , 50
         reset: -> 
             @stop()
@@ -277,8 +283,8 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
         setTimer: (time) ->
             _timer.set time
             @
-        startTimer: (extra) ->
-            _timer.start extra
+        startTimer: (extra, done) ->
+            _timer.start extra, done
             @
         stopTimer: ->
             _timer.stop()

@@ -23,9 +23,12 @@ define ['globals', 'utilities', 'jquery', 'underscore', 'easel'], (globals, ut) 
     scenecount = 0
     scenelen = 6
 
+    # stage.addChild _cursors = new createjs.Container
+
     class Cursor 
         # The cursor sprite doesn't begin exactly at 0
         offset: -7
+        visible: false
         constructor: ->
             spritesheet = {
                 framerate: 30
@@ -57,9 +60,11 @@ define ['globals', 'utilities', 'jquery', 'underscore', 'easel'], (globals, ut) 
             @marker.y = @offset
             @
         show: ->
+            @visible = true
             stage.addChild @marker
             @
         hide: ->
+            @visible = false
             stage.removeChild @marker
             @
         # Either pass in a DisplayObject as the first parameter, or x,y pixel coords to move to
@@ -305,7 +310,9 @@ define ['globals', 'utilities', 'jquery', 'underscore', 'easel'], (globals, ut) 
         # Get a new cursor object
         newCursor: ->
             new Cursor
-
+        inBounds: (x,y) ->
+            console.log x, y
+            x >= 0 and x <= globals.map.c_width and y >= 0 and y <= globals.map.c_height
     }
 
     board.initialize()

@@ -20,20 +20,30 @@
 
       ActivityQueue.prototype.current_index = 0;
 
-      ActivityQueue.prototype.initialize = function() {
+      ActivityQueue.prototype.type = 'ActivityQueue';
+
+      ActivityQueue.prototype.initialize = function(models) {
+        var _this = this;
         _.bindAll(this, "next", "prev", "getActive");
-        return this.on({
+        this.on({
           "turndone": this.next
+        });
+        return _.each(models, function(character) {
+          return character.trigger("add", character, _this, {});
         });
       };
 
       ActivityQueue.prototype.model = function(attrs, options) {
+        var m;
         switch (attrs.type) {
           case 'player':
-            return new player.model(attrs, options);
+            m = new player.model(attrs, options);
+            break;
           case 'npc':
-            return new NPC(attrs, options);
+            m = new NPC(attrs, options);
         }
+        m.queue = this;
+        return m;
       };
 
       ActivityQueue.prototype.comparator = function(model) {
@@ -171,15 +181,14 @@
     _activemap = null;
     _side = globals.map.tileside;
     Timer = (function() {
-      function Timer(el, number, trigger) {
+      function Timer(el, number) {
         this.el = el;
         this.number = number;
-        this.trigger = trigger;
       }
 
       Timer.prototype.interval = null;
 
-      Timer.prototype.totaltime = 20000;
+      Timer.prototype.totaltime = 1000;
 
       Timer.prototype.stop = function() {
         if (this.interval) {
@@ -187,27 +196,29 @@
         }
       };
 
-      Timer.prototype.start = function(extra) {
+      Timer.prototype.start = function(extra, done) {
         var totaltime, value,
           _this = this;
         this.show();
         value = parseInt(this.el.attr("value"));
         extra || (extra = 0);
-        totaltime = this.totaltime + extra * 1000;
+        totaltime = this.totaltime + extra * 100;
         this.el.attr("max", totaltime);
         return this.interval = setInterval(function() {
           var numpos;
           value += 50;
           _this.el.attr("value", value);
           numpos = ((totaltime - value) / totaltime) * 100 - 1;
-          console.log(numpos);
           _this.number.text((Math.round((totaltime * .001 - value * .001) / .1) * .1).toFixed(1) + "s");
           if (numpos > 0) {
             _this.number.css("right", numpos + "%");
           }
           if (value >= totaltime) {
             clearInterval(_this.interval);
-            return globals.shared_events.trigger(_this.trigger || "timerdone");
+            globals.shared_events.trigger("timerdone");
+            if ((done != null) && _.isFunction(done)) {
+              return done();
+            }
           }
         }, 50);
       };
@@ -457,8 +468,8 @@
         _timer.set(time);
         return this;
       },
-      startTimer: function(extra) {
-        _timer.start(extra);
+      startTimer: function(extra, done) {
+        _timer.start(extra, done);
         return this;
       },
       stopTimer: function() {
