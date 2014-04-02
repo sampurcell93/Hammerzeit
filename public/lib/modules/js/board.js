@@ -1,6 +1,6 @@
 (function() {
   define(['globals', 'utilities', 'jquery', 'underscore', 'easel'], function(globals, ut) {
-    var $canvas, addMarker, addState, blurBoard, board, canvas, clear, flashStateChange, hasState, initialize, introSlider, removeState, scenecount, scenelen, setPresetBackground, setState, stage, startSlideshow, state, stateChangeEvents, states, textshadow, unblurBoard, walkingMan, zoomIn, zoomOut, _gridded, _mapheight, _mapwidth, _ticker, _zoom,
+    var $canvas, Cursor, addMarker, addState, blurBoard, board, canvas, clear, flashStateChange, hasState, initialize, introSlider, removeState, scenecount, scenelen, setPresetBackground, setState, stage, startSlideshow, state, stateChangeEvents, states, textshadow, unblurBoard, zoomIn, zoomOut, _cursor, _mapheight, _mapwidth, _ticker, _zoom,
       _this = this;
     canvas = document.getElementById("game-board");
     $canvas = $(canvas);
@@ -17,10 +17,47 @@
       }
     });
     state = ["INTRO"];
-    _gridded = false;
     textshadow = globals.textshadow = new createjs.Shadow("#000000", 0, 0, 7);
     scenecount = 0;
     scenelen = 6;
+    Cursor = (function() {
+      Cursor.prototype.offset = -13;
+
+      function Cursor() {
+        var sheet, spritesheet;
+        spritesheet = {
+          framerate: 30,
+          animations: {
+            bounce: [0, 12]
+          },
+          images: ["images/sprites/cursorsprite.png"],
+          frames: [[0, 0, 50, 70], [50, 0, 50, 70], [100, 0, 50, 70], [150, 0, 50, 70], [200, 0, 50, 70], [250, 0, 50, 70], [300, 0, 50, 70], [300, 0, 50, 70], [250, 0, 50, 70], [200, 0, 50, 70], [150, 0, 50, 70], [100, 0, 50, 70], [50, 0, 50, 70], [0, 0, 50, 70]]
+        };
+        sheet = new createjs.SpriteSheet(spritesheet);
+        sheet.getAnimation("bounce").speed = .63;
+        sheet.getAnimation("bounce").next = "bounce";
+        this.marker = new createjs.Sprite(sheet, "bounce");
+        this.marker.x = 0;
+        this.marker.y = this.offset;
+      }
+
+      Cursor.prototype.show = function() {
+        return stage.addChild(this.marker);
+      };
+
+      Cursor.prototype.hide = function() {
+        return stage.removeChild(this.marker);
+      };
+
+      Cursor.prototype.move = function(x, y) {
+        this.marker.x = x;
+        return this.marker.y = y + this.offset;
+      };
+
+      return Cursor;
+
+    })();
+    _cursor = new Cursor();
     setPresetBackground = function(bg) {
       return $canvas.attr("bg", bg);
     };
@@ -41,24 +78,6 @@
           return globals.introScenery = setInterval(introSlider, 13400);
         }
       }, 0);
-    };
-    walkingMan = function() {
-      var sheet, sprite;
-      sheet = new createjs.SpriteSheet({
-        framerate: 30,
-        frames: [[0, 165, 55, 55, 0], [55, 165, 55, 55, 0], [110, 165, 55, 55, 0], [165, 165, 55, 55, 0]],
-        animations: {
-          run: [0, 3]
-        },
-        images: ["images/sprites/hero.png"]
-      });
-      sheet.getAnimation("run").speed = .13;
-      sheet.getAnimation("run").next = "run";
-      sprite = new createjs.Sprite(sheet, "run");
-      sprite.x = 0;
-      sprite.y = 0;
-      sprite.scaleY = sprite.scaleX = 1;
-      return stage.addChild(sprite);
     };
     initialize = function() {
       var copyright, loadgame, newgame, title;
@@ -104,22 +123,25 @@
         y: 680,
         shadow: textshadow
       });
-      stage.addChild(newgame, loadgame, title, copyright);
-      return walkingMan();
+      return stage.addChild(newgame, loadgame, title, copyright);
     };
     clear = function() {
       stage.removeAllChildren();
       return stage.clear();
     };
     flashStateChange = function() {
-      var rect;
+      var ct, flash, rect;
       rect = new createjs.Shape();
       rect.graphics.beginFill("#000").drawRect(0, 0, globals.map.width, globals.map.height);
-      return setTimeout(function() {
+      ct = 0;
+      return flash = setInterval(function() {
         stage.addChild(rect);
-        return setTimeout(function() {
+        setTimeout(function() {
           return stage.removeChild(rect);
         }, 200);
+        if (ct++ > 4) {
+          return clearInterval(flash);
+        }
       }, 30);
     };
     stateChangeEvents = {
@@ -353,6 +375,15 @@
       focus: function() {
         $canvas.focus();
         return this;
+      },
+      showCursor: function() {
+        return _cursor.show();
+      },
+      hideCursor: function() {
+        return _cursor.hide();
+      },
+      moveCursor: function(x, y) {
+        return _cursor.move(x, y);
       }
     };
     board.initialize();

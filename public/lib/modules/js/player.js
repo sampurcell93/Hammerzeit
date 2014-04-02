@@ -13,6 +13,8 @@
         return _ref;
       }
 
+      player.prototype.type = 'player';
+
       player.prototype.initialize = function(attrs) {
         player.__super__.initialize.apply(this, arguments);
         _.bindAll(this, "contextualize", "insideChunkBounds", "move", "defaults");
@@ -128,10 +130,21 @@
 
     })(NPC.NPC);
     PCs = new NPC.NPCArray;
-    PCs.add(new player);
-    PCs.add(new player);
-    PCs.add(new player);
-    PCs.add(new player);
+    PCs.add(new player(null, {
+      main: true
+    }));
+    PCs.add(new player({
+      init: 4,
+      name: 'Fighter'
+    }));
+    PCs.add(new player({
+      init: 2,
+      name: 'Mage'
+    }));
+    PCs.add(new player({
+      init: 3,
+      name: 'Cleric'
+    }));
     return {
       model: player,
       PC: PCs.at(0),

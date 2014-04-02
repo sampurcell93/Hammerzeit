@@ -15,16 +15,56 @@ define ['globals', 'utilities', 'jquery', 'underscore', 'easel'], (globals, ut) 
     _ticker = createjs.Ticker
     _ticker.addEventListener "tick", (tick) ->
         stage.update() unless tick.paused
-    # stage.addEventListener "stagemousedown", (e)->
-        # ut.c "clicked stage".
-        # ut.c stage.children[0].children[0].children[0].getObjectsUnderPoint(0,0)
-    state = ["INTRO"]
-    _gridded = false
-    textshadow = globals.textshadow = new createjs.Shadow("#000000", 0,0,7)
 
+    state = ["INTRO"]
+    textshadow = globals.textshadow = new createjs.Shadow("#000000", 0,0,7)
 
     scenecount = 0
     scenelen = 6
+
+    class Cursor 
+        # The cursor sprite doesn't begin exactly at 0
+        offset: -13
+        constructor: ->
+            spritesheet = {
+                framerate: 30
+                animations: 
+                    bounce: [0,12]
+                images: ["images/sprites/cursorsprite.png"]
+                frames: [
+                    [0,0,50,70],
+                    [50,0,50,70],
+                    [100,0,50,70],
+                    [150,0,50,70],
+                    [200,0,50,70],
+                    [250,0,50,70],
+                    [300,0,50,70],
+                    [300,0,50,70]
+                    [250,0,50,70],
+                    [200,0,50,70],
+                    [150,0,50,70],
+                    [100,0,50,70],
+                    [50,0,50,70],
+                    [0,0,50,70]
+                ]
+            }
+            sheet = new createjs.SpriteSheet(spritesheet)
+            sheet.getAnimation("bounce").speed = .63
+            sheet.getAnimation("bounce").next = "bounce"
+            @marker = new createjs.Sprite(sheet, "bounce")
+            @marker.x = 0 
+            @marker.y = @offset
+        show: ->
+            stage.addChild @marker
+        hide: ->
+            stage.removeChild @marker
+        move: (x, y) ->
+            @marker.x = x
+            @marker.y = y + @offset
+
+
+
+    _cursor = new Cursor()
 
     setPresetBackground = (bg) ->
         $canvas.attr "bg", bg
@@ -42,30 +82,6 @@ define ['globals', 'utilities', 'jquery', 'underscore', 'easel'], (globals, ut) 
                 clearInterval globals.introScenery
                 globals.introScenery = setInterval introSlider, 13400
         , 0
-
-    # Draws the pc walking along the bottom of the screen
-    walkingMan = () ->
-        sheet = new createjs.SpriteSheet
-            framerate: 30
-            frames:[
-                [0, 165, 55, 55, 0]
-                [55, 165, 55, 55, 0]
-                [110, 165, 55, 55, 0]
-                [165, 165, 55, 55, 0]
-            ]
-            animations: 
-                run: [0,3]
-            images: ["images/sprites/hero.png"]
-        sheet.getAnimation("run").speed = .13
-        sheet.getAnimation("run").next = "run"
-        sprite = new createjs.Sprite(sheet, "run")
-        sprite.x = 0
-        sprite.y = 0
-        # sprite.addEventListener("tick", -> 
-            # sprite.x += 3; 
-            # if sprite.x >= 150 then sprite.x = -74)
-        sprite.scaleY = sprite.scaleX = 1
-        stage.addChild(sprite);
 
     initialize = ->
         startSlideshow()
@@ -91,7 +107,6 @@ define ['globals', 'utilities', 'jquery', 'underscore', 'easel'], (globals, ut) 
         copyright = new createjs.Text("Game copyright " + globals.author + " 2014", "14px Arial", "rgba(255,255,255,.5)")
         _.extend copyright, {x: 10, y: 680, shadow: textshadow}
         stage.addChild newgame, loadgame, title, copyright
-        walkingMan()
 
     clear = ->
         stage.removeAllChildren()
@@ -101,11 +116,13 @@ define ['globals', 'utilities', 'jquery', 'underscore', 'easel'], (globals, ut) 
     flashStateChange = () ->
         rect = new createjs.Shape();
         rect.graphics.beginFill("#000").drawRect(0, 0, globals.map.width, globals.map.height);
-        setTimeout ->
+        ct = 0
+        flash = setInterval ->
             stage.addChild rect
             setTimeout ->
                 stage.removeChild rect
             , 200
+            if ct++ > 4 then clearInterval flash
         , 30
 
     # Could have used backbone events, but felt contrived, would need to modify data structures 
@@ -279,6 +296,13 @@ define ['globals', 'utilities', 'jquery', 'underscore', 'easel'], (globals, ut) 
         focus: -> 
             $canvas.focus()
             @
+        showCursor: ->
+            _cursor.show()
+        hideCursor: ->
+            _cursor.hide()
+        moveCursor: (x, y) ->
+            _cursor.move x, y
+
     }
 
     board.initialize()

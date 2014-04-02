@@ -38,6 +38,8 @@
 
       NPC.prototype.currentspace = {};
 
+      NPC.prototype.type = 'npc';
+
       NPC.prototype.move_callbacks = {
         done: function() {},
         change: function() {}
@@ -302,12 +304,12 @@
       };
 
       NPC.prototype.getTargetTile = function(dx, dy, start) {
-        var chunk, x, y, _ref1;
-        chunk = mapper.getVisibleChunk().children;
+        var chunk, x, y, _ref1, _ref2;
+        chunk = (_ref1 = mapper.getVisibleChunk()) != null ? _ref1.children : void 0;
         y = start ? start.y : this.marker.y;
         x = start ? start.x : this.marker.x;
         console.log("got target tile");
-        return ((_ref1 = chunk[(y + (50 * dy)) / 50]) != null ? _ref1.children[(x + (50 * dx)) / 50] : void 0) || {};
+        return ((_ref2 = chunk[(y + (50 * dy)) / 50]) != null ? _ref2.children[(x + (50 * dx)) / 50] : void 0) || {};
       };
 
       NPC.prototype.virtualMove = function(dx, dy, start, extra) {
@@ -415,15 +417,44 @@
         return _p[id];
       };
 
-      NPC.prototype.setCurrentSpace = function() {
-        var target;
-        target = this.getTargetTile(0, 0);
+      NPC.prototype.setCurrentSpace = function(target) {
+        target || (target = this.getTargetTile(0, 0));
         if (target) {
           this.currentspace = target;
           target.occupied = true;
           target.occupiedBy = this.marker;
         }
         return target;
+      };
+
+      NPC.prototype.canOccupy = function(t) {
+        console.log(t.end, t.e, t.occupied);
+        if (t.end === false) {
+          return false;
+        }
+        if (t.e === "f") {
+          return false;
+        }
+        if (t.occupied === true) {
+          return false;
+        }
+        return true;
+      };
+
+      NPC.prototype.addToMap = function() {
+        var chunk, tile, x, y, _ref1, _ref2, _ref3;
+        chunk = (_ref1 = mapper.getVisibleChunk()) != null ? _ref1.children : void 0;
+        x = Math.abs(Math.ceil(Math.random() * globals.map.c_width / _ts - 1));
+        y = Math.abs(Math.ceil(Math.random() * globals.map.c_height / _ts - 1));
+        console.log(x, y);
+        tile = (_ref2 = chunk[y]) != null ? _ref2.children[x] : void 0;
+        while (this.canOccupy(tile) === false) {
+          tile = (_ref3 = chunk[++y]) != null ? _ref3.children[++x] : void 0;
+        }
+        this.setCurrentSpace(tile);
+        this.marker.x = x * _ts;
+        this.marker.y = y * _ts;
+        return this;
       };
 
       return NPC;

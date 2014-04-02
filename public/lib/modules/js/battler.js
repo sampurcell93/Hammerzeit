@@ -3,24 +3,54 @@
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
   define(["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player", "backbone", "underscore", "jquery"], function(board, globals, ut, mapper, NPC, mapcreator, player) {
-    var Battle, GridOverlay, GridSquare, NPCArray, PCs, Timer, map, stage, _active_chars, _activemap, _currentbattle, _grid, _ref, _ref1, _ref2, _shared, _side, _timer;
+    var ActivityQueue, Battle, GridOverlay, GridSquare, NPCArray, PCs, Timer, map, stage, _active_chars, _activemap, _currentbattle, _grid, _ref, _ref1, _ref2, _ref3, _shared, _side, _sm, _timer;
     PCs = player.PCs;
     NPCArray = NPC.NPCArray;
     NPC = NPC.NPC;
     stage = board.getStage();
     map = globals.map;
+    _sm = 20;
+    ActivityQueue = (function(_super) {
+      __extends(ActivityQueue, _super);
+
+      function ActivityQueue() {
+        _ref = ActivityQueue.__super__.constructor.apply(this, arguments);
+        return _ref;
+      }
+
+      ActivityQueue.prototype.current_index = 0;
+
+      ActivityQueue.prototype.model = {
+        model: function(attrs, options) {
+          switch (attrs.type) {
+            case 'player':
+              return new player.model(attrs, options);
+            case 'npc':
+              return new NPC(attrs, options);
+          }
+        }
+      };
+
+      ActivityQueue.prototype.comparator = function(model) {
+        return model.get("init") + Math.ceil(Math.random() * _sm);
+      };
+
+      return ActivityQueue;
+
+    })(NPCArray);
     Battle = (function(_super) {
       __extends(Battle, _super);
 
       function Battle() {
-        _ref = Battle.__super__.constructor.apply(this, arguments);
-        return _ref;
+        _ref1 = Battle.__super__.constructor.apply(this, arguments);
+        return _ref1;
       }
 
       Battle.prototype.battleDir = globals.battle_dir;
 
       Battle.prototype.defaults = {
         NPCs: new NPCArray,
+        AllCharacters: new ActivityQueue(PCs.models),
         avglevel: PCs.getAverageLevel(),
         numenemies: Math.ceil(Math.random() * PCs.length * 2 + 1),
         enemyBounds: {
@@ -31,6 +61,8 @@
         }
       };
 
+      Battle.prototype.begin = function() {};
+
       Battle.prototype.load = function(id) {
         return $.getJSON(this.battle_dir + id, function(battle) {
           return console.log(battle);
@@ -38,26 +70,22 @@
       };
 
       Battle.prototype.randomize = function(o) {
-        var ct, i, n, square, _i, _ref1;
+        var i, n, _i, _ref2;
         o = _.extend(this.defaults, o);
-        console.log(o);
-        for (i = _i = 0, _ref1 = o.numenemies; 0 <= _ref1 ? _i < _ref1 : _i > _ref1; i = 0 <= _ref1 ? ++_i : --_i) {
+        console.log(this);
+        for (i = _i = 0, _ref2 = o.numenemies; 0 <= _ref2 ? _i < _ref2 : _i > _ref2; i = 0 <= _ref2 ? ++_i : --_i) {
           this.get("NPCs").add(n = new NPC({
             level: o.avglevel
           }));
-          n.marker.x = 50 * i;
-          n.marker.y = 50 * i;
-          square = n.setCurrentSpace();
-          console.log(square);
-          ct = 0;
-          while (square.end === false || square.e === "f") {
-            n.marker.x = 50 * (i + ct);
-            n.marker.y = 50 * (i + ct);
-            ct++;
-            square = n.setCurrentSpace();
-          }
+          this.get("AllCharacters").add(n);
+          n.addToMap();
           board.addMarker(n);
         }
+        ut.c("before sort");
+        console.log(this.get("AllCharacters").models);
+        this.get("AllCharacters").sort();
+        ut.c("after sort");
+        console.log(this.get("AllCharacters").models);
         return this;
       };
 
@@ -85,7 +113,14 @@
     console.log(_active_chars);
     _shared = globals.shared_events;
     _shared.on("battle", function() {
-      return _grid.activate();
+      _grid.activate();
+      ut.c("battle starting");
+      return _.each(PCs.models, function(pc, i) {
+        if (i !== 0) {
+          pc.addToMap();
+          return board.addMarker(pc);
+        }
+      });
     });
     _activemap = null;
     _side = globals.map.tileside;
@@ -156,8 +191,8 @@
       __extends(GridOverlay, _super);
 
       function GridOverlay() {
-        _ref1 = GridOverlay.__super__.constructor.apply(this, arguments);
-        return _ref1;
+        _ref2 = GridOverlay.__super__.constructor.apply(this, arguments);
+        return _ref2;
       }
 
       GridOverlay.prototype.show = function() {
@@ -207,8 +242,8 @@
       __extends(GridSquare, _super);
 
       function GridSquare() {
-        _ref2 = GridSquare.__super__.constructor.apply(this, arguments);
-        return _ref2;
+        _ref3 = GridSquare.__super__.constructor.apply(this, arguments);
+        return _ref3;
       }
 
       GridSquare.prototype.tagName = 'li';

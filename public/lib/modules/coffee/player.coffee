@@ -1,6 +1,7 @@
 define "player", ["utilities", "npc", "board", "globals", "mapper", "items", "backbone", "easel", "underscore"], (ut, NPC, board, globals, mapper, items) ->
 	stage = board.getStage()
 	class player extends NPC.NPC
+		type: 'player'
 		initialize: (attrs) ->
 			super
 			_.bindAll @, "contextualize", "insideChunkBounds", "move", "defaults"
@@ -69,10 +70,10 @@ define "player", ["utilities", "npc", "board", "globals", "mapper", "items", "ba
 			}
 
 	PCs = new NPC.NPCArray
-	PCs.add new player
-	PCs.add new player
-	PCs.add new player
-	PCs.add new player
+	PCs.add new player null, main: true
+	PCs.add new player init: 4, name: 'Fighter'
+	PCs.add new player init: 2, name: 'Mage'
+	PCs.add new player init: 3, name: 'Cleric'
 
 	return {
 		model: player

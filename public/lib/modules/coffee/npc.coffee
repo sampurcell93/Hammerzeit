@@ -24,11 +24,12 @@ define ["globals", "utilities", "board","items", "mapper", "underscore", "backbo
 
 	class NPC extends Backbone.Model
 		currentspace: {}
+		type: 'npc'
 		move_callbacks: 
 			done: -> 
 			change: ->
 		frames: {
-			# The in place animation frames for the PC
+			# The in place animation frames for the default NPC
 			down: [[0, 0, 55, 55, 0]
 					[55, 0, 55, 55, 0]
 					[110, 0, 55, 55, 0]
@@ -214,7 +215,7 @@ define ["globals", "utilities", "board","items", "mapper", "underscore", "backbo
 			flag
 		# Given move deltas, retrieve the DisplayObject (bitmap) at that position in the current chunk
 		getTargetTile: (dx, dy, start) ->
-			chunk = mapper.getVisibleChunk().children
+			chunk = mapper.getVisibleChunk()?.children
 			y = if start then start.y else @marker.y
 			x = if start then start.x else @marker.x
 			console.log "got target tile"
@@ -304,14 +305,32 @@ define ["globals", "utilities", "board","items", "mapper", "underscore", "backbo
 		getPrivate: (id) ->
 			_p[id]
 		# Given pixel x and y coordinates (ie 400, 300), set the current space object
-		setCurrentSpace: ->
-			target = @getTargetTile 0, 0
+		setCurrentSpace: (target) ->
+			target || target = @getTargetTile 0, 0
 			# Would use @enterSquare, but throws unexpected errors: todo, debug
 			if target 
 				@currentspace = target
 				target.occupied = true
 				target.occupiedBy = @marker
 			target
+		canOccupy: (t) ->
+			console.log t.end, t.e, t.occupied
+			if t.end is false then return false
+			if t.e is "f" then return false
+			if t.occupied is true then return false
+			true
+		addToMap: () ->
+			chunk = mapper.getVisibleChunk()?.children
+			x = Math.abs Math.ceil(Math.random()*globals.map.c_width/_ts - 1)
+			y = Math.abs Math.ceil(Math.random()*globals.map.c_height/_ts - 1)
+			console.log x, y
+			tile = chunk[y]?.children[x] 
+			while @canOccupy(tile) is false
+				tile = chunk[++y]?.children[++x]
+			@setCurrentSpace tile
+			@marker.x = x*_ts
+			@marker.y = y*_ts
+			@
 
 
 	class CharacterArray extends Backbone.Collection

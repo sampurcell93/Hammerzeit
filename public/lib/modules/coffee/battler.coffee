@@ -5,12 +5,25 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
     NPC = NPC.NPC
     stage = board.getStage()
     map = globals.map
+    # Standard modifier (d20)
+    _sm = 20
+
+    class ActivityQueue extends NPCArray
+        current_index: 0
+        model:  model: (attrs, options) ->
+            switch attrs.type
+              when 'player' then new player.model attrs, options
+              when 'npc' then new NPC attrs, options
+              # should probably add an 'else' here so there's a default if,
+              # say, no attrs are provided to a Logbooks.create call
+        comparator: (model) -> model.get("init") + Math.ceil(Math.random()*_sm)
 
 
     class Battle extends Backbone.Model
         battleDir: globals.battle_dir
         defaults: 
             NPCs: new NPCArray
+            AllCharacters: new ActivityQueue(PCs.models)
             avglevel: PCs.getAverageLevel()
             numenemies: Math.ceil(Math.random() * PCs.length * 2 + 1)
             enemyBounds: {
@@ -19,6 +32,8 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
                 min_y: 0
                 max_y: map.c_height
             }
+        begin: ->
+            
 
         load: (id) ->
             $.getJSON @battle_dir + id, (battle) ->
@@ -26,21 +41,17 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
         # A function for creating a random battle, within parameters (or NOT?!!)
         randomize: (o) ->
             o = _.extend @defaults, o
-            console.log o
+            console.log @
             for i in [0...o.numenemies]
                 @get("NPCs").add(n = new NPC level: o.avglevel)
-                n.marker.x = 50*i
-                n.marker.y = 50*i
-                square =  n.setCurrentSpace()
-                console.log square
-                ct = 0
-                while square.end is false or square.e is "f"
-                    n.marker.x = 50*(i+ct)
-                    n.marker.y = 50*(i+ct)
-                    ct++
-                    square = n.setCurrentSpace()
+                @get("AllCharacters").add n
+                n.addToMap()
                 board.addMarker n
-
+            ut.c "before sort"
+            console.log @get("AllCharacters").models
+            @get("AllCharacters").sort()
+            ut.c "after sort"
+            console.log @get("AllCharacters").models
             @
         destroy: ->
             @destructor()
@@ -52,13 +63,17 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
                 stage.removeChild npc.marker
                 npc.destroy()
 
-
     _active_chars = PCs
     # _active_chars.add player.PCs
     console.log _active_chars
     _shared = globals.shared_events
     _shared.on "battle", ->
         _grid.activate()
+        ut.c "battle starting"
+        _.each PCs.models, (pc, i) ->
+            unless i is 0
+                pc.addToMap()
+                board.addMarker pc
     _activemap = null
     _side = globals.map.tileside
     _currentbattle = null

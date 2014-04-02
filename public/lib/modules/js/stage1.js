@@ -34,13 +34,15 @@
             speed: 82,
             after: function() {
               var c;
-              PC.trigger("change:current_chunk");
-              c = PC.get("current_chunk");
               board.setPresetBackground("");
               dialog.destroy();
+              PC.trigger("change:current_chunk");
+              c = PC.get("current_chunk");
               board.addMarker(PC);
+              console.log('bout to render');
               mapper.renderChunk(_bitmap[c.y][c.x], stage);
-              board.addState("BATTLE").removeState("WAITING");
+              board.addState("BATTLE").removeState("WAITING").removeState("TRAVEL");
+              console.log(board.getState());
               board.setMapSize(_stageObj.width * globals.map.width, _stageObj.height * globals.map.height);
               return PC.marker.y = 500;
             }

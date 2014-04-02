@@ -11,9 +11,6 @@ define ["globals", "utilities", "battler", "board", "player", "controls", "mappe
 				board.removeState("LOADING")
 				level.events.on "doneloading", ->
 					level.initialize()
-					console.log board.getState()
-					board.removeState("travel").addState("battle")
-					console.log board.getState()
 				PC.on "change:current_chunk", () ->
 					ut.c "CHUNK CHANGE REGISTERED IN TASKRUNNER"
 					newchunk = PC.get "current_chunk"

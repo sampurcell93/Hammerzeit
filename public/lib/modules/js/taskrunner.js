@@ -11,10 +11,7 @@
         return require(["lib/modules/js/stage" + module], function(level) {
           board.removeState("LOADING");
           level.events.on("doneloading", function() {
-            level.initialize();
-            console.log(board.getState());
-            board.removeState("travel").addState("battle");
-            return console.log(board.getState());
+            return level.initialize();
           });
           return PC.on("change:current_chunk", function() {
             var full_chunk, newchunk;
