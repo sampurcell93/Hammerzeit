@@ -2,6 +2,9 @@ define  ["jquery", "underscore"], ->
 
 	_c = -> for arg in arguments then console.log arg
 
+	clone = (orig) -> $.map(orig, (obj) -> $.extend true, {}, obj)
+
+
 	# Thanks to stackoverflow user Will for this handy class splitter
 	(($) ->
 	  $.fn.classes = (callback) ->
@@ -171,14 +174,16 @@ define  ["jquery", "underscore"], ->
 			else if str is "false" then false
 			else str
 		array_shuffle: (o) ->
-		  j = undefined
-		  x = undefined
-		  i = o.length
+			j = undefined
+			x = undefined
+			i = o.length
 
-		  while i
-		    j = Math.floor(Math.random() * i)
-		    x = o[--i]
-		    o[i] = o[j]
-		    o[j] = x
-		  o
+			while i
+				j = Math.floor(Math.random() * i)
+				x = o[--i]
+				o[i] = o[j]
+				o[j] = x
+			o
+		deep_clone: (orig) -> clone orig
+
 	}

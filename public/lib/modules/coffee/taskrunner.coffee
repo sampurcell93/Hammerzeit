@@ -19,6 +19,6 @@ define ["globals", "utilities", "battler", "board", "player", "controls", "mappe
 					mapcreator.render()
 					full_chunk = level.getBitmap()[newchunk.y][newchunk.x]
 					mapper.renderChunk full_chunk, board.getStage()
-					menus.battleMenu.clearPotentialMoves()
+					battler.clearPotentialMoves()
 	}
 	taskrunner

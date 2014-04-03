@@ -172,8 +172,7 @@ define ["globals", "utilities", "board", "items", "mapper", "underscore", "backb
 		# Returns false if the move will not work, or returns the new coords if it does.
 		move: (dx, dy, walkspeed) ->
 			# if board.hasState("battle") then return false
-			if board.getPaused() then return false
-			cbs = @move_callbacks
+			if board.isPaused() then return false
 			marker = @marker
 			target = @getTargetTile dx, dy
 			if @moving is true then return false
@@ -182,12 +181,19 @@ define ["globals", "utilities", "board", "items", "mapper", "underscore", "backb
 			if !@stage or !marker
 				throw new Error("There is no stage or marker assigned to this NPC!")
 			if !@canMoveOffChunk() then return false
-			count = 0
 			@moving = true
+			@moveInterval dx, dy
+			true
+		moveInterval: (dx, dy, walkspeed) ->
+			@setSpriteSheet dx, dy
+			target = @getTargetTile dx, dy
+			count = 0
+			cbs = @move_callbacks
 			m_i = setInterval =>
 				if count < 10
-					marker.x += 5*dx
-					marker.y += 5*dy
+					@marker.x += 5*dx
+					@marker.y += 5*dy
+					if @cursor().isVisible() then @c.move @marker
 					cbs.change.call(@, dx, dy)
 				else 
 					clearInterval m_i
@@ -196,6 +202,7 @@ define ["globals", "utilities", "board", "items", "mapper", "underscore", "backb
 					do @leaveSquare
 					@enterSquare target, dx, dy
 					@reanimate "run", .13, "run"
+					@trigger "donemoving"
 					cbs.done.call(@, dx, dy)
 				count++
 			, walkspeed || _p.walkspeed
@@ -206,48 +213,52 @@ define ["globals", "utilities", "board", "items", "mapper", "underscore", "backb
 		# one standard, two minor OR
 		# Two moves one minor
 		resetActions: ->
-			@actions = _.extend {
+			@actions = _.extend @actions, {
 				standard: 1
 				move: 2
 				minor: 2
-			}, Backbone.Events
+			}
 			@
 		# Default action values. Can be reset with initTurn or augmented with items
 		actions: _.extend {
 				standard: 1
 				move: 2
 				minor: 2
+				reduce: -> 
 			}, Backbone.Events
 		# If a user doens't move before the timer runs out, they must burn an action
 		# Tries move first, then standard, then minor
 		burnAction: ->
-			if @takeMove() then true
-			else if @takeStandard() then true
-			else if @takeMinor() then true
+			if @takeMove(true) then true
+			else if @takeStandard(true) then true
+			else if @takeMinor(true) then true
 			false
 		# Take a standard action and adjust the other actions.
-		takeStandard: ->
+		takeStandard: (burn) ->
 			actions = @actions
 			if actions.standard > 0
 				actions.standard--
 				actions.move--
 				actions.minor--
-				true
-			false
+				actions.trigger "reduce"
+			unless burn then @nextPhase()
+			@
 		# Take a move action
-		takeMove: ->
+		takeMove: (burn) ->
 			actions = @actions
 			if actions.move > 0
 				actions.move--
-				true
-			false
+				actions.trigger "reduce"
+			unless burn then @nextPhase()
+			@
 		# Take a minor action
-		takeMinor: ->
+		takeMinor: (burn) ->
 			actions = @actions
 			if actions.minor > 0
 				actions.minor--
-				true
-			false
+				actions.trigger "reduce"
+			unless burn then @nextPhase()
+			@
 		# Can the user take any more actions?
 		canTakeAction: ->
 			flag = false
@@ -264,7 +275,7 @@ define ["globals", "utilities", "board", "items", "mapper", "underscore", "backb
 		# Because we're not updating marker, we can pass in a start object (x:,y:) to be virtualized from
 		virtualMove: (dx, dy, start, extra) ->
 			extra || extra = 0
-			if board.getPaused() then return false
+			if board.isPaused() then return false
 			target = @getTargetTile dx, dy, start
 			if _.isEmpty(target) then return false
 			if target.tileModel.discovered then return false
@@ -289,8 +300,16 @@ define ["globals", "utilities", "board", "items", "mapper", "underscore", "backb
 			checkQueue.unshift(start)
 			start.tileModel.discovered = true
 			start.tileModel.distance = 0
-			# Enqueue a target node
-			enqueue = (distance, target) ->
+			start.tileModel.pathFromStart.start = _.pick start, "x", "y"
+			# Enqueue a target node and store the directions it took to get there
+			enqueue = (dx, dy, previous, target) ->
+				if target is false then return
+				distance = previous.distance
+				path = ut.deep_clone previous.pathFromStart.path
+				path.push {dx: dx, dy: dy}
+				pathFromStart = target.tileModel.pathFromStart
+				pathFromStart.path = path
+				pathFromStart.start = previous.pathFromStart.start
 				if !target then return
 				d = if target.m then target.m else 1
 				if distance + d > speed then return
@@ -298,14 +317,14 @@ define ["globals", "utilities", "board", "items", "mapper", "underscore", "backb
 				target.tileModel.discovered = true
 				checkQueue.unshift target
 				done.call(@, target)
-
 			while checkQueue.length > 0
 				square = checkQueue.pop()
-				movable.push square.tileModel
+				tile = square.tileModel
+				movable.push tile
 				for i in [-1..1]
 					if i is 0 then continue
-					enqueue(square.tileModel.distance, @virtualMove 0, i, square)
-					enqueue(square.tileModel.distance, @virtualMove i, 0, square)
+					enqueue(0, i, square.tileModel, @virtualMove 0, i, square)
+					enqueue(i, 0, square.tileModel, @virtualMove i, 0, square)
 
 			_.each movable.models, (tile) ->
 				tile.discovered = false
@@ -320,6 +339,7 @@ define ["globals", "utilities", "board", "items", "mapper", "underscore", "backb
 		# Kill NPC
 		die: ->
 			@dead = true
+			@trigger "die", @, @collection, {}
 		# Is the NPC dead?
 		isDead: ->
 			@dead
@@ -372,10 +392,8 @@ define ["globals", "utilities", "board", "items", "mapper", "underscore", "backb
 			@cursor().show()
 			@
 		initTurn: ->
-			console.log "starting a character's turn"
 			@indicateActive()
 			globals.shared_events.trigger "closemenus"
-			globals.shared_events.trigger "openmenu"
 			@nextPhase()
 		nextPhase: ->
 			t = @turnPhase
@@ -383,14 +401,14 @@ define ["globals", "utilities", "board", "items", "mapper", "underscore", "backb
 				return @turnDone()
 			battler.resetTimer().startTimer @i, => 
 				@burnAction()
-				console.log "the timer is done .... burning a move action"
+				console.log "the timer is done .... burning an action"
+				console.log @actions
 				@takeMove()
 				@nextPhase()
 			console.log "the timer is running!!"
 			@turnPhase++
 
-
-
+	# A basic collection of NPCs
 	class CharacterArray extends Backbone.Collection
 		model: NPC
 		type: 'NPCArray'
@@ -401,11 +419,19 @@ define ["globals", "utilities", "board", "items", "mapper", "underscore", "backb
 					sum += PC.get "level"
 			Math.ceil sum/@length
 
+	# Default view for an NPC - can be launched in a modal or put into any other context.
+	class CharacterPropertyView extends Backbone.View
+		template: $("#character-view").html()
+		render: ->
+			console.log @model
+			@$el.html(_.template @template, @model.toJSON())
+			@
+
 	# Bind all the private functions to the public object.... invisibly 0_0
 	# _.each move_fns, (fn) ->
 		# if typeof fn == "function" then _.bind fn, NPC
 
-	# We return the objects directly so we can subclass them
+	# We return the objects directly so we can subclass them :(
 	{
 		NPC: NPC
 		NPCArray: CharacterArray

@@ -33,11 +33,29 @@
       };
 
       Tile.prototype.initialize = function(attrs) {
-        return this.on("expose", this.expose);
+        this.on({
+          "expose": this.expose,
+          "removemove": this.removePotentialMoves
+        });
+        return this.pathFromStart = {
+          start: {
+            x: 0,
+            y: 0
+          },
+          path: []
+        };
       };
 
       Tile.prototype.expose = function() {
         return setTile(this.attributes);
+      };
+
+      Tile.prototype.removePotentialMoves = function() {
+        console.log("removing potential");
+        while (this.pathFromStart.path.length) {
+          this.pathFromStart.path.shift();
+        }
+        return this;
       };
 
       return Tile;

@@ -83,16 +83,6 @@
         return this.$el.children(".selected").trigger("click");
       };
 
-      Menu.prototype.clearPotentialMoves = function() {
-        console.log(_potential_moves);
-        if (_potential_moves == null) {
-          return this;
-        }
-        return _.each(_potential_moves.models, function(tile) {
-          return tile.trigger("removemove");
-        });
-      };
-
       Menu.prototype.close = function() {
         var _activemenu;
         _activemenu = null;
@@ -104,7 +94,7 @@
           easing: 'easeInOutQuart'
         }), 300);
         board.unpause().focus();
-        return this.clearPotentialMoves();
+        return battler.clearPotentialMoves();
       };
 
       Menu.prototype.open = function() {
@@ -192,9 +182,9 @@
 
       BattleMenu.prototype.child_events = {
         "click .js-virtual-move": function() {
-          this.clearPotentialMoves();
+          battler.clearPotentialMoves();
           _potential_moves = battler.getActive().virtualMovePossibilities();
-          return console.log(_potential_moves);
+          return battler.setPotentialMoves(_potential_moves);
         }
       };
 

@@ -49,6 +49,7 @@ define ["utilities", "npc", "board", "globals", "mapper", "items", "backbone", "
 		initTurn: ->
 			super
 			console.log "and it's a PC!"
+			globals.shared_events.trigger "openmenu"
 		defaults: ->
 			defaults = super
 			Item = items.Item

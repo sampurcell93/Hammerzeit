@@ -49,18 +49,12 @@ define ["globals", "utilities", "dialog", "battler", "player", "npc", "board", "
             @showInventory()
         clickActiveItem: ->
             @$el.children(".selected").trigger "click"
-        clearPotentialMoves: ->
-            console.log _potential_moves
-            if !_potential_moves? then return @
-            _.each _potential_moves.models, (tile) ->
-                # console.log tile
-                tile.trigger "removemove"
         close: ->
             _activemenu = null
             @showing = false
             @$el.effect "slide", _.extend({mode: 'hide'}, {direction: 'right', easing: 'easeInOutQuart'}), 300
             board.unpause().focus()
-            @clearPotentialMoves()
+            battler.clearPotentialMoves()
         open: ->
             active = battler.getActive player: true
             if active then @model = active
@@ -101,10 +95,9 @@ define ["globals", "utilities", "dialog", "battler", "player", "npc", "board", "
         child_events:
             # Creates an overlay on the 
             "click .js-virtual-move": -> 
-                @clearPotentialMoves()
-                _potential_moves = battler.getActive().virtualMovePossibilities()
-                console.log _potential_moves
-
+                battler.clearPotentialMoves()
+                _potential_moves = battler.getActive().virtualMovePossibilities()                
+                battler.setPotentialMoves _potential_moves
 
     _menus = window._menus = {
         travel: new TravelMenu model: player.PC

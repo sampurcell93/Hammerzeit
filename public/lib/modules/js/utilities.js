@@ -1,6 +1,6 @@
 (function() {
   define(["jquery", "underscore"], function() {
-    var b, bl, destroyModal, l, launchModal, r, rb, rbl, rl, t, tb, tbl, tl, tr, trb, trl, _c;
+    var b, bl, clone, destroyModal, l, launchModal, r, rb, rbl, rl, t, tb, tbl, tl, tr, trb, trl, _c;
     _c = function() {
       var arg, _i, _len, _results;
       _results = [];
@@ -9,6 +9,11 @@
         _results.push(console.log(arg));
       }
       return _results;
+    };
+    clone = function(orig) {
+      return $.map(orig, function(obj) {
+        return $.extend(true, {}, obj);
+      });
     };
     (function($) {
       $.fn.classes = function(callback) {
@@ -249,6 +254,9 @@
           o[j] = x;
         }
         return o;
+      },
+      deep_clone: function(orig) {
+        return clone(orig);
       }
     };
   });

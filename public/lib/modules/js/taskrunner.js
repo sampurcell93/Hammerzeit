@@ -22,7 +22,7 @@
             mapcreator.render();
             full_chunk = level.getBitmap()[newchunk.y][newchunk.x];
             mapper.renderChunk(full_chunk, board.getStage());
-            return menus.battleMenu.clearPotentialMoves();
+            return battler.clearPotentialMoves();
           });
         });
       }

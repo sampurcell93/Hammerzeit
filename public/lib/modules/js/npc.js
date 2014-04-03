@@ -3,7 +3,7 @@
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
   define(["globals", "utilities", "board", "items", "mapper", "underscore", "backbone"], function(globals, ut, board, items, mapper) {
-    var CharacterArray, NPC, Row, coordToDir, _checkEntry, _events, _p, _ref, _ref1, _ts;
+    var CharacterArray, CharacterPropertyView, NPC, Row, coordToDir, _checkEntry, _events, _p, _ref, _ref1, _ref2, _ts;
     _checkEntry = ut.tileEntryCheckers;
     _ts = globals.map.tileside;
     _events = globals.shared_events;
@@ -247,12 +247,10 @@
       };
 
       NPC.prototype.move = function(dx, dy, walkspeed) {
-        var cbs, count, m_i, marker, sheet, target,
-          _this = this;
-        if (board.getPaused()) {
+        var marker, sheet, target;
+        if (board.isPaused()) {
           return false;
         }
-        cbs = this.move_callbacks;
         marker = this.marker;
         target = this.getTargetTile(dx, dy);
         if (this.moving === true) {
@@ -268,12 +266,25 @@
         if (!this.canMoveOffChunk()) {
           return false;
         }
-        count = 0;
         this.moving = true;
+        this.moveInterval(dx, dy);
+        return true;
+      };
+
+      NPC.prototype.moveInterval = function(dx, dy, walkspeed) {
+        var cbs, count, m_i, target,
+          _this = this;
+        this.setSpriteSheet(dx, dy);
+        target = this.getTargetTile(dx, dy);
+        count = 0;
+        cbs = this.move_callbacks;
         m_i = setInterval(function() {
           if (count < 10) {
-            marker.x += 5 * dx;
-            marker.y += 5 * dy;
+            _this.marker.x += 5 * dx;
+            _this.marker.y += 5 * dy;
+            if (_this.cursor().isVisible()) {
+              _this.c.move(_this.marker);
+            }
             cbs.change.call(_this, dx, dy);
           } else {
             clearInterval(m_i);
@@ -282,6 +293,7 @@
             _this.leaveSquare();
             _this.enterSquare(target, dx, dy);
             _this.reanimate("run", .13, "run");
+            _this.trigger("donemoving");
             cbs.done.call(_this, dx, dy);
           }
           return count++;
@@ -293,61 +305,71 @@
 
 
       NPC.prototype.resetActions = function() {
-        this.actions = _.extend({
+        this.actions = _.extend(this.actions, {
           standard: 1,
           move: 2,
           minor: 2
-        }, Backbone.Events);
+        });
         return this;
       };
 
       NPC.prototype.actions = _.extend({
         standard: 1,
         move: 2,
-        minor: 2
+        minor: 2,
+        reduce: function() {}
       }, Backbone.Events);
 
       NPC.prototype.burnAction = function() {
-        if (this.takeMove()) {
+        if (this.takeMove(true)) {
           true;
-        } else if (this.takeStandard()) {
+        } else if (this.takeStandard(true)) {
           true;
-        } else if (this.takeMinor()) {
+        } else if (this.takeMinor(true)) {
           true;
         }
         return false;
       };
 
-      NPC.prototype.takeStandard = function() {
+      NPC.prototype.takeStandard = function(burn) {
         var actions;
         actions = this.actions;
         if (actions.standard > 0) {
           actions.standard--;
           actions.move--;
           actions.minor--;
-          true;
+          actions.trigger("reduce");
         }
-        return false;
+        if (!burn) {
+          this.nextPhase();
+        }
+        return this;
       };
 
-      NPC.prototype.takeMove = function() {
+      NPC.prototype.takeMove = function(burn) {
         var actions;
         actions = this.actions;
         if (actions.move > 0) {
           actions.move--;
-          true;
+          actions.trigger("reduce");
         }
-        return false;
+        if (!burn) {
+          this.nextPhase();
+        }
+        return this;
       };
 
-      NPC.prototype.takeMinor = function() {
+      NPC.prototype.takeMinor = function(burn) {
         var actions;
         actions = this.actions;
         if (actions.minor > 0) {
           actions.minor--;
-          true;
+          actions.trigger("reduce");
         }
-        return false;
+        if (!burn) {
+          this.nextPhase();
+        }
+        return this;
       };
 
       NPC.prototype.canTakeAction = function() {
@@ -372,7 +394,7 @@
       NPC.prototype.virtualMove = function(dx, dy, start, extra) {
         var target;
         extra || (extra = 0);
-        if (board.getPaused()) {
+        if (board.isPaused()) {
           return false;
         }
         target = this.getTargetTile(dx, dy, start);
@@ -389,7 +411,7 @@
       };
 
       NPC.prototype.virtualMovePossibilities = function(done) {
-        var checkQueue, enqueue, i, movable, speed, square, start, _i;
+        var checkQueue, enqueue, i, movable, speed, square, start, tile, _i;
         speed || (speed = this.get("attrs").spd);
         start || (start = this.getTargetTile(0, 0));
         done || (done = function(target) {
@@ -400,8 +422,21 @@
         checkQueue.unshift(start);
         start.tileModel.discovered = true;
         start.tileModel.distance = 0;
-        enqueue = function(distance, target) {
-          var d;
+        start.tileModel.pathFromStart.start = _.pick(start, "x", "y");
+        enqueue = function(dx, dy, previous, target) {
+          var d, distance, path, pathFromStart;
+          if (target === false) {
+            return;
+          }
+          distance = previous.distance;
+          path = ut.deep_clone(previous.pathFromStart.path);
+          path.push({
+            dx: dx,
+            dy: dy
+          });
+          pathFromStart = target.tileModel.pathFromStart;
+          pathFromStart.path = path;
+          pathFromStart.start = previous.pathFromStart.start;
           if (!target) {
             return;
           }
@@ -417,13 +452,14 @@
         };
         while (checkQueue.length > 0) {
           square = checkQueue.pop();
-          movable.push(square.tileModel);
+          tile = square.tileModel;
+          movable.push(tile);
           for (i = _i = -1; _i <= 1; i = ++_i) {
             if (i === 0) {
               continue;
             }
-            enqueue(square.tileModel.distance, this.virtualMove(0, i, square));
-            enqueue(square.tileModel.distance, this.virtualMove(i, 0, square));
+            enqueue(0, i, square.tileModel, this.virtualMove(0, i, square));
+            enqueue(i, 0, square.tileModel, this.virtualMove(i, 0, square));
           }
         }
         _.each(movable.models, function(tile) {
@@ -441,7 +477,8 @@
       NPC.prototype.dead = false;
 
       NPC.prototype.die = function() {
-        return this.dead = true;
+        this.dead = true;
+        return this.trigger("die", this, this.collection, {});
       };
 
       NPC.prototype.isDead = function() {
@@ -519,10 +556,8 @@
       };
 
       NPC.prototype.initTurn = function() {
-        console.log("starting a character's turn");
         this.indicateActive();
         globals.shared_events.trigger("closemenus");
-        globals.shared_events.trigger("openmenu");
         return this.nextPhase();
       };
 
@@ -535,7 +570,8 @@
         }
         battler.resetTimer().startTimer(this.i, function() {
           _this.burnAction();
-          console.log("the timer is done .... burning a move action");
+          console.log("the timer is done .... burning an action");
+          console.log(_this.actions);
           _this.takeMove();
           return _this.nextPhase();
         });
@@ -573,6 +609,25 @@
       return CharacterArray;
 
     })(Backbone.Collection);
+    CharacterPropertyView = (function(_super) {
+      __extends(CharacterPropertyView, _super);
+
+      function CharacterPropertyView() {
+        _ref2 = CharacterPropertyView.__super__.constructor.apply(this, arguments);
+        return _ref2;
+      }
+
+      CharacterPropertyView.prototype.template = $("#character-view").html();
+
+      CharacterPropertyView.prototype.render = function() {
+        console.log(this.model);
+        this.$el.html(_.template(this.template, this.model.toJSON()));
+        return this;
+      };
+
+      return CharacterPropertyView;
+
+    })(Backbone.View);
     return {
       NPC: NPC,
       NPCArray: CharacterArray

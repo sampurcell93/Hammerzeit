@@ -1,6 +1,6 @@
 (function() {
   define(['globals', 'utilities', 'jquery', 'underscore', 'easel'], function(globals, ut) {
-    var $canvas, Cursor, addMarker, addState, blurBoard, board, canvas, clear, flashStateChange, hasState, initialize, introSlider, removeState, scenecount, scenelen, setPresetBackground, setState, stage, startSlideshow, state, stateChangeEvents, states, textshadow, unblurBoard, zoomIn, zoomOut, _mapheight, _mapwidth, _ticker, _ts, _zoom,
+    var $canvas, Cursor, addMarker, addState, blurBoard, board, canvas, clear, flashStateChange, hasState, initialize, introSlider, removeState, scenecount, scenelen, setPresetBackground, setState, stage, startSlideshow, state, stateChangeEvents, states, textshadow, unblurBoard, zoomIn, zoomOut, _cursor, _mapheight, _mapwidth, _ticker, _ts, _zoom,
       _this = this;
     canvas = document.getElementById("game-board");
     $canvas = $(canvas);
@@ -57,6 +57,10 @@
         return this;
       };
 
+      Cursor.prototype.isVisible = function() {
+        return this.visible;
+      };
+
       Cursor.prototype.move = function(x, y) {
         if (_.isObject(x)) {
           y = x.y - _ts + this.offset;
@@ -70,6 +74,7 @@
       return Cursor;
 
     })();
+    _cursor = new Cursor;
     setPresetBackground = function(bg) {
       return $canvas.attr("bg", bg);
     };
@@ -208,6 +213,14 @@
       }
       return state;
     };
+    hasState = function(checkstate) {
+      checkstate = checkstate.toUpperCase();
+      if ($.isArray(state)) {
+        return state.indexOf(checkstate) !== -1;
+      } else {
+        return state === checkstate;
+      }
+    };
     addMarker = function(obj, at) {
       if (at) {
         stage.addChildAt(obj, at);
@@ -216,14 +229,6 @@
         stage.addChild(obj.marker);
       }
       return obj.stage = stage;
-    };
-    hasState = function(checkstate) {
-      checkstate = checkstate.toUpperCase();
-      if ($.isArray(state)) {
-        return state.indexOf(checkstate) !== -1;
-      } else {
-        return state === checkstate;
-      }
     };
     zoomOut = function() {
       var current, newstr;
@@ -369,7 +374,7 @@
         _ticker.setPaused(false);
         return this;
       },
-      getPaused: function() {
+      isPaused: function() {
         return _ticker.getPaused();
       },
       slowTo: function(interval) {
@@ -390,6 +395,9 @@
       },
       newCursor: function() {
         return new Cursor;
+      },
+      mainCursor: function() {
+        return _cursor;
       },
       inBounds: function(x, y) {
         console.log(x, y);

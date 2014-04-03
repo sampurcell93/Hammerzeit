@@ -67,15 +67,18 @@ define ['globals', 'utilities', 'jquery', 'underscore', 'easel'], (globals, ut) 
             @visible = false
             stage.removeChild @marker
             @
+        isVisible: -> @visible
         # Either pass in a DisplayObject as the first parameter, or x,y pixel coords to move to
-        # If a displayobject is passed, the cursor will be set to one square ABOVE it (as an indicator).
+        # If a displayobject is passed, the cursor will be set to one square ABOVE it (as an indicator) and the second arg will be an offset
         move: (x, y) ->
             if _.isObject(x)
                 y = x.y - _ts + @offset
-                x = x.x 
+                x = x.x
             @marker.x = x
             @marker.y = y + @offset
             @
+
+    _cursor = new Cursor
 
     setPresetBackground = (bg) ->
         $canvas.attr "bg", bg
@@ -174,6 +177,13 @@ define ['globals', 'utilities', 'jquery', 'underscore', 'easel'], (globals, ut) 
             if fn? then fn()
         else throw new Error("The board currently has only one state - you can't remove it. Try adding another state first.")
         state
+
+    hasState = (checkstate) ->
+        checkstate = checkstate.toUpperCase()
+        if $.isArray state then state.indexOf(checkstate) != -1
+        else state == checkstate
+
+
     addMarker = (obj, at) ->
         if at then stage.addChildAt obj, at
         else
@@ -181,10 +191,6 @@ define ['globals', 'utilities', 'jquery', 'underscore', 'easel'], (globals, ut) 
             stage.addChild obj.marker
         obj.stage = stage
 
-    hasState = (checkstate) ->
-        checkstate = checkstate.toUpperCase()
-        if $.isArray state then state.indexOf(checkstate) != -1
-        else state == checkstate
 
     zoomOut = ->
         current = $canvas.css("background-size").split(" ")
@@ -292,7 +298,7 @@ define ['globals', 'utilities', 'jquery', 'underscore', 'easel'], (globals, ut) 
             unblurBoard()
             _ticker.setPaused false
             @
-        getPaused: ->
+        isPaused: ->
             _ticker.getPaused()
         # Board defaults to 50ms between ticks
         slowTo: (interval) ->
@@ -310,6 +316,8 @@ define ['globals', 'utilities', 'jquery', 'underscore', 'easel'], (globals, ut) 
         # Get a new cursor object
         newCursor: ->
             new Cursor
+        # Use as general purpose cursor to avoid over instantiation
+        mainCursor: -> _cursor
         inBounds: (x,y) ->
             console.log x, y
             x >= 0 and x <= globals.map.c_width and y >= 0 and y <= globals.map.c_height

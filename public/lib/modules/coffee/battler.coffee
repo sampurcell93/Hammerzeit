@@ -7,6 +7,8 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
     map = globals.map
     # Standard modifier (d20)
     _sm = 20
+    _ts = globals.map.tileside
+    _potential_moves = null
 
     # Simple circular queue
     class ActivityQueue extends NPCArray
@@ -47,6 +49,7 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
 
 
     class Battle extends Backbone.Model
+        states: []
         defaults: 
             NPCs: new NPCArray
             AllCharacters: new ActivityQueue(PCs.models)
@@ -58,13 +61,38 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
                 min_y: 0
                 max_y: map.c_height
             }
+        addState: (newstate) ->
+            if @hasState(newstate) is false
+                @states.push newstate
+        setState: (newstate) ->
+            @states = [newstate]
+            @
+        removeState: (removeme) ->
+            if @states.length > 1
+                index = @states.indexOf removeme
+                @states.splice(index, 1) unless index == -1
+            else throw new Error("The board currently has only one state - you can't remove it. Try adding another state first.")
+            @
+        hasState: (checkstate) ->
+            @states == checkstate.toUpperCase()
+
+        initialize: ->
+            @listenTo @get("NPCs"), 
+                die: @checkStillLiving
+
+        checkStillLiving: (model, collection, options) ->
+            if collection
+                flag = true
+                _.each collection.models, (character) =>
+                    if character.dead is false then flag = false
+                return flag
+            false
         addPCs: ->
             _.each PCs.models, (pc, i) ->
                 unless i is 0
                     pc.addToMap()
                     board.addMarker pc
         begin: (type, opts)->
-            console.log "beginning battle with character"
             @addPCs()
             if type is "random" then @randomize(opts)
             else @load type
@@ -81,11 +109,7 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
                 @get("AllCharacters").add n
                 n.addToMap()
                 board.addMarker n
-            ut.c "before sort"
-            console.log @get("AllCharacters").models
             @get("AllCharacters").sort()
-            ut.c "after sort"
-            console.log @get("AllCharacters").models
             @
         destroy: ->
             @destructor()
@@ -107,14 +131,14 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
         b = _activebattle = new Battle
         b.begin "random"
     _activemap = null
-    _side = globals.map.tileside
+    _ts = globals.map.tileside
 
     # Keeps track of timed events in the battle field
     # When done, triggers a shared event so other modules know
     class Timer
         constructor: (@el, @number) -> 
         interval: null
-        totaltime: 1000
+        totaltime: 10000
         stop: -> if @interval then clearInterval @interval
         start: (extra, done) ->
             @show()
@@ -140,18 +164,17 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
             @el.attr("value", 0)
         show: -> 
             board.$canvas.addClass("nocorners")
-            @el.fadeIn "fast"
+            @el.slideDown "fast"
             @number.fadeIn "fast"
         hide: -> 
             board.$canvas.removeClass("nocorners")
             @number.fadeOut "fast"
-            @el.fadeOut "fast"
+            @el.slideUp "fast"
         set: (time) ->
             if time >= 0 and time <= @totaltime
                 @el.attr("value", time)
  
     _timer = new Timer($("#turn-progress"),$("#turn-progress-number"))
-
 
     class GridOverlay extends mapcreator.Overlay
         show: -> @$el.fadeIn  "fast"
@@ -190,7 +213,12 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
                 generalhighlight: @highlight
             @setUpHitArea()
         setUpHitArea: ->
+            o = Math.ceil(@model.get("elv") / 5)
+            if o < -5 then o = -5 else if o > 5 then o = 5
             bitmap = @model.bitmap
+            if o then console.log o, bitmap.x, bitmap.y
+            bitmap.x += o
+            bitmap.y += o
             area = bitmap.hitArea
             area.x = bitmap.x - 1
             area.y = bitmap.y - 1
@@ -203,11 +231,30 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
         clickHandler: (e, data) -> 
             console.log "you clicked the area"
             console.log arguments
+            console.log @model
+            active = getActive()
+            path = @model.pathFromStart.path
+            moveInterval = =>
+                if _.isEmpty(path)
+                    @stopListening active, "donemoving"
+                    clearPotentialMoves()
+                    _potential_moves = active.virtualMovePossibilities()
+                    active.takeMove()
+                else
+                    deltas = path[0]
+                    dx = deltas.dx
+                    dy = deltas.dy
+                    active.moveInterval(dx,dy)
+                    path.shift()
+            do moveInterval
+            @listenTo active, "donemoving", -> setTimeout moveInterval, 70
         mouseoverHandler: (e, data) ->
-            data.area.graphics.clear().beginFill(@colors.selected_move).drawRect(0, 0, _side-2, _side-2).endFill();
+            data.area.graphics.clear().beginFill(@colors.selected_move).drawRect(0, 0, _ts, _ts).endFill();
+            board.mainCursor().show().move @model.bitmap
             @
         mouseoutHandler: (e, data) ->
-            data.area.graphics.clear().beginFill(@colors.potential_move).drawRect(0, 0, _side-2, _side-2).endFill();
+            board.mainCursor().hide()
+            data.area.graphics.clear().beginFill(@colors.potential_move).drawRect(0, 0, _ts, _ts).endFill();
             @
         bindMoveFns: (area) ->
             area.on "click" , @clickHandler, @, false, area: area
@@ -223,11 +270,11 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
         # Pass in a stringto identify why a grid square should be highlighted
         potentialmoves: () ->
             console.log("highlighting potential")
-            @potentialmoves = true
+            @haspotentialmoves = true
             bitmap = @model.bitmap
             area = bitmap.hitArea
             g = area.graphics
-            g.clear().beginFill(@colors.potential_move).drawRect(0, 0, _side - 2, _side - 2).endFill()
+            g.clear().beginFill(@colors.potential_move).drawRect(0, 0, _ts, _ts).endFill()
             area.alpha = 0.3
             area.drawn = true
             @bindMoveFns(area)
@@ -235,7 +282,7 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
             @
             console.log area
         removepotential: -> 
-            @potentialmoves = false
+            @haspotentialmoves = false
             bitmaphit = @model.bitmap.hitArea
             bitmaphit.drawn = false
             bitmaphit.off "click"
@@ -251,6 +298,12 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
 
     getActive = (opts) ->
         _activebattle.get("AllCharacters").getActive(opts)
+
+    clearPotentialMoves = ->
+        if !_potential_moves? then return @
+        _.each _potential_moves.models, (tile) ->
+            tile.trigger "removemove"
+        @
 
     _b = window.battler = {
         getActive: (opts) ->
@@ -299,11 +352,32 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
             if _activebattle then _activebattle.destroy()
             _activebattle = b = new Battle()
             b.randomize()
+        # Battle has substates of main board state
+        setState: (state) ->
+            _activebattle.setState state.toUpperCase()
+            @
+        # Adds a state to the array of states - string
+        addState: (newstate) -> 
+            _activebattle.addState newstate.toUpperCase()
+            @
+        # Give an string state to remove
+        removeState: (removeme) ->
+            removeme = removeme.toUpperCase()
+            if _activebattle.hasState removeme then _activebattle.removeState removeme
+            @
+        toggleState: (state) ->
+            if _activebattle.hasState(state) then _activebattle.removeState state
+            else _activebattle.addState state
+        setPotentialMoves: (moves) ->
+            _potential_moves = moves
+        clearPotentialMoves: ->
+            clearPotentialMoves()
     }   
+
 
     window.t = ->
       b = _b.getActive()
       b.trigger "turndone"
-      return
+      return b
 
     _b

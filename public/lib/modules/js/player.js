@@ -88,7 +88,8 @@
 
       player.prototype.initTurn = function() {
         player.__super__.initTurn.apply(this, arguments);
-        return console.log("and it's a PC!");
+        console.log("and it's a PC!");
+        return globals.shared_events.trigger("openmenu");
       };
 
       player.prototype.defaults = function() {

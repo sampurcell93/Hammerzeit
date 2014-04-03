@@ -3,13 +3,15 @@
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
   define(["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player", "backbone", "underscore", "jquery"], function(board, globals, ut, mapper, NPC, mapcreator, player) {
-    var ActivityQueue, Battle, GridOverlay, GridSquare, NPCArray, PCs, Timer, getActive, map, stage, _active_chars, _activebattle, _activemap, _b, _grid, _ref, _ref1, _ref2, _ref3, _shared, _side, _sm, _timer;
+    var ActivityQueue, Battle, GridOverlay, GridSquare, NPCArray, PCs, Timer, clearPotentialMoves, getActive, map, stage, _active_chars, _activebattle, _activemap, _b, _grid, _potential_moves, _ref, _ref1, _ref2, _ref3, _shared, _sm, _timer, _ts;
     PCs = player.PCs;
     NPCArray = NPC.NPCArray;
     NPC = NPC.NPC;
     stage = board.getStage();
     map = globals.map;
     _sm = 20;
+    _ts = globals.map.tileside;
+    _potential_moves = null;
     ActivityQueue = (function(_super) {
       __extends(ActivityQueue, _super);
 
@@ -90,6 +92,8 @@
         return _ref1;
       }
 
+      Battle.prototype.states = [];
+
       Battle.prototype.defaults = {
         NPCs: new NPCArray,
         AllCharacters: new ActivityQueue(PCs.models),
@@ -103,6 +107,55 @@
         }
       };
 
+      Battle.prototype.addState = function(newstate) {
+        if (this.hasState(newstate) === false) {
+          return this.states.push(newstate);
+        }
+      };
+
+      Battle.prototype.setState = function(newstate) {
+        this.states = [newstate];
+        return this;
+      };
+
+      Battle.prototype.removeState = function(removeme) {
+        var index;
+        if (this.states.length > 1) {
+          index = this.states.indexOf(removeme);
+          if (index !== -1) {
+            this.states.splice(index, 1);
+          }
+        } else {
+          throw new Error("The board currently has only one state - you can't remove it. Try adding another state first.");
+        }
+        return this;
+      };
+
+      Battle.prototype.hasState = function(checkstate) {
+        return this.states === checkstate.toUpperCase();
+      };
+
+      Battle.prototype.initialize = function() {
+        return this.listenTo(this.get("NPCs"), {
+          die: this.checkStillLiving
+        });
+      };
+
+      Battle.prototype.checkStillLiving = function(model, collection, options) {
+        var flag,
+          _this = this;
+        if (collection) {
+          flag = true;
+          _.each(collection.models, function(character) {
+            if (character.dead === false) {
+              return flag = false;
+            }
+          });
+          return flag;
+        }
+        return false;
+      };
+
       Battle.prototype.addPCs = function() {
         return _.each(PCs.models, function(pc, i) {
           if (i !== 0) {
@@ -113,7 +166,6 @@
       };
 
       Battle.prototype.begin = function(type, opts) {
-        console.log("beginning battle with character");
         this.addPCs();
         if (type === "random") {
           return this.randomize(opts);
@@ -140,11 +192,7 @@
           n.addToMap();
           board.addMarker(n);
         }
-        ut.c("before sort");
-        console.log(this.get("AllCharacters").models);
         this.get("AllCharacters").sort();
-        ut.c("after sort");
-        console.log(this.get("AllCharacters").models);
         return this;
       };
 
@@ -179,7 +227,7 @@
       return b.begin("random");
     });
     _activemap = null;
-    _side = globals.map.tileside;
+    _ts = globals.map.tileside;
     Timer = (function() {
       function Timer(el, number) {
         this.el = el;
@@ -188,7 +236,7 @@
 
       Timer.prototype.interval = null;
 
-      Timer.prototype.totaltime = 1000;
+      Timer.prototype.totaltime = 10000;
 
       Timer.prototype.stop = function() {
         if (this.interval) {
@@ -230,14 +278,14 @@
 
       Timer.prototype.show = function() {
         board.$canvas.addClass("nocorners");
-        this.el.fadeIn("fast");
+        this.el.slideDown("fast");
         return this.number.fadeIn("fast");
       };
 
       Timer.prototype.hide = function() {
         board.$canvas.removeClass("nocorners");
         this.number.fadeOut("fast");
-        return this.el.fadeOut("fast");
+        return this.el.slideUp("fast");
       };
 
       Timer.prototype.set = function(time) {
@@ -329,8 +377,19 @@
       };
 
       GridSquare.prototype.setUpHitArea = function() {
-        var area, bitmap;
+        var area, bitmap, o;
+        o = Math.ceil(this.model.get("elv") / 5);
+        if (o < -5) {
+          o = -5;
+        } else if (o > 5) {
+          o = 5;
+        }
         bitmap = this.model.bitmap;
+        if (o) {
+          console.log(o, bitmap.x, bitmap.y);
+        }
+        bitmap.x += o;
+        bitmap.y += o;
         area = bitmap.hitArea;
         area.x = bitmap.x - 1;
         area.y = bitmap.y - 1;
@@ -344,17 +403,43 @@
       };
 
       GridSquare.prototype.clickHandler = function(e, data) {
+        var active, moveInterval, path,
+          _this = this;
         console.log("you clicked the area");
-        return console.log(arguments);
+        console.log(arguments);
+        console.log(this.model);
+        active = getActive();
+        path = this.model.pathFromStart.path;
+        moveInterval = function() {
+          var deltas, dx, dy;
+          if (_.isEmpty(path)) {
+            _this.stopListening(active, "donemoving");
+            clearPotentialMoves();
+            _potential_moves = active.virtualMovePossibilities();
+            return active.takeMove();
+          } else {
+            deltas = path[0];
+            dx = deltas.dx;
+            dy = deltas.dy;
+            active.moveInterval(dx, dy);
+            return path.shift();
+          }
+        };
+        moveInterval();
+        return this.listenTo(active, "donemoving", function() {
+          return setTimeout(moveInterval, 70);
+        });
       };
 
       GridSquare.prototype.mouseoverHandler = function(e, data) {
-        data.area.graphics.clear().beginFill(this.colors.selected_move).drawRect(0, 0, _side - 2, _side - 2).endFill();
+        data.area.graphics.clear().beginFill(this.colors.selected_move).drawRect(0, 0, _ts, _ts).endFill();
+        board.mainCursor().show().move(this.model.bitmap);
         return this;
       };
 
       GridSquare.prototype.mouseoutHandler = function(e, data) {
-        data.area.graphics.clear().beginFill(this.colors.potential_move).drawRect(0, 0, _side - 2, _side - 2).endFill();
+        board.mainCursor().hide();
+        data.area.graphics.clear().beginFill(this.colors.potential_move).drawRect(0, 0, _ts, _ts).endFill();
         return this;
       };
 
@@ -382,11 +467,11 @@
       GridSquare.prototype.potentialmoves = function() {
         var area, bitmap, g;
         console.log("highlighting potential");
-        this.potentialmoves = true;
+        this.haspotentialmoves = true;
         bitmap = this.model.bitmap;
         area = bitmap.hitArea;
         g = area.graphics;
-        g.clear().beginFill(this.colors.potential_move).drawRect(0, 0, _side - 2, _side - 2).endFill();
+        g.clear().beginFill(this.colors.potential_move).drawRect(0, 0, _ts, _ts).endFill();
         area.alpha = 0.3;
         area.drawn = true;
         this.bindMoveFns(area);
@@ -397,7 +482,7 @@
 
       GridSquare.prototype.removepotential = function() {
         var bitmaphit;
-        this.potentialmoves = false;
+        this.haspotentialmoves = false;
         bitmaphit = this.model.bitmap.hitArea;
         bitmaphit.drawn = false;
         bitmaphit.off("click");
@@ -430,6 +515,15 @@
     });
     getActive = function(opts) {
       return _activebattle.get("AllCharacters").getActive(opts);
+    };
+    clearPotentialMoves = function() {
+      if (_potential_moves == null) {
+        return this;
+      }
+      _.each(_potential_moves.models, function(tile) {
+        return tile.trigger("removemove");
+      });
+      return this;
     };
     _b = window.battler = {
       getActive: function(opts) {
@@ -491,12 +585,41 @@
         }
         _activebattle = b = new Battle();
         return b.randomize();
+      },
+      setState: function(state) {
+        _activebattle.setState(state.toUpperCase());
+        return this;
+      },
+      addState: function(newstate) {
+        _activebattle.addState(newstate.toUpperCase());
+        return this;
+      },
+      removeState: function(removeme) {
+        removeme = removeme.toUpperCase();
+        if (_activebattle.hasState(removeme)) {
+          _activebattle.removeState(removeme);
+        }
+        return this;
+      },
+      toggleState: function(state) {
+        if (_activebattle.hasState(state)) {
+          return _activebattle.removeState(state);
+        } else {
+          return _activebattle.addState(state);
+        }
+      },
+      setPotentialMoves: function(moves) {
+        return _potential_moves = moves;
+      },
+      clearPotentialMoves: function() {
+        return clearPotentialMoves();
       }
     };
     window.t = function() {
       var b;
       b = _b.getActive();
       b.trigger("turndone");
+      return b;
     };
     return _b;
   });
