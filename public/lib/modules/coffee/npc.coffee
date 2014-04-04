@@ -1,4 +1,4 @@
-define ["globals", "utilities", "board", "items", "mapper", "underscore", "backbone"], (globals, ut, board, items, mapper) ->
+define ["globals", "utilities", "board", "items", "powers", "mapper", "underscore", "backbone"], (globals, ut, board, items, powers, mapper) ->
 	_checkEntry = ut.tileEntryCheckers
 
 	_ts = globals.map.tileside
@@ -28,10 +28,13 @@ define ["globals", "utilities", "board", "items", "mapper", "underscore", "backb
 		defaults: ->
 			return {
 				name: "NPC"
-				inventory: new items.Inventory 
+				inventory: items.Inventory()
+				powers: powers.PowerSet()
 				init: 1
 				type: 'NPC'
-				sprite: null
+				class: 'none'
+				creatine: 10
+				race: 'human'
 				level: 1
 				HP: 10
 				attrs:
@@ -75,6 +78,12 @@ define ["globals", "utilities", "board", "items", "mapper", "underscore", "backb
 				"0,-1": new createjs.SpriteSheet(_.extend @walkopts, {frames: @frames.up})
 				"0,1" : new createjs.SpriteSheet(_.extend @walkopts, {frames: @frames.down})
 			}
+			# Powers load async, so when loaded we need to bind defaults to an unequipped NPC
+			# then stop listening
+			@listenTo globals.shared_events, "powers_loaded", => 
+				if @get("powers").length is 0 
+					@set("powers", powers.defaultPowers())
+				@stopListening globals.shared_events, "powers_loaded"
 			sheet = @sheets["0,1"]
 			sheet.getAnimation("run").speed = .13
 			sheet.getAnimation("run").next = "run"
@@ -233,6 +242,8 @@ define ["globals", "utilities", "board", "items", "mapper", "underscore", "backb
 			else if @takeStandard(true) then true
 			else if @takeMinor(true) then true
 			false
+		# accepts a string "move, minor, standard" and returns true if the NPC has actions left for that type
+		can: (type)-> @actions[type.toLowerCase()] > 0 
 		# Take a standard action and adjust the other actions.
 		takeStandard: (burn) ->
 			actions = @actions
@@ -249,6 +260,7 @@ define ["globals", "utilities", "board", "items", "mapper", "underscore", "backb
 			if actions.move > 0
 				actions.move--
 				actions.trigger "reduce"
+			if actions.move is 0 then actions.standard--
 			unless burn then @nextPhase()
 			@
 		# Take a minor action
@@ -291,10 +303,10 @@ define ["globals", "utilities", "board", "items", "mapper", "underscore", "backb
 		# Runs through the currently visible tiles in a battle and determines which moves are possible
 		# Returns array of tiles. If true, silent prevents observation 
 		# Still inefficient - keeps checking past max distance - todo
-		virtualMovePossibilities: (done) ->
-			speed      || (speed = @get("attrs").spd)
+		virtualMovePossibilities: (start, done) ->
 			start 	   || (start = @getTargetTile 0, 0)
 			done	   || (done = (target) -> target.tileModel.trigger("potentialmove"))
+			speed = @get("attrs").spd
 			checkQueue = []
 			movable = new Row
 			checkQueue.unshift(start)
@@ -403,9 +415,10 @@ define ["globals", "utilities", "board", "items", "mapper", "underscore", "backb
 				@burnAction()
 				console.log "the timer is done .... burning an action"
 				console.log @actions
-				@takeMove()
+				# @takeMove(
 				@nextPhase()
 			console.log "the timer is running!!"
+			@trigger "beginphase", @turnPhase
 			@turnPhase++
 
 	# A basic collection of NPCs

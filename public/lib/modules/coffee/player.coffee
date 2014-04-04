@@ -1,4 +1,5 @@
-define ["utilities", "npc", "board", "globals", "mapper", "items", "backbone", "easel", "underscore"], (ut, NPC, board, globals, mapper, items) ->
+define ["utilities", "npc", "board", "globals", "mapper", "items", "powers", "backbone", "easel", "underscore"], (ut, NPC, board, globals, mapper, items, powers) ->
+
 	stage = board.getStage()
 	class player extends NPC.NPC
 		type: 'player'
@@ -54,10 +55,10 @@ define ["utilities", "npc", "board", "globals", "mapper", "items", "backbone", "
 			defaults = super
 			Item = items.Item
 			inventory = defaults.inventory
-			inventory.add new Item name: 'Wooden Sword'
-			inventory.add new Item name: "Tattered Cloak"
-			inventory.add new Item name: "Bread"
-			inventory.add new Item name: "Worn Boots"
+			inventory.add Item name: 'Wooden Sword'
+			inventory.add Item name: "Tattered Cloak"
+			inventory.add Item name: "Bread"
+			inventory.add Item name: "Worn Boots"
 			inventory.at(2).set("equipped", true)
 			_.each inventory.models, (item) => item.set("belongsTo", @)
 			inventory.sort()

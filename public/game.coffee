@@ -21,6 +21,7 @@ require.config
 		'battler'	: 'lib/modules/js/battler'
 		'menus'		: 'lib/modules/js/menus'
 		'items'		: 'lib/modules/js/items'
+		'powers'	: 'lib/modules/js/powers'
 
 
 define ['utilities', 'board', 'taskrunner'], (ut, board, taskrunner) ->

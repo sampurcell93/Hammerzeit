@@ -32,3 +32,11 @@ script#mapcreate-item(type='text/template')
 
 script#character-view(type='text/template')
         | This is a character template
+
+script#power-item(type='text/template')
+        span.name <%= name %>
+        ul.info
+                li(data-tooltip='Uses').uses <%= uses === Infinity ? "I" : uses %> 
+                li(data-tooltip='Range').range <%= range %>
+                <li data-tooltip='Action Type: <%= action %>' class='action'><%= action == "standard" ? "Std" : (action == "move" ? "Mov" : "Min") %></li>
+

@@ -71,7 +71,7 @@
         return _ref2;
       }
 
-      InventoryList.prototype.el = '.inventory-list';
+      InventoryList.prototype.tagName = 'ul';
 
       InventoryList.prototype.initialize = function() {
         return _.bindAll(this, "render", "addItem");
@@ -134,10 +134,18 @@
       }
     };
     return window.items = {
-      Item: Item,
-      Inventory: Inventory,
-      InventoryList: InventoryList,
-      ItemView: ItemView,
+      Item: function(construction) {
+        return new Item(construction);
+      },
+      Inventory: function(construction) {
+        return new Inventory(construction);
+      },
+      InventoryList: function(construction) {
+        return new InventoryList(construction);
+      },
+      ItemView: function(construction) {
+        return new ItemView(construction);
+      },
       get: function(name) {
         var inventory;
         if (typeof name === "string") {

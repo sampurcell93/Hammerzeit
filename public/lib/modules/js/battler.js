@@ -247,7 +247,6 @@
       Timer.prototype.start = function(extra, done) {
         var totaltime, value,
           _this = this;
-        this.show();
         value = parseInt(this.el.attr("value"));
         extra || (extra = 0);
         totaltime = this.totaltime + extra * 100;

@@ -15,6 +15,23 @@
         return $.extend(true, {}, obj);
       });
     };
+    $(document).on("mouseover", "[data-tooltip]", function() {
+      var $t,
+        _this = this;
+      $t = $(this);
+      $t.data("mousedover", true);
+      return setTimeout(function() {
+        if ($t.data("mousedover") === true) {
+          return $t.addClass("show-tooltip");
+        }
+      }, 300);
+    });
+    $(document).on("mouseout", "[data-tooltip]", function() {
+      var $t;
+      $t = $(this);
+      $t.data("mousedover", false);
+      return $t.removeClass("show-tooltip");
+    });
     (function($) {
       $.fn.classes = function(callback) {
         var classes, i;
@@ -257,6 +274,19 @@
       },
       deep_clone: function(orig) {
         return clone(orig);
+      },
+      deep_freeze: function(o) {
+        var prop, propKey;
+        prop = void 0;
+        propKey = void 0;
+        Object.freeze(o);
+        for (propKey in o) {
+          prop = o[propKey];
+          if (!o.hasOwnProperty(propKey) || (typeof prop !== "object") || Object.isFrozen(prop)) {
+            continue;
+          }
+          deepFreeze(prop);
+        }
       }
     };
   });

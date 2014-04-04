@@ -37,7 +37,7 @@ define ["globals", "utilities", "underscore", "backbone"], (globals, ut) ->
 
     # Inventory List View
     class InventoryList extends Backbone.View
-        el: '.inventory-list'
+        tagName: 'ul'
         initialize: ->
             _.bindAll @, "render", "addItem"
         addItem: (item) ->
@@ -71,10 +71,10 @@ define ["globals", "utilities", "underscore", "backbone"], (globals, ut) ->
         else null
 
     return window.items = {
-        Item: Item
-        Inventory: Inventory
-        InventoryList: InventoryList
-        ItemView: ItemView
+        Item: (construction) -> new Item(construction)
+        Inventory: (construction) -> new Inventory(construction)
+        InventoryList: (construction) -> new InventoryList(construction)
+        ItemView: (construction) -> new ItemView(construction)
         # Pass in item name (also ID) and the Item model is returned
         # Can also pass in string array, and an inventory object will be returned
         get: (name) -> 

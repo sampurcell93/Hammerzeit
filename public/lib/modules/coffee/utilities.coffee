@@ -4,6 +4,21 @@ define  ["jquery", "underscore"], ->
 
 	clone = (orig) -> $.map(orig, (obj) -> $.extend true, {}, obj)
 
+	$(document).on("mouseover", "[data-tooltip]", ->
+			$t = $ @
+			$t.data("mousedover", true)
+			setTimeout =>
+				if $t.data("mousedover") is true
+					$t.addClass "show-tooltip"
+			, 300
+	)
+	$(document).on("mouseout", "[data-tooltip]", ->
+		$t = $ @
+		$t.data("mousedover", false)
+		$t.removeClass "show-tooltip"
+	)
+
+
 
 	# Thanks to stackoverflow user Will for this handy class splitter
 	(($) ->
@@ -185,5 +200,17 @@ define  ["jquery", "underscore"], ->
 				o[j] = x
 			o
 		deep_clone: (orig) -> clone orig
+		deep_freeze: (o) ->
+			prop = undefined
+			propKey = undefined
+			Object.freeze o # First freeze the object.
+			for propKey of o
+				prop = o[propKey]
+			# If the object is on the prototype, not an object, or is already frozen, 
+			# skip it. Note that this might leave an unfrozen reference somewhere in the
+			# object if there is an already frozen object containing an unfrozen object.
+				continue if not o.hasOwnProperty(propKey) or (typeof prop isnt "object") or Object.isFrozen(prop)
+				deepFreeze prop # Recursively call deepFreeze.
+			return
 
 	}

@@ -2,8 +2,8 @@
   var __hasProp = {}.hasOwnProperty,
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
-  define(["globals", "utilities", "dialog", "battler", "player", "npc", "board", "underscore", "backbone", "jquery-ui"], function(globals, ut, dialog, battler, player, NPC, board) {
-    var BattleMenu, InventoryList, Menu, TravelMenu, closeAll, toggleMenu, _activemenu, _menus, _potential_moves, _ref, _ref1, _ref2;
+  define(["powers", "globals", "utilities", "dialog", "battler", "player", "npc", "board", "underscore", "backbone", "jquery-ui"], function(powers, globals, ut, dialog, battler, player, NPC, board) {
+    var BattleMenu, InventoryList, Menu, PowerList, TravelMenu, closeAll, toggleMenu, _activemenu, _menus, _potential_moves, _ref, _ref1, _ref2;
     board.focus();
     globals.shared_events.on("closemenus", function() {
       return closeAll();
@@ -12,6 +12,7 @@
       return _activemenu.open();
     });
     InventoryList = items.InventoryList;
+    PowerList = powers.PowerList;
     _potential_moves = null;
     Menu = (function(_super) {
       __extends(Menu, _super);
@@ -25,10 +26,19 @@
 
       Menu.prototype.showInventory = function() {
         var list;
-        list = new InventoryList({
+        list = InventoryList({
           collection: this.model.get("inventory")
         });
-        list.render();
+        this.$(".inventory-list").html(list.render().el);
+        return this;
+      };
+
+      Menu.prototype.showPowers = function() {
+        var list;
+        list = PowerList({
+          collection: this.model.get("powers")
+        });
+        this.$(".power-list").html(list.render().el);
         return this;
       };
 
@@ -76,7 +86,8 @@
       };
 
       Menu.prototype.render = function() {
-        return this.showInventory();
+        this.showInventory();
+        return this.showPowers();
       };
 
       Menu.prototype.clickActiveItem = function() {
@@ -177,7 +188,14 @@
 
       BattleMenu.prototype.initialize = function() {
         _.bindAll(this, "close", "open", "toggle", "selectNext", "selectThis", "selectPrev");
-        return this.events = _.extend(this.events, this.child_events);
+        this.events = _.extend(this.events, this.child_events);
+        return this.listenTo(this.model, {
+          "beginphase": function(phase) {
+            console.log("in watcher");
+            console.log(phase + 1);
+            return this.$(".phase-number").text(phase + 1);
+          }
+        });
       };
 
       BattleMenu.prototype.child_events = {

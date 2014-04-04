@@ -21,7 +21,8 @@
       'traveler': 'lib/modules/js/travel',
       'battler': 'lib/modules/js/battler',
       'menus': 'lib/modules/js/menus',
-      'items': 'lib/modules/js/items'
+      'items': 'lib/modules/js/items',
+      'powers': 'lib/modules/js/powers'
     }
   });
 

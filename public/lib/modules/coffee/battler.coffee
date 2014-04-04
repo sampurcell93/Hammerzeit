@@ -141,7 +141,6 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
         totaltime: 10000
         stop: -> if @interval then clearInterval @interval
         start: (extra, done) ->
-            @show()
             value  = parseInt @el.attr("value")
             extra || extra = 0
             totaltime = @totaltime + extra*100

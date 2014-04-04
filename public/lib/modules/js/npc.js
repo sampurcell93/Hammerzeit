@@ -2,7 +2,7 @@
   var __hasProp = {}.hasOwnProperty,
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
-  define(["globals", "utilities", "board", "items", "mapper", "underscore", "backbone"], function(globals, ut, board, items, mapper) {
+  define(["globals", "utilities", "board", "items", "powers", "mapper", "underscore", "backbone"], function(globals, ut, board, items, powers, mapper) {
     var CharacterArray, CharacterPropertyView, NPC, Row, coordToDir, _checkEntry, _events, _p, _ref, _ref1, _ref2, _ts;
     _checkEntry = ut.tileEntryCheckers;
     _ts = globals.map.tileside;
@@ -42,10 +42,13 @@
       NPC.prototype.defaults = function() {
         return {
           name: "NPC",
-          inventory: new items.Inventory,
+          inventory: items.Inventory(),
+          powers: powers.PowerSet(),
           init: 1,
           type: 'NPC',
-          sprite: null,
+          "class": 'none',
+          creatine: 10,
+          race: 'human',
           level: 1,
           HP: 10,
           attrs: {
@@ -97,6 +100,12 @@
             frames: this.frames.down
           }))
         };
+        this.listenTo(globals.shared_events, "powers_loaded", function() {
+          if (_this.get("powers").length === 0) {
+            _this.set("powers", powers.defaultPowers());
+          }
+          return _this.stopListening(globals.shared_events, "powers_loaded");
+        });
         sheet = this.sheets["0,1"];
         sheet.getAnimation("run").speed = .13;
         sheet.getAnimation("run").next = "run";
@@ -331,6 +340,10 @@
         return false;
       };
 
+      NPC.prototype.can = function(type) {
+        return this.actions[type.toLowerCase()] > 0;
+      };
+
       NPC.prototype.takeStandard = function(burn) {
         var actions;
         actions = this.actions;
@@ -352,6 +365,9 @@
         if (actions.move > 0) {
           actions.move--;
           actions.trigger("reduce");
+        }
+        if (actions.move === 0) {
+          actions.standard--;
         }
         if (!burn) {
           this.nextPhase();
@@ -410,13 +426,13 @@
         return target;
       };
 
-      NPC.prototype.virtualMovePossibilities = function(done) {
-        var checkQueue, enqueue, i, movable, speed, square, start, tile, _i;
-        speed || (speed = this.get("attrs").spd);
+      NPC.prototype.virtualMovePossibilities = function(start, done) {
+        var checkQueue, enqueue, i, movable, speed, square, tile, _i;
         start || (start = this.getTargetTile(0, 0));
         done || (done = function(target) {
           return target.tileModel.trigger("potentialmove");
         });
+        speed = this.get("attrs").spd;
         checkQueue = [];
         movable = new Row;
         checkQueue.unshift(start);
@@ -572,10 +588,10 @@
           _this.burnAction();
           console.log("the timer is done .... burning an action");
           console.log(_this.actions);
-          _this.takeMove();
           return _this.nextPhase();
         });
         console.log("the timer is running!!");
+        this.trigger("beginphase", this.turnPhase);
         return this.turnPhase++;
       };
 

@@ -1,4 +1,4 @@
-define ["globals", "utilities", "dialog", "battler", "player", "npc", "board", "underscore", "backbone", "jquery-ui"], (globals, ut, dialog, battler, player, NPC, board) ->
+define ["powers", "globals", "utilities", "dialog", "battler", "player", "npc", "board", "underscore", "backbone", "jquery-ui"], (powers, globals, ut, dialog, battler, player, NPC, board) ->
 
     board.focus()
 
@@ -10,14 +10,19 @@ define ["globals", "utilities", "dialog", "battler", "player", "npc", "board", "
         _activemenu.open()
 
     InventoryList = items.InventoryList
+    PowerList = powers.PowerList
     _potential_moves = null
 
     # Basic manu view
     class Menu extends Backbone.View
         type: 'default'
         showInventory: ->
-            list = new InventoryList collection: @model.get "inventory"
-            list.render()
+            list = InventoryList collection: @model.get "inventory"
+            @$(".inventory-list").html(list.render().el)
+            @
+        showPowers: ->
+            list = PowerList collection: @model.get "powers"
+            @$(".power-list").html(list.render().el)
             @
         selectThis: ($item) ->
             $item.addClass("selected").
@@ -47,6 +52,7 @@ define ["globals", "utilities", "dialog", "battler", "player", "npc", "board", "
             # "click": -> board.$canvas.focus()
         render: ->
             @showInventory()
+            @showPowers()
         clickActiveItem: ->
             @$el.children(".selected").trigger "click"
         close: ->
@@ -92,6 +98,11 @@ define ["globals", "utilities", "dialog", "battler", "player", "npc", "board", "
         initialize: ->
             _.bindAll @, "close", "open", "toggle", "selectNext", "selectThis", "selectPrev"
             @events = _.extend @events, @child_events
+            @listenTo @model,
+                "beginphase": (phase) ->
+                    console.log "in watcher"
+                    console.log phase+1
+                    @$(".phase-number").text(phase + 1)
         child_events:
             # Creates an overlay on the 
             "click .js-virtual-move": -> 

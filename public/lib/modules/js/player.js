@@ -2,7 +2,7 @@
   var __hasProp = {}.hasOwnProperty,
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
-  define(["utilities", "npc", "board", "globals", "mapper", "items", "backbone", "easel", "underscore"], function(ut, NPC, board, globals, mapper, items) {
+  define(["utilities", "npc", "board", "globals", "mapper", "items", "powers", "backbone", "easel", "underscore"], function(ut, NPC, board, globals, mapper, items, powers) {
     var PCs, player, stage, _ref;
     stage = board.getStage();
     player = (function(_super) {
@@ -98,16 +98,16 @@
         defaults = player.__super__.defaults.apply(this, arguments);
         Item = items.Item;
         inventory = defaults.inventory;
-        inventory.add(new Item({
+        inventory.add(Item({
           name: 'Wooden Sword'
         }));
-        inventory.add(new Item({
+        inventory.add(Item({
           name: "Tattered Cloak"
         }));
-        inventory.add(new Item({
+        inventory.add(Item({
           name: "Bread"
         }));
-        inventory.add(new Item({
+        inventory.add(Item({
           name: "Worn Boots"
         }));
         inventory.at(2).set("equipped", true);
