@@ -27,19 +27,22 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
             # Deflects against multiple collections
             m.queue = @
             m
-              # should probably add an 'else' here so there's a default if,
-              # say, no attrs are provided to a Logbooks.create call
-        comparator: (model) -> model.i = model.get("init") + Math.ceil(Math.random()*_sm)
+        # comparator: (model) -> model.i = model.get("init") + Math.ceil(Math.random()*_sm)
+        comparator: (model) -> -model.get("type") is "PC"
         # returns the pc or npc at the top of the queue
         getActive: (opts) -> 
             opts = _.extend {player: false}, opts
             active = @at @current_index
+            console.log @
+            console.log active
+            debugger
             if opts.player is true and active instanceof player.model is false then return null
             else return active
         # Advance the queue and start the new character's turn by default. 
         # Pass in false to prevent this.
         next: (init) -> 
             num = @current_index = ++@current_index % @length
+            console.log @getActive()
             unless init is false then @getActive().initTurn()
             num
         # Shifts the queue back by one!
@@ -95,15 +98,15 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
         begin: (type, opts)->
             @addPCs()
             if type is "random" then @randomize(opts)
-            else @load type
+            else @load type, opts
 
         load: (id) ->
-            $.getJSON globals.battle_dir + id, (battle) ->
+            @url = @id || globals.battle_dir + id
+            @fetch success: (battle) ->
                 console.log battle
         # A function for creating a random battle, within parameters (or NOT?!!)
         randomize: (o) ->
             o = _.extend @defaults, o
-            console.log @
             for i in [0...o.numenemies]
                 @get("NPCs").add(n = new NPC level: o.avglevel)
                 @get("AllCharacters").add n
@@ -123,13 +126,11 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
 
     _activebattle = new Battle
     _active_chars = PCs
-    # _active_chars.add player.PCs
-    console.log _active_chars
     _shared = globals.shared_events
     _shared.on "battle", ->
-        _grid.activate()
         b = _activebattle = new Battle
         b.begin "random"
+        _grid.activate()
     _activemap = null
     _ts = globals.map.tileside
 
@@ -215,7 +216,6 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
             o = Math.ceil(@model.get("elv") / 5)
             if o < -5 then o = -5 else if o > 5 then o = 5
             bitmap = @model.bitmap
-            if o then console.log o, bitmap.x, bitmap.y
             bitmap.x += o
             bitmap.y += o
             area = bitmap.hitArea
@@ -347,6 +347,12 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
         setTotalTime: (total) ->
             _timer.setTotalTime()
             @
+        start: ->
+            a = getActive()
+            console.log a.toJSON().name
+            a.initTurn()
+        stop: ->
+
         randomBattle: ->
             if _activebattle then _activebattle.destroy()
             _activebattle = b = new Battle()

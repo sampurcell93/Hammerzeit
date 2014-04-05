@@ -128,7 +128,7 @@
       var item;
       item = _items._byId[name];
       if (typeof item === "object") {
-        return Object.freeze(item);
+        return item.clone();
       } else {
         return null;
       }

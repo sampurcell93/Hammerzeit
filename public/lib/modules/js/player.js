@@ -17,8 +17,7 @@
 
       player.prototype.initialize = function(attrs) {
         player.__super__.initialize.apply(this, arguments);
-        _.bindAll(this, "contextualize", "insideChunkBounds", "move", "defaults");
-        return this.marker.name = "Player";
+        return _.bindAll(this, "contextualize", "insideChunkBounds", "move", "defaults");
       };
 
       player.prototype.contextualize = function(x, y) {

@@ -6,7 +6,6 @@ define ["utilities", "npc", "board", "globals", "mapper", "items", "powers", "ba
 		initialize: (attrs) ->
 			super
 			_.bindAll @, "contextualize", "insideChunkBounds", "move", "defaults"
-			@marker.name = "Player"
 		# Expects x, y which normalizes negative values to board dimensions. So x=-50 beomes x=650
 		contextualize: (x, y) ->
 			if x < 0 then x += globals.map.width

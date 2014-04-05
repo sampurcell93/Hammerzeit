@@ -62,7 +62,7 @@ define ["powers", "globals", "utilities", "dialog", "battler", "player", "npc", 
             board.unpause().focus()
             battler.clearPotentialMoves()
         open: ->
-            active = battler.getActive player: true
+            active = battler.getActive()
             if active then @model = active
             _activemenu = @
             @showing = true 

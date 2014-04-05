@@ -79,8 +79,7 @@
       };
 
       NPC.prototype.initialize = function() {
-        var sheet, sprite,
-          _this = this;
+        var _this = this;
         _.bind(this.move_callbacks.done, this);
         _.bind(this.move_callbacks.change, this);
         this.walkopts = _.extend(this.getPrivate("walkopts"), {
@@ -101,23 +100,38 @@
           }))
         };
         this.listenTo(globals.shared_events, "powers_loaded", function() {
+          var p;
           if (_this.get("powers").length === 0) {
-            _this.set("powers", powers.defaultPowers());
+            _this.set("powers", p = powers.defaultPowers());
+            _.each(p.models, function(pow) {
+              return pow.ownedBy = _this;
+            });
           }
           return _this.stopListening(globals.shared_events, "powers_loaded");
         });
-        sheet = this.sheets["0,1"];
-        sheet.getAnimation("run").speed = .13;
-        sheet.getAnimation("run").next = "run";
-        sprite = new createjs.Sprite(sheet, "run");
-        this.marker = sprite;
+        this.createMarker();
         this.on("add", function(model, coll) {
-          console.log(coll.type);
           if (coll.type === "ActivityQueue") {
             return _this.activity_queue = coll;
           }
         });
         return this.cursor();
+      };
+
+      NPC.prototype.createMarker = function() {
+        var nameobj, sheet, sprite;
+        sheet = this.sheets["0,1"];
+        sheet.getAnimation("run").speed = .13;
+        sheet.getAnimation("run").next = "run";
+        sprite = new createjs.Sprite(sheet, "run");
+        this.marker = new createjs.Container();
+        this.marker.addChild(sprite);
+        this.marker.icon = sprite;
+        nameobj = new createjs.Text(this.get("name"), "12px Arial", "rgba(255,255,255,.7)");
+        return this.marker.addChild(_.extend(nameobj, {
+          shadow: globals.textshadow,
+          y: 40
+        }));
       };
 
       NPC.prototype.cursor = function() {
@@ -187,7 +201,7 @@
       };
 
       NPC.prototype.setSpriteSheet = function(dx, dy) {
-        return this.marker.spriteSheet = this.sheets[ut.floorToOne(dx) + "," + ut.floorToOne(dy)];
+        return this.marker.icon.spriteSheet = this.sheets[ut.floorToOne(dx) + "," + ut.floorToOne(dy)];
       };
 
       NPC.prototype.leaveSquare = function() {
@@ -223,7 +237,7 @@
 
       NPC.prototype.reanimate = function(animation, speed, next) {
         var sheet;
-        sheet = this.marker.spriteSheet;
+        sheet = this.marker.icon.spriteSheet;
         sheet.getAnimation(animation || "run").speed = speed;
         return sheet.getAnimation(animation || "run").next = next;
       };
@@ -426,13 +440,13 @@
         return target;
       };
 
-      NPC.prototype.virtualMovePossibilities = function(start, done) {
-        var checkQueue, enqueue, i, movable, speed, square, tile, _i;
+      NPC.prototype.virtualMovePossibilities = function(start, done, speed) {
+        var checkQueue, enqueue, i, movable, square, tile, _i;
         start || (start = this.getTargetTile(0, 0));
         done || (done = function(target) {
           return target.tileModel.trigger("potentialmove");
         });
-        speed = this.get("attrs").spd;
+        speed || (speed = this.get("attrs").spd);
         checkQueue = [];
         movable = new Row;
         checkQueue.unshift(start);
@@ -516,7 +530,6 @@
       };
 
       NPC.prototype.canOccupy = function(t) {
-        console.log(t.end, t.e, t.occupied);
         if (t.end === false) {
           return false;
         }
@@ -564,6 +577,7 @@
       };
 
       NPC.prototype.indicateActive = function() {
+        console.log(this.toJSON().name);
         _.each(this.activity_queue.models, function(character) {
           return character.cursor().hide();
         });
@@ -586,11 +600,9 @@
         }
         battler.resetTimer().startTimer(this.i, function() {
           _this.burnAction();
-          console.log("the timer is done .... burning an action");
           console.log(_this.actions);
           return _this.nextPhase();
         });
-        console.log("the timer is running!!");
         this.trigger("beginphase", this.turnPhase);
         return this.turnPhase++;
       };
@@ -636,7 +648,6 @@
       CharacterPropertyView.prototype.template = $("#character-view").html();
 
       CharacterPropertyView.prototype.render = function() {
-        console.log(this.model);
         this.$el.html(_.template(this.template, this.model.toJSON()));
         return this;
       };

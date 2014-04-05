@@ -102,6 +102,19 @@
         return this;
       };
 
+      PowerListItem.prototype.events = {
+        "click": function() {
+          var user, _attackvectors;
+          user = this.model.ownedBy;
+          if (!user) {
+            return;
+          }
+          console.log(user);
+          _attackvectors = user.virtualMovePossibilities(null, null, 1);
+          return console.log(_attackvectors);
+        }
+      };
+
       return PowerListItem;
 
     })(Backbone.View);
@@ -109,7 +122,7 @@
       var power;
       power = _powers._byId[name];
       if (typeof power === "object") {
-        return Object.freeze(power);
+        return power.clone();
       } else {
         return null;
       }

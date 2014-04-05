@@ -67,7 +67,7 @@ define ["globals", "utilities", "underscore", "backbone"], (globals, ut) ->
 
     getItem = (name) ->
         item = _items._byId[name]
-        if typeof item is "object" then Object.freeze(item)
+        if typeof item is "object" then item.clone()
         else null
 
     return window.items = {

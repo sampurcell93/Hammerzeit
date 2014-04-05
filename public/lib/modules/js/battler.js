@@ -49,7 +49,7 @@
       };
 
       ActivityQueue.prototype.comparator = function(model) {
-        return model.i = model.get("init") + Math.ceil(Math.random() * _sm);
+        return -model.get("type") === "PC";
       };
 
       ActivityQueue.prototype.getActive = function(opts) {
@@ -58,6 +58,9 @@
           player: false
         }, opts);
         active = this.at(this.current_index);
+        console.log(this);
+        console.log(active);
+        debugger;
         if (opts.player === true && active instanceof player.model === false) {
           return null;
         } else {
@@ -68,6 +71,7 @@
       ActivityQueue.prototype.next = function(init) {
         var num;
         num = this.current_index = ++this.current_index % this.length;
+        console.log(this.getActive());
         if (init !== false) {
           this.getActive().initTurn();
         }
@@ -170,20 +174,22 @@
         if (type === "random") {
           return this.randomize(opts);
         } else {
-          return this.load(type);
+          return this.load(type, opts);
         }
       };
 
       Battle.prototype.load = function(id) {
-        return $.getJSON(globals.battle_dir + id, function(battle) {
-          return console.log(battle);
+        this.url = this.id || globals.battle_dir + id;
+        return this.fetch({
+          success: function(battle) {
+            return console.log(battle);
+          }
         });
       };
 
       Battle.prototype.randomize = function(o) {
         var i, n, _i, _ref2;
         o = _.extend(this.defaults, o);
-        console.log(this);
         for (i = _i = 0, _ref2 = o.numenemies; 0 <= _ref2 ? _i < _ref2 : _i > _ref2; i = 0 <= _ref2 ? ++_i : --_i) {
           this.get("NPCs").add(n = new NPC({
             level: o.avglevel
@@ -218,13 +224,12 @@
     })(Backbone.Model);
     _activebattle = new Battle;
     _active_chars = PCs;
-    console.log(_active_chars);
     _shared = globals.shared_events;
     _shared.on("battle", function() {
       var b;
-      _grid.activate();
       b = _activebattle = new Battle;
-      return b.begin("random");
+      b.begin("random");
+      return _grid.activate();
     });
     _activemap = null;
     _ts = globals.map.tileside;
@@ -384,9 +389,6 @@
           o = 5;
         }
         bitmap = this.model.bitmap;
-        if (o) {
-          console.log(o, bitmap.x, bitmap.y);
-        }
         bitmap.x += o;
         bitmap.y += o;
         area = bitmap.hitArea;
@@ -577,6 +579,13 @@
         _timer.setTotalTime();
         return this;
       },
+      start: function() {
+        var a;
+        a = getActive();
+        console.log(a.toJSON().name);
+        return a.initTurn();
+      },
+      stop: function() {},
       randomBattle: function() {
         var b;
         if (_activebattle) {

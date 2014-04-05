@@ -187,7 +187,6 @@ define ['globals', 'utilities', 'jquery', 'underscore', 'easel'], (globals, ut) 
     addMarker = (obj, at) ->
         if at then stage.addChildAt obj, at
         else
-            console.log obj.marker
             stage.addChild obj.marker
         obj.stage = stage
 

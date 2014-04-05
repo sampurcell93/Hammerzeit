@@ -110,9 +110,7 @@
 
       Menu.prototype.open = function() {
         var active, _activemenu;
-        active = battler.getActive({
-          player: true
-        });
+        active = battler.getActive();
         if (active) {
           this.model = active;
         }

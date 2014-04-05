@@ -45,10 +45,18 @@ define ["globals", "utilities", "board"], (globals, utilities, board) ->
         render: ->
             @$el.html(_.template(@template, @model.toJSON()))
             @
+        events: 
+            "click": ->
+                user = @model.ownedBy
+                if !user then return 
+                console.log user
+                _attackvectors = user.virtualMovePossibilities(null, null, 1)
+                console.log _attackvectors
+
 
     getPower = (name) ->
         power = _powers._byId[name]
-        if typeof power is "object" then Object.freeze(power)
+        if typeof power is "object" then power.clone()
         else null
 
     get = (name) ->

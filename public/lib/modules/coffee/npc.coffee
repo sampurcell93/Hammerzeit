@@ -82,17 +82,22 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 			# then stop listening
 			@listenTo globals.shared_events, "powers_loaded", => 
 				if @get("powers").length is 0 
-					@set("powers", powers.defaultPowers())
+					@set("powers", p = powers.defaultPowers())
+					_.each p.models, (pow) => pow.ownedBy = @
 				@stopListening globals.shared_events, "powers_loaded"
+			@createMarker()
+			@on "add", (model, coll) => if coll.type is "ActivityQueue" then @activity_queue = coll
+			@cursor()
+		createMarker: ->
 			sheet = @sheets["0,1"]
 			sheet.getAnimation("run").speed = .13
 			sheet.getAnimation("run").next = "run"
 			sprite = new createjs.Sprite(sheet, "run")
-			@marker = sprite
-			@on "add", (model, coll) =>
-				console.log coll.type
-				if coll.type is "ActivityQueue" then @activity_queue = coll
-			@cursor()
+			@marker = new createjs.Container()
+			@marker.addChild sprite
+			@marker.icon = sprite
+			nameobj = new createjs.Text(@get("name"), "12px Arial", "rgba(255,255,255,.7)")
+			@marker.addChild _.extend nameobj, {shadow: globals.textshadow, y: 40 }
 		cursor: -> 
 			c = @c || board.newCursor()
 			@c = c
@@ -143,7 +148,7 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 
 		# Set the sprite sheet to the direction given by the x,y coords. 
 		setSpriteSheet: (dx,dy) ->
-			@marker.spriteSheet = @sheets[ut.floorToOne(dx)+","+ut.floorToOne(dy)]
+			@marker.icon.spriteSheet = @sheets[ut.floorToOne(dx)+","+ut.floorToOne(dy)]
 		# The square that the NPC was previously in should be cleared when left
 		# Should be called in conjunction with "entersquare"
 		leaveSquare: ->
@@ -164,7 +169,7 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 		moveDown: -> @move 0, 1
 		# Reset an animation's properties
 		reanimate: (animation, speed, next) ->
-			sheet = @marker.spriteSheet
+			sheet = @marker.icon.spriteSheet
 			sheet.getAnimation(animation || "run").speed = speed
 			sheet.getAnimation(animation || "run").next = next
 		# Takes in a half position (say x= 476, y= 450) and rounds to the nearest 50 (up or down deps on dx,dy)
@@ -303,10 +308,10 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 		# Runs through the currently visible tiles in a battle and determines which moves are possible
 		# Returns array of tiles. If true, silent prevents observation 
 		# Still inefficient - keeps checking past max distance - todo
-		virtualMovePossibilities: (start, done) ->
+		virtualMovePossibilities: (start, done, speed) ->
 			start 	   || (start = @getTargetTile 0, 0)
 			done	   || (done = (target) -> target.tileModel.trigger("potentialmove"))
-			speed = @get("attrs").spd
+			speed 	   || (speed = @get("attrs").spd)
 			checkQueue = []
 			movable = new Row
 			checkQueue.unshift(start)
@@ -368,7 +373,6 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 			target
 		# Checks if a given target can be occupied. Does not account for entrance vectors, only current state.
 		canOccupy: (t) ->
-			console.log t.end, t.e, t.occupied
 			if t.end is false then return false
 			if t.e is "f" then return false
 			if t.occupied is true then return false
@@ -399,6 +403,7 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 			@resetActions()
 			@
 		indicateActive: ->
+			console.log @toJSON().name
 			_.each @activity_queue.models, (character) -> 
 				character.cursor().hide()
 			@cursor().show()
@@ -413,11 +418,9 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 				return @turnDone()
 			battler.resetTimer().startTimer @i, => 
 				@burnAction()
-				console.log "the timer is done .... burning an action"
 				console.log @actions
 				# @takeMove(
 				@nextPhase()
-			console.log "the timer is running!!"
 			@trigger "beginphase", @turnPhase
 			@turnPhase++
 
@@ -436,7 +439,6 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 	class CharacterPropertyView extends Backbone.View
 		template: $("#character-view").html()
 		render: ->
-			console.log @model
 			@$el.html(_.template @template, @model.toJSON())
 			@
 
