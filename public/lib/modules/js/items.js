@@ -116,9 +116,7 @@
     _items = new Inventory;
     _items.url = "lib/json_packs/items.json";
     _items.fetch({
-      success: function(coll, resp) {
-        return _items = Object.freeze(coll);
-      },
+      success: function(coll, resp) {},
       error: function(coll, resp) {
         return console.error(resp);
       },

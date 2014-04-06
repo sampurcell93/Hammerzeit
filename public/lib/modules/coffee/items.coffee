@@ -60,7 +60,6 @@ define ["globals", "utilities", "underscore", "backbone"], (globals, ut) ->
     _items.url = "lib/json_packs/items.json"
     _items.fetch 
         success: (coll, resp) -> 
-            _items = Object.freeze coll
         error: (coll, resp) ->
             console.error resp
         parse: true

@@ -18,41 +18,18 @@ define ["globals", "utilities", "board"], (globals, utilities, board) ->
         model: Power
         url: 'lib/json_packs/attacks.json'
 
-    _powers = new PowerSet
-    _powers.fetch 
-        success: ->
-            console.log _powers
-            globals.shared_events.trigger "powers_loaded"
-        parse: true
-
-    class PowerList extends Backbone.View
-        tagName: 'ul'
-        initialize: ->
-            _.bindAll @, "append"
-        render: ->
-            @$el.empty()
-            _.each @collection.models, @append
-            @
-        append: (power) ->
-            power = new PowerListItem model: power
-            @$el.append(power.render().el)
-
-
-    class PowerListItem extends Backbone.View
-        tagName: 'li'
-        className: 'power-item'
-        template: $("#power-item").html()
-        render: ->
-            @$el.html(_.template(@template, @model.toJSON()))
-            @
-        events: 
-            "click": ->
-                user = @model.ownedBy
-                if !user then return 
-                console.log user
-                _attackvectors = user.virtualMovePossibilities(null, null, 1)
-                console.log _attackvectors
-
+    _powers = new PowerSet(
+        [
+            {"name": "Strike", "damage": 2, "uses": 0},
+            {"name": "Beguile", "action": "move", "uses": 3},
+            {"name": "Plead", "action": "move"}
+        ]
+    )
+    # _powers.fetch 
+    #     success: ->
+    #         console.log _powers
+    #         globals.shared_events.trigger "powers_loaded"
+    #     parse: true
 
     getPower = (name) ->
         power = _powers._byId[name]

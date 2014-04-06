@@ -18,6 +18,8 @@ define  ["jquery", "underscore"], ->
 		$t.removeClass "show-tooltip"
 	)
 
+	String.prototype.capitalize = ->
+		@charAt(0).toUpperCase() + @slice 1
 
 
 	# Thanks to stackoverflow user Will for this handy class splitter

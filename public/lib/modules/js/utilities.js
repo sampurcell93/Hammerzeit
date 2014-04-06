@@ -32,6 +32,9 @@
       $t.data("mousedover", false);
       return $t.removeClass("show-tooltip");
     });
+    String.prototype.capitalize = function() {
+      return this.charAt(0).toUpperCase() + this.slice(1);
+    };
     (function($) {
       $.fn.classes = function(callback) {
         var classes, i;

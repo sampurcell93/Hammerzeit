@@ -224,14 +224,24 @@ textarea {
 .game-menu {
     display: none;
     position: absolute;
-    right: 0;
-    top: 30px;
+    right: 15px;
+    top: 45px;
+    @include border-radius(3px);
     // border: 1px solid red;
     width: 230px;
-    height: $boardheight;
     // border-left: 2px solid #333;
     background: rgba(0,0,0,.6);
     // outline: none;
+
+    &[quadrant='1'] { 
+        left: 15px;
+
+        li .nested-menu > ul {
+            left: 230px;
+            li { background: rgba(0,0,0,.6); }
+        }
+
+    }
 
     ul {
         background: rgba(0,0,0,.6);
@@ -247,6 +257,10 @@ textarea {
         cursor: pointer;
         position: relative;
         outline: none;
+
+        &:first-of-type {
+            @include border-radius(3px 3px 0 0);
+        }
 
         &.header {
             white-space: normal;

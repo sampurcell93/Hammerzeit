@@ -62,7 +62,7 @@ define ["utilities", "npc", "board", "globals", "mapper", "items", "powers", "ba
 			_.each inventory.models, (item) => item.set("belongsTo", @)
 			inventory.sort()
 			return _.extend defaults, {
-				current_chunk: { x: 0, y: 1 }
+				current_chunk: { x: 0, y: 0 }
 				inventory: inventory
 				type: "PC"
 				name: "Hero"

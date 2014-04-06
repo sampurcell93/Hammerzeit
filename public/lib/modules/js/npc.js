@@ -26,7 +26,7 @@
         },
         images: ["images/sprites/hero.png"]
       },
-      walkspeed: 9
+      walkspeed: 20
     };
     _ts = globals.map.tileside;
     NPC = (function(_super) {
@@ -40,10 +40,16 @@
       NPC.prototype.currentspace = {};
 
       NPC.prototype.defaults = function() {
+        var pow,
+          _this = this;
+        pow = powers.defaultPowers();
+        _.each(pow.models, function(power) {
+          return power.ownedBy = _this;
+        });
         return {
           name: "NPC",
           inventory: items.Inventory(),
-          powers: powers.PowerSet(),
+          powers: pow,
           init: 1,
           type: 'NPC',
           "class": 'none',
@@ -99,19 +105,9 @@
             frames: this.frames.down
           }))
         };
-        this.listenTo(globals.shared_events, "powers_loaded", function() {
-          var p;
-          if (_this.get("powers").length === 0) {
-            _this.set("powers", p = powers.defaultPowers());
-            _.each(p.models, function(pow) {
-              return pow.ownedBy = _this;
-            });
-          }
-          return _this.stopListening(globals.shared_events, "powers_loaded");
-        });
         this.createMarker();
         this.on("add", function(model, coll) {
-          if (coll.type === "ActivityQueue") {
+          if (coll.type === "InitiativeQueue") {
             return _this.activity_queue = coll;
           }
         });
@@ -125,9 +121,10 @@
         sheet.getAnimation("run").next = "run";
         sprite = new createjs.Sprite(sheet, "run");
         this.marker = new createjs.Container();
+        this.marker.regY = 10;
         this.marker.addChild(sprite);
         this.marker.icon = sprite;
-        nameobj = new createjs.Text(this.get("name"), "12px Arial", "rgba(255,255,255,.7)");
+        nameobj = new createjs.Text(this.get("name"), "14px Arial", "#fff");
         return this.marker.addChild(_.extend(nameobj, {
           shadow: globals.textshadow,
           y: 40
@@ -159,7 +156,8 @@
         return !(Math.abs(start.elv - target.elv) > this.get("attrs").jmp);
       };
 
-      NPC.prototype.checkEnterable = function(target, dx, dy, start) {
+      NPC.prototype.checkEnterable = function(target, dx, dy, start, opts) {
+        opts || (opts = {});
         try {
           if (!this.checkElevation(target, start)) {
             return false;
@@ -167,7 +165,7 @@
           if (target.e != null) {
             if (target.e === false || target.e === "f") {
               return false;
-            } else if (target.occupied === true) {
+            } else if (target.occupied === true && !opts.ignoreNPCs) {
               return false;
             } else if (typeof target.e === "string") {
               return _checkEntry[target.e](dx, dy);
@@ -200,8 +198,19 @@
         return !(board.hasState("battle")) && board.inBounds(x) && board.inBounds(y);
       };
 
-      NPC.prototype.setSpriteSheet = function(dx, dy) {
-        return this.marker.icon.spriteSheet = this.sheets[ut.floorToOne(dx) + "," + ut.floorToOne(dy)];
+      NPC.prototype.turn = function(dx, dy) {
+        var sheet, x, y;
+        x = ut.floorToOne(dx);
+        y = ut.floorToOne(dy);
+        if (x !== 0 && y !== 0) {
+          x = 0;
+        }
+        sheet = this.sheets[x + "," + y];
+        console.log(ut.floorToOne(dx) + "," + ut.floorToOne(dy));
+        if (!sheet) {
+          alert("FUCKED UP IN TURN");
+        }
+        return this.marker.icon.spriteSheet = sheet;
       };
 
       NPC.prototype.leaveSquare = function() {
@@ -213,7 +222,7 @@
       NPC.prototype.enterSquare = function(target, dx, dy) {
         this.currentspace = target;
         target.occupied = true;
-        target.occupiedBy = this.marker;
+        target.occupiedBy = this;
         if (target.end === false || target.end === "false" && (dx !== 0 && dy !== 0)) {
           return this.move(dx, dy, 0);
         }
@@ -238,6 +247,7 @@
       NPC.prototype.reanimate = function(animation, speed, next) {
         var sheet;
         sheet = this.marker.icon.spriteSheet;
+        console.log(this);
         sheet.getAnimation(animation || "run").speed = speed;
         return sheet.getAnimation(animation || "run").next = next;
       };
@@ -279,7 +289,7 @@
         if (this.moving === true) {
           return false;
         }
-        sheet = this.setSpriteSheet(dx, dy);
+        sheet = this.turn(dx, dy);
         if (!this.checkEnterable(target, dx, dy)) {
           return false;
         }
@@ -297,7 +307,8 @@
       NPC.prototype.moveInterval = function(dx, dy, walkspeed) {
         var cbs, count, m_i, target,
           _this = this;
-        this.setSpriteSheet(dx, dy);
+        this.cursor();
+        this.turn(dx, dy);
         target = this.getTargetTile(dx, dy);
         count = 0;
         cbs = this.move_callbacks;
@@ -402,6 +413,15 @@
         return this;
       };
 
+      NPC.prototype.takeAction = function(type) {
+        var actions;
+        actions = ["standard", "minor", "move"];
+        if (actions.indexOf(type) !== -1) {
+          this["take" + type.capitalize()]();
+        }
+        return this;
+      };
+
       NPC.prototype.canTakeAction = function() {
         var flag;
         flag = false;
@@ -421,9 +441,9 @@
         return ((_ref2 = chunk[(y + (50 * dy)) / 50]) != null ? _ref2.children[(x + (50 * dx)) / 50] : void 0) || {};
       };
 
-      NPC.prototype.virtualMove = function(dx, dy, start, extra) {
+      NPC.prototype.virtualMove = function(dx, dy, start, opts) {
         var target;
-        extra || (extra = 0);
+        opts || (opts = {});
         if (board.isPaused()) {
           return false;
         }
@@ -434,19 +454,27 @@
         if (target.tileModel.discovered) {
           return false;
         }
-        if (!this.checkEnterable(target, dx, dy, start)) {
+        if (!this.checkEnterable(target, dx, dy, start, opts)) {
           return false;
         }
         return target;
       };
 
-      NPC.prototype.virtualMovePossibilities = function(start, done, speed) {
-        var checkQueue, enqueue, i, movable, square, tile, _i;
+      NPC.prototype.virtualMovePossibilities = function(start, done, speed, opts) {
+        var checkQueue, defaults, enqueue, i, movable, square, tile, _i;
         start || (start = this.getTargetTile(0, 0));
         done || (done = function(target) {
           return target.tileModel.trigger("potentialmove");
         });
         speed || (speed = this.get("attrs").spd);
+        defaults = {
+          diagonal: false,
+          ignoreNPCs: false,
+          ignorePCs: false,
+          ignoreEmpty: false,
+          storePath: true
+        };
+        opts = _.extend(defaults, opts);
         checkQueue = [];
         movable = new Row;
         checkQueue.unshift(start);
@@ -459,14 +487,16 @@
             return;
           }
           distance = previous.distance;
-          path = ut.deep_clone(previous.pathFromStart.path);
-          path.push({
-            dx: dx,
-            dy: dy
-          });
-          pathFromStart = target.tileModel.pathFromStart;
-          pathFromStart.path = path;
-          pathFromStart.start = previous.pathFromStart.start;
+          if (opts.storePath !== false) {
+            path = ut.deep_clone(previous.pathFromStart.path);
+            path.push({
+              dx: dx,
+              dy: dy
+            });
+            pathFromStart = target.tileModel.pathFromStart;
+            pathFromStart.path = path;
+            pathFromStart.start = previous.pathFromStart.start;
+          }
           if (!target) {
             return;
           }
@@ -480,7 +510,7 @@
           checkQueue.unshift(target);
           return done.call(this, target);
         };
-        while (checkQueue.length > 0) {
+        while (!(checkQueue.length <= 0)) {
           square = checkQueue.pop();
           tile = square.tileModel;
           movable.push(tile);
@@ -488,8 +518,12 @@
             if (i === 0) {
               continue;
             }
-            enqueue(0, i, square.tileModel, this.virtualMove(0, i, square));
-            enqueue(i, 0, square.tileModel, this.virtualMove(i, 0, square));
+            enqueue(0, i, square.tileModel, this.virtualMove(0, i, square, opts));
+            enqueue(i, 0, square.tileModel, this.virtualMove(i, 0, square, opts));
+            if (opts.diagonal === true) {
+              enqueue(i, i, square.tileModel, this.virtualMove(i, i, square, opts));
+              enqueue(-i, i, square.tileModel, this.virtualMove(-i, i, square, opts));
+            }
           }
         }
         _.each(movable.models, function(tile) {
@@ -508,7 +542,9 @@
 
       NPC.prototype.die = function() {
         this.dead = true;
-        return this.trigger("die", this, this.collection, {});
+        this.trigger("die", this, this.collection, {});
+        board.getStage().removeChild(this.marker);
+        return this.leaveSquare();
       };
 
       NPC.prototype.isDead = function() {
@@ -524,7 +560,7 @@
         if (target) {
           this.currentspace = target;
           target.occupied = true;
-          target.occupiedBy = this.marker;
+          target.occupiedBy = this;
         }
         return target;
       };
@@ -577,11 +613,10 @@
       };
 
       NPC.prototype.indicateActive = function() {
-        console.log(this.toJSON().name);
         _.each(this.activity_queue.models, function(character) {
-          return character.cursor().hide();
+          return character.c.hide();
         });
-        this.cursor().show();
+        this.c.show().move(this.marker);
         return this;
       };
 
@@ -598,13 +633,54 @@
         if (t === 3) {
           return this.turnDone();
         }
-        battler.resetTimer().startTimer(this.i, function() {
+        battler.resetTimer().startTimer(this.i || this.get("init"), function() {
           _this.burnAction();
           console.log(_this.actions);
           return _this.nextPhase();
         });
         this.trigger("beginphase", this.turnPhase);
         return this.turnPhase++;
+      };
+
+      NPC.prototype.takeDamage = function(damage) {
+        var d_i,
+          _this = this;
+        if (this.isDead()) {
+          return this;
+        }
+        this.set("HP", this.get("HP") - damage);
+        if (this.get("HP") <= 0) {
+          this.die();
+        }
+        damage = new createjs.Text(damage + " HP", "bold 18px Arial", "#ff0000");
+        damage = _.extend(damage, {
+          shadow: globals.textshadow,
+          y: -10
+        });
+        this.marker.addChild(damage);
+        d_i = setInterval(function() {
+          damage.y -= 2;
+          if (damage.y < -30) {
+            clearInterval(d_i);
+            return _this.marker.removeChild(damage);
+          }
+        }, 100);
+        return this;
+      };
+
+      NPC.prototype.getQuadrant = function() {
+        var x, y;
+        x = this.marker.x - globals.map.c_width / 2;
+        y = this.marker.y - globals.map.c_height / 2;
+        if (x < 0 && y < 0) {
+          return 2;
+        } else if (x <= 0 && y >= 0) {
+          return 3;
+        } else if (x >= 0 && y <= 0) {
+          return 1;
+        } else {
+          return 4;
+        }
       };
 
       return NPC;

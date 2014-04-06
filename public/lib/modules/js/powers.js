@@ -3,7 +3,7 @@
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
   define(["globals", "utilities", "board"], function(globals, utilities, board) {
-    var Power, PowerList, PowerListItem, PowerSet, get, getPower, _default, _powers, _ref, _ref1, _ref2, _ref3;
+    var Power, PowerSet, get, getPower, _default, _powers, _ref, _ref1;
     _powers = null;
     _default = ["Strike", "Beguile", "Plead"];
     Power = (function(_super) {
@@ -45,79 +45,20 @@
       return PowerSet;
 
     })(Backbone.Collection);
-    _powers = new PowerSet;
-    _powers.fetch({
-      success: function() {
-        console.log(_powers);
-        return globals.shared_events.trigger("powers_loaded");
-      },
-      parse: true
-    });
-    PowerList = (function(_super) {
-      __extends(PowerList, _super);
-
-      function PowerList() {
-        _ref2 = PowerList.__super__.constructor.apply(this, arguments);
-        return _ref2;
+    _powers = new PowerSet([
+      {
+        "name": "Strike",
+        "damage": 2,
+        "uses": 0
+      }, {
+        "name": "Beguile",
+        "action": "move",
+        "uses": 3
+      }, {
+        "name": "Plead",
+        "action": "move"
       }
-
-      PowerList.prototype.tagName = 'ul';
-
-      PowerList.prototype.initialize = function() {
-        return _.bindAll(this, "append");
-      };
-
-      PowerList.prototype.render = function() {
-        this.$el.empty();
-        _.each(this.collection.models, this.append);
-        return this;
-      };
-
-      PowerList.prototype.append = function(power) {
-        power = new PowerListItem({
-          model: power
-        });
-        return this.$el.append(power.render().el);
-      };
-
-      return PowerList;
-
-    })(Backbone.View);
-    PowerListItem = (function(_super) {
-      __extends(PowerListItem, _super);
-
-      function PowerListItem() {
-        _ref3 = PowerListItem.__super__.constructor.apply(this, arguments);
-        return _ref3;
-      }
-
-      PowerListItem.prototype.tagName = 'li';
-
-      PowerListItem.prototype.className = 'power-item';
-
-      PowerListItem.prototype.template = $("#power-item").html();
-
-      PowerListItem.prototype.render = function() {
-        this.$el.html(_.template(this.template, this.model.toJSON()));
-        return this;
-      };
-
-      PowerListItem.prototype.events = {
-        "click": function() {
-          var user, _attackvectors;
-          user = this.model.ownedBy;
-          if (!user) {
-            return;
-          }
-          console.log(user);
-          _attackvectors = user.virtualMovePossibilities(null, null, 1);
-          return console.log(_attackvectors);
-        }
-      };
-
-      return PowerListItem;
-
-    })(Backbone.View);
+    ]);
     getPower = function(name) {
       var power;
       power = _powers._byId[name];

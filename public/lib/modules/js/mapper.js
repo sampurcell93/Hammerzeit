@@ -51,7 +51,6 @@
       };
 
       Tile.prototype.removePotentialMoves = function() {
-        console.log("removing potential");
         while (this.pathFromStart.path.length) {
           this.pathFromStart.path.shift();
         }

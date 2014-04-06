@@ -117,7 +117,7 @@
         return _.extend(defaults, {
           current_chunk: {
             x: 0,
-            y: 1
+            y: 0
           },
           inventory: inventory,
           type: "PC",

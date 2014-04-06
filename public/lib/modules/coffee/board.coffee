@@ -15,7 +15,11 @@ define ['globals', 'utilities', 'jquery', 'underscore', 'easel'], (globals, ut) 
     stage.enableDOMEvents true
     _ticker = createjs.Ticker
     _ticker.addEventListener "tick", (tick) ->
-        stage.update() unless tick.paused
+        try 
+            stage.update() unless tick.paused
+        catch 
+            _ticker.setPaused true
+            alert "hey you dun goofed with moves somehow"
 
     state = ["INTRO"]
     textshadow = globals.textshadow = new createjs.Shadow("#000000", 0,0,7)
@@ -70,12 +74,14 @@ define ['globals', 'utilities', 'jquery', 'underscore', 'easel'], (globals, ut) 
         isVisible: -> @visible
         # Either pass in a DisplayObject as the first parameter, or x,y pixel coords to move to
         # If a displayobject is passed, the cursor will be set to one square ABOVE it (as an indicator) and the second arg will be an offset
-        move: (x, y) ->
+        move: (x, y, d) ->
             if _.isObject(x)
                 y = x.y - _ts + @offset
                 x = x.x
             @marker.x = x
             @marker.y = y + @offset
+            if d
+                debugger
             @
 
     _cursor = new Cursor

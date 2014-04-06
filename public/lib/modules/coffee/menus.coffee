@@ -2,6 +2,7 @@ define ["powers", "globals", "utilities", "dialog", "battler", "player", "npc", 
 
     board.focus()
 
+
     # Close all menus
     globals.shared_events.on "closemenus", ->
         closeAll()
@@ -10,7 +11,46 @@ define ["powers", "globals", "utilities", "dialog", "battler", "player", "npc", 
         _activemenu.open()
 
     InventoryList = items.InventoryList
-    PowerList = powers.PowerList
+
+    class PowerList extends Backbone.View
+        tagName: 'ul'
+        initialize: ->
+            _.bindAll @, "append"
+        render: ->
+            @$el.empty()
+            _.each @collection.models, @append
+            @
+        append: (power) ->
+            power = new PowerListItem model: power
+            @$el.append(power.render().el)
+
+
+    class PowerListItem extends Backbone.View
+        tagName: 'li'
+        className: 'power-item'
+        template: $("#power-item").html()
+        initialize: ->
+            _.bindAll @, "rangeHandler"
+            @listenTo @model,
+                "change:uses": @renderUses
+        render: ->
+            @$el.html(_.template(@template, @model.toJSON()))
+            @
+        renderUses: (model, uses) ->
+            console.log uses
+            @$(".uses").text(uses)
+        rangeHandler: (target)->
+            target.tileModel.boundPower = @model
+            target.tileModel.trigger "attackrange"
+        events: 
+            "click": ->
+                user = @model.ownedBy
+                if !user then return 
+                opts = {diagonal: true, ignoreNPCs: true, storePath: false}
+                battler.setAttacks u = user.virtualMovePossibilities(null, @rangeHandler, 1, opts)
+                console.log u
+                battler.setState("choosingattacks")
+
     _potential_moves = null
 
     # Basic manu view
@@ -21,7 +61,7 @@ define ["powers", "globals", "utilities", "dialog", "battler", "player", "npc", 
             @$(".inventory-list").html(list.render().el)
             @
         showPowers: ->
-            list = PowerList collection: @model.get "powers"
+            list = new PowerList collection: @model.get "powers"
             @$(".power-list").html(list.render().el)
             @
         selectThis: ($item) ->
@@ -34,6 +74,8 @@ define ["powers", "globals", "utilities", "dialog", "battler", "player", "npc", 
             console.log "prev"
             @selectThis @$el.children(".selected").prev()
         events:
+            "click": ->
+                console.log @model.get "name"
             "click .js-close-menu": ->
                 toggleMenu @type
             "click .js-show-inventory": (e) ->
@@ -52,7 +94,6 @@ define ["powers", "globals", "utilities", "dialog", "battler", "player", "npc", 
             # "click": -> board.$canvas.focus()
         render: ->
             @showInventory()
-            @showPowers()
         clickActiveItem: ->
             @$el.children(".selected").trigger "click"
         close: ->
@@ -61,14 +102,27 @@ define ["powers", "globals", "utilities", "dialog", "battler", "player", "npc", 
             @$el.effect "slide", _.extend({mode: 'hide'}, {direction: 'right', easing: 'easeInOutQuart'}), 300
             board.unpause().focus()
             battler.clearPotentialMoves()
+        reBind: (newmodel) ->
+            @stopListening @model
+            @model = newmodel
+            @listenTo @model,
+                "beginphase": (phase) ->
+                    console.log "in watcher"
+                    console.log phase+1
+                    @$(".phase-number").text(phase + 1)
+            @
         open: ->
-            active = battler.getActive()
-            if active then @model = active
+            active_player = battler.getActive()
+            battler.setState("menuopen")
+            if active_player then @reBind(active_player)
+            else return @
+            quadrant = @model.getQuadrant()
             _activemenu = @
             @showing = true 
-            @render()
+            @render(quadrant)
             board.pause()
-            @$el.focus().select().effect "slide", _.extend({mode: 'show'}, {direction: 'right', easing: 'easeInOutQuart'}) , 300
+            dir = if quadrant is 1 then "left" else "right"
+            @$el.focus().select().effect "slide", _.extend({mode: 'show'}, {direction: dir, easing: 'easeInOutQuart'}) , 300
         toggle: ->
             if @showing then @close()
             else @open()    
@@ -88,34 +142,39 @@ define ["powers", "globals", "utilities", "dialog", "battler", "player", "npc", 
 
     # Sub classed battle menu
     class BattleMenu extends Menu
-        el: "#battle-menu"
+        tagName: 'ul'
+        className: 'game-menu'
+        template: $("#battle-menu").html()
         type: 'battle'
         open: ->
             super
             board.unpause()
-        render: ->
+        render: (quadrant)->
+            @$el.html(_.template @template, _.extend(@model.toJSON(),{phase: @model.turnPhase}))
+            if quadrant then @$el.attr("quadrant", quadrant)
+            @showPowers()
             super
         initialize: ->
+            @$el.attr("id", "battle-menu")
             _.bindAll @, "close", "open", "toggle", "selectNext", "selectThis", "selectPrev"
             @events = _.extend @events, @child_events
-            @listenTo @model,
-                "beginphase": (phase) ->
-                    console.log "in watcher"
-                    console.log phase+1
-                    @$(".phase-number").text(phase + 1)
+        
         child_events:
             # Creates an overlay on the 
             "click .js-virtual-move": -> 
                 battler.clearPotentialMoves()
+                console.log battler.getActive()
                 _potential_moves = battler.getActive().virtualMovePossibilities()                
+                console.log _potential_moves
                 battler.setPotentialMoves _potential_moves
+                battler.setState("choosingmoves")
 
     _menus = window._menus = {
         travel: new TravelMenu model: player.PC
         battle: new BattleMenu model: battler.getActive({player: true})
     }
     _activemenu = _menus['battle']
-
+    _activemenu.$el.appendTo(".wrapper")
 
     toggleMenu = (menu) ->
         _activemenu = _menus[menu]

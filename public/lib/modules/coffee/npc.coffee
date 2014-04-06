@@ -18,7 +18,7 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
                 run: [0,3]
             images: ["images/sprites/hero.png"]
         }
-        walkspeed: 9
+        walkspeed: 20
 	}	
 	
 	_ts = globals.map.tileside
@@ -26,10 +26,12 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 	class NPC extends Backbone.Model
 		currentspace: {}
 		defaults: ->
+			pow = powers.defaultPowers()
+			_.each pow.models, (power) => power.ownedBy = @
 			return {
 				name: "NPC"
 				inventory: items.Inventory()
-				powers: powers.PowerSet()
+				powers: pow
 				init: 1
 				type: 'NPC'
 				class: 'none'
@@ -80,13 +82,8 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 			}
 			# Powers load async, so when loaded we need to bind defaults to an unequipped NPC
 			# then stop listening
-			@listenTo globals.shared_events, "powers_loaded", => 
-				if @get("powers").length is 0 
-					@set("powers", p = powers.defaultPowers())
-					_.each p.models, (pow) => pow.ownedBy = @
-				@stopListening globals.shared_events, "powers_loaded"
 			@createMarker()
-			@on "add", (model, coll) => if coll.type is "ActivityQueue" then @activity_queue = coll
+			@on "add", (model, coll) => if coll.type is "InitiativeQueue" then @activity_queue = coll
 			@cursor()
 		createMarker: ->
 			sheet = @sheets["0,1"]
@@ -94,9 +91,10 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 			sheet.getAnimation("run").next = "run"
 			sprite = new createjs.Sprite(sheet, "run")
 			@marker = new createjs.Container()
+			@marker.regY = 10
 			@marker.addChild sprite
 			@marker.icon = sprite
-			nameobj = new createjs.Text(@get("name"), "12px Arial", "rgba(255,255,255,.7)")
+			nameobj = new createjs.Text(@get("name"), "14px Arial", "#fff")
 			@marker.addChild _.extend nameobj, {shadow: globals.textshadow, y: 40 }
 		cursor: -> 
 			c = @c || board.newCursor()
@@ -118,13 +116,14 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 			!(Math.abs(start.elv - target.elv) > @get("attrs").jmp)
 		# Pass in the target tile and the move deltas, and the NPC will use the current 
 		# active chunk to determine if the spot is enterable.
-		checkEnterable: (target, dx, dy, start)->
+		checkEnterable: (target, dx, dy, start, opts)->
+			opts || opts = {}
 			try 
 				if !@checkElevation(target, start)
 					return false
 				if target.e?
 					if target.e is false or target.e is "f" then return false
-					else if target.occupied is true then return false
+					else if target.occupied is true and !opts.ignoreNPCs then return false
 					else if typeof target.e is "string"
 						return _checkEntry[target.e](dx, dy)
 					else true
@@ -147,8 +146,14 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 			!(board.hasState("battle")) and board.inBounds(x) and board.inBounds(y)
 
 		# Set the sprite sheet to the direction given by the x,y coords. 
-		setSpriteSheet: (dx,dy) ->
-			@marker.icon.spriteSheet = @sheets[ut.floorToOne(dx)+","+ut.floorToOne(dy)]
+		turn: (dx,dy) ->
+			x = ut.floorToOne(dx)
+			y = ut.floorToOne(dy)
+			if x isnt 0 and y isnt 0 then x = 0
+			sheet = @sheets[x+","+y]
+			console.log ut.floorToOne(dx)+","+ut.floorToOne(dy)
+			if !sheet then alert("FUCKED UP IN TURN")
+			@marker.icon.spriteSheet = sheet
 		# The square that the NPC was previously in should be cleared when left
 		# Should be called in conjunction with "entersquare"
 		leaveSquare: ->
@@ -159,7 +164,7 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 		enterSquare: (target, dx, dy) ->
 			@currentspace = target
 			target.occupied = true
-			target.occupiedBy = @marker
+			target.occupiedBy = @
 			if target.end is false or target.end is "false" and (dx isnt 0 and dy isnt 0)
 				@move(dx, dy, 0);
 		# Wrapper functions for basic moves
@@ -170,6 +175,7 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 		# Reset an animation's properties
 		reanimate: (animation, speed, next) ->
 			sheet = @marker.icon.spriteSheet
+			console.log @
 			sheet.getAnimation(animation || "run").speed = speed
 			sheet.getAnimation(animation || "run").next = next
 		# Takes in a half position (say x= 476, y= 450) and rounds to the nearest 50 (up or down deps on dx,dy)
@@ -190,7 +196,7 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 			marker = @marker
 			target = @getTargetTile dx, dy
 			if @moving is true then return false
-			sheet = @setSpriteSheet dx, dy
+			sheet = @turn dx, dy
 			if !@checkEnterable(target, dx, dy) then return false
 			if !@stage or !marker
 				throw new Error("There is no stage or marker assigned to this NPC!")
@@ -199,7 +205,8 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 			@moveInterval dx, dy
 			true
 		moveInterval: (dx, dy, walkspeed) ->
-			@setSpriteSheet dx, dy
+			@cursor()
+			@turn dx, dy
 			target = @getTargetTile dx, dy
 			count = 0
 			cbs = @move_callbacks
@@ -276,6 +283,11 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 				actions.trigger "reduce"
 			unless burn then @nextPhase()
 			@
+		takeAction: (type) ->
+			actions = ["standard", "minor", "move"]
+			if actions.indexOf(type) isnt -1
+				@["take" + type.capitalize()]()
+			@
 		# Can the user take any more actions?
 		canTakeAction: ->
 			flag = false
@@ -290,13 +302,16 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 
 		# Like move, but lightweight and with no transitions - simple arithmetic check
 		# Because we're not updating marker, we can pass in a start object (x:,y:) to be virtualized from
-		virtualMove: (dx, dy, start, extra) ->
-			extra || extra = 0
+		virtualMove: (dx, dy, start, opts) ->
+			opts || opts = {}
 			if board.isPaused() then return false
 			target = @getTargetTile dx, dy, start
-			if _.isEmpty(target) then return false
-			if target.tileModel.discovered then return false
-			if !@checkEnterable(target, dx, dy, start) then return false
+			if _.isEmpty(target) 
+				return false
+			if target.tileModel.discovered 
+				return false
+			if !@checkEnterable(target, dx, dy, start, opts) 
+				return false
 			# If we can't end in the examined sqaure, don't enqueue it -
 			# rather, check where the square will take us if we step into it
 			# m = target.tileModel.m += extra
@@ -308,10 +323,23 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 		# Runs through the currently visible tiles in a battle and determines which moves are possible
 		# Returns array of tiles. If true, silent prevents observation 
 		# Still inefficient - keeps checking past max distance - todo
-		virtualMovePossibilities: (start, done, speed) ->
+		virtualMovePossibilities: (start, done, speed, opts) ->
 			start 	   || (start = @getTargetTile 0, 0)
 			done	   || (done = (target) -> target.tileModel.trigger("potentialmove"))
 			speed 	   || (speed = @get("attrs").spd)
+			defaults = {
+				# Compute diagonals as a distance-1 move?
+				diagonal: false
+				# Do not designate squares occupied by NPCs as un-enterable
+				ignoreNPCs: false
+				# Do not designate squares occupied by PCs as un-enterable
+				ignorePCs: false
+				# Only designate occupied squares as valid.
+				ignoreEmpty: false
+				# Should the path be stored?
+				storePath: true
+			}
+			opts = _.extend defaults, opts
 			checkQueue = []
 			movable = new Row
 			checkQueue.unshift(start)
@@ -322,11 +350,12 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 			enqueue = (dx, dy, previous, target) ->
 				if target is false then return
 				distance = previous.distance
-				path = ut.deep_clone previous.pathFromStart.path
-				path.push {dx: dx, dy: dy}
-				pathFromStart = target.tileModel.pathFromStart
-				pathFromStart.path = path
-				pathFromStart.start = previous.pathFromStart.start
+				unless opts.storePath is false
+					path = ut.deep_clone previous.pathFromStart.path
+					path.push {dx: dx, dy: dy}
+					pathFromStart = target.tileModel.pathFromStart
+					pathFromStart.path = path
+					pathFromStart.start = previous.pathFromStart.start
 				if !target then return
 				d = if target.m then target.m else 1
 				if distance + d > speed then return
@@ -334,14 +363,17 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 				target.tileModel.discovered = true
 				checkQueue.unshift target
 				done.call(@, target)
-			while checkQueue.length > 0
+			until checkQueue.length <= 0
 				square = checkQueue.pop()
 				tile = square.tileModel
 				movable.push tile
 				for i in [-1..1]
 					if i is 0 then continue
-					enqueue(0, i, square.tileModel, @virtualMove 0, i, square)
-					enqueue(i, 0, square.tileModel, @virtualMove i, 0, square)
+					enqueue(0, i, square.tileModel, @virtualMove 0, i, square, opts)
+					enqueue(i, 0, square.tileModel, @virtualMove i, 0, square, opts)
+					if opts.diagonal is true
+						enqueue(i, i, square.tileModel, @virtualMove i, i, square, opts)
+						enqueue(-i, i, square.tileModel, @virtualMove -i, i, square, opts)
 
 			_.each movable.models, (tile) ->
 				tile.discovered = false
@@ -357,6 +389,9 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 		die: ->
 			@dead = true
 			@trigger "die", @, @collection, {}
+			# alert "You killed #{@get('name')}"
+			board.getStage().removeChild @marker
+			@leaveSquare()
 		# Is the NPC dead?
 		isDead: ->
 			@dead
@@ -369,7 +404,7 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 			if target 
 				@currentspace = target
 				target.occupied = true
-				target.occupiedBy = @marker
+				target.occupiedBy = @
 			target
 		# Checks if a given target can be occupied. Does not account for entrance vectors, only current state.
 		canOccupy: (t) ->
@@ -397,32 +432,61 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 			@
 		# What phase of the user's turn are they at? Max 3
 		turnPhase: 0
+		# Resets the NPC's phase counter and alerts all listeners that the turn is done
 		turnDone: ->
 			@turnPhase = 0
 			@trigger "turndone"
 			@resetActions()
 			@
+		# Hide every other NPC's personal cursor and show this one
 		indicateActive: ->
-			console.log @toJSON().name
 			_.each @activity_queue.models, (character) -> 
-				character.cursor().hide()
-			@cursor().show()
+				character.c.hide()
+			@c.show().move @marker
 			@
+		# Begin the NPC's turn by indicating it as the selected,
+		# and starting the first phase
 		initTurn: ->
 			@indicateActive()
 			globals.shared_events.trigger "closemenus"
 			@nextPhase()
+		# Increments the phase counter and sets the game timer according to the 
+		# NPC's initiative roll
 		nextPhase: ->
 			t = @turnPhase
 			if t is 3 
 				return @turnDone()
-			battler.resetTimer().startTimer @i, => 
+			battler.resetTimer().startTimer @i || @get("init"), => 
 				@burnAction()
 				console.log @actions
 				# @takeMove(
 				@nextPhase()
 			@trigger "beginphase", @turnPhase
 			@turnPhase++
+		# Takes an integer damage value, subtracts it, and renders it to the canvas
+		takeDamage: (damage) ->
+			if @isDead() then return @
+			@set("HP", @get("HP") - damage)
+			if @get("HP") <= 0 then @die()
+			damage = new createjs.Text(damage + " HP", "bold 18px Arial", "#ff0000")
+			damage = _.extend damage, {shadow: globals.textshadow, y: -10 }
+			@marker.addChild damage
+			d_i = setInterval =>
+				damage.y -= 2
+				if damage.y < -30 
+					clearInterval d_i
+					@marker.removeChild damage
+			, 100
+			@
+		# Returns the cartesian quadrant of the screen the NPC occupies so that the menu
+		# Can make sure not to open over them
+		getQuadrant: ->
+			x = @marker.x - globals.map.c_width/2
+			y = @marker.y - globals.map.c_height/2
+			if x < 0 and y < 0 then 2
+			else if x <= 0 and y >= 0 then 3
+			else if x >= 0 and y <= 0 then 1
+			else 4
 
 	# A basic collection of NPCs
 	class CharacterArray extends Backbone.Collection

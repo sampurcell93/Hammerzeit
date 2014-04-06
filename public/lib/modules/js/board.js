@@ -13,8 +13,13 @@
     stage.enableDOMEvents(true);
     _ticker = createjs.Ticker;
     _ticker.addEventListener("tick", function(tick) {
-      if (!tick.paused) {
-        return stage.update();
+      try {
+        if (!tick.paused) {
+          return stage.update();
+        }
+      } catch (_error) {
+        _ticker.setPaused(true);
+        return alert("hey you dun goofed with moves somehow");
       }
     });
     state = ["INTRO"];
@@ -61,13 +66,16 @@
         return this.visible;
       };
 
-      Cursor.prototype.move = function(x, y) {
+      Cursor.prototype.move = function(x, y, d) {
         if (_.isObject(x)) {
           y = x.y - _ts + this.offset;
           x = x.x;
         }
         this.marker.x = x;
         this.marker.y = y + this.offset;
+        if (d) {
+          debugger;
+        }
         return this;
       };
 

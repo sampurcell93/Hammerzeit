@@ -36,7 +36,6 @@ define ["globals", "utilities", "board", "mapper", "underscore", "backbone", "ea
         expose: ->
             setTile @attributes
         removePotentialMoves: ->
-            console.log "removing potential"
             while @pathFromStart.path.length
                 @pathFromStart.path.shift()
             @
