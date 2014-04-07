@@ -290,6 +290,9 @@
           }
           deepFreeze(prop);
         }
+      },
+      roll: function(sides) {
+        return Math.ceil(Math.random() * sides);
       }
     };
   });

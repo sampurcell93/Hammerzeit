@@ -1,6 +1,15 @@
 @import "compass/css3";
 @import "compass/reset";
 
+@mixin no-user-select() {
+    -webkit-user-select: none; /* Chrome/Safari */        
+    -moz-user-select: none; /* Firefox */
+    -ms-user-select: none; /* IE10+ */
+    /* Rules below not implemented in browsers yet */
+    -o-user-select: none;
+    user-select: none;
+}
+
 .clearfix:after {
      visibility: hidden;
      display: block;
@@ -153,12 +162,7 @@ ol {
     top: 30px;
     max-width: $boardwidth;
     max-height: $boardheight;
-    -webkit-user-select: none; /* Chrome/Safari */        
-    -moz-user-select: none; /* Firefox */
-    -ms-user-select: none; /* IE10+ */
-    /* Rules below not implemented in browsers yet */
-    -o-user-select: none;
-    user-select: none;
+    @include no-user-select();
 
     li {
         width: 50px;
@@ -223,8 +227,8 @@ textarea {
 .game-menu {
     display: none;
     position: absolute;
-    right: 15px;
-    top: 45px;
+    right: 20px;
+    top: 55px;
     @include border-radius(3px);
     // border: 1px solid red;
     width: 230px;
@@ -289,6 +293,14 @@ textarea {
 
         > li {
             @extend .clearfix;
+            
+            &.disabled {
+                color: #999;
+                cursor: not-allowed;
+                text-decoration: line-through;
+            }
+
+
             .info {
                 float: right;
                 background: none;
@@ -305,7 +317,6 @@ textarea {
                     border: 1px solid #ccc;
                     font-size: .8em;
                     line-height: 1.2rem;
-
                 }
             }
             .name {
@@ -399,31 +410,105 @@ textarea {
     }
 }
 
+.attribute-container {
+    @extend .clearfix;
+    @include border-radius(2px);
+    @include no-user-select();
+    top: 55px;
+    left: 15px;
+    position: absolute;
+    width: 385px;
+    display: none;
+    background: rgba(0,0,0,.5);
+    padding: 5px;
+
+
+
+    &.bottom {
+        top: auto;
+        left: auto;
+        bottom: 30px;
+        right: 15px;
+    }
+
+    .meterwrap {
+        float: left;
+        width: 70%;
+    }
+
+    h2 {
+        color: #ddd;
+        float: right;
+        width: 30%;
+        text-align: center;
+
+    }
+    ul {
+        color: #aaa;
+
+        li {
+            display: inline-block;
+            width: 33%;
+        }
+    }
+}
+
 meter {
     @include border-radius(4px);
-    position: absolute; 
-    left: 15px;
-    width: 400px;
-    display: none;
+    width: 100%;
+    position: relative;
+    margin: 5px auto;
+
+    &::-webkit-meter-inner-element {
+        -webkit-user-modify: read-only !important;
+    }
+    &::-webkit-meter-optimum-value, &::-webkit-meter-suboptimum-value,&::-webkit-meter-bar {
+        @include border-radius(4px);
+        @include transition(.3s width ease-in-out);
+    }
+    &::-webkit-meter-bar {
+        @include border-radius(4px);
+        @include box-shadow(0px 1px 3px #000 inset, 0px 0px 4px #222);
+        background: rgba(0,0,0,.6);
+        border: 3px solid transparent;
+    }
+
 
     &.creatine {
-        top: 45px;
+        // top: 45px;
+
+        &::-webkit-meter-optimum-value, &::-webkit-meter-suboptimum-value, &::-webkit-meter-even-less-good-value {
+            // needs latest Compass, add '@import "compass"' to your scss
+            background-color: #7f003f; // Old browsers
+            @include filter-gradient(#7f003f, #00abef, horizontal); // IE6-9
+            @include background-image(linear-gradient(left,  #7f003f 0%,#4f007c 51%,#00abef 85%,#00abef 85%));
+            background-size: 400px 20px;
+        }
     }
 
     &.HP {
-        top: 70px;
+        // top: 70px;
+
+        &::-webkit-meter-optimum-value, &::-webkit-meter-suboptimum-value, &::-webkit-meter-even-less-good-value {
+            // needs latest Compass, add '@import "compass"' to your scss
+            background-color: #7f0000; // Old browsers
+            @include filter-gradient(#7f0000, #00bc28, horizontal); // IE6-9
+            @include background-image(linear-gradient(left,  #7f0000 0%,#a7ba00 51%,#00bc28 100%));
+            background-size: 400px 20px;
+        }
+    
     }
 
     &:after {
-        content: attr(display);
-        right: 10px;
+        content: attr(title);
+        left: 10px;
         color: #fff;
         text-shadow: 0px 2px 3px #333;
-        font-size: 1em;
-        top: 0;
+        font-size: .8em;
+        top: 2px;
         position: absolute;
         white-space: nowrap;
-
     }
+
 
 }

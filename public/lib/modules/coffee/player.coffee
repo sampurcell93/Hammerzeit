@@ -67,7 +67,7 @@ define ["utilities", "npc", "board", "globals", "mapper", "items", "powers", "ba
 				type: "PC"
 				name: "Hero"
 				attrs:
-					spd: 6
+					spd: 10
 					ac: 10
 					jmp: 2
 					atk: 3

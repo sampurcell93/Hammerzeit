@@ -4,27 +4,40 @@ define ["globals", "utilities", "board"], (globals, utilities, board) ->
 
     class Power extends Backbone.Model
         defaults:
-            creatine: 0
+            creatine: 3
             power: 1
             range: 1
             type: "single"
-            name: "basic"
+            name: "Basic"
             uses: Infinity
             damage: 1
+            modifier: 4
             action: 'standard'
         idAttribute: 'name'
+        use: ->
+            @set("uses", @get("uses") - 1)
+            @
 
     class PowerSet extends Backbone.Collection
         model: Power
         url: 'lib/json_packs/attacks.json'
 
+    _useFns = {
+        "Strike": (target, attacker) -> 
+            target.useCreatine(3)
+            console.log "stole your creatine bro"
+    }
+
     _powers = new PowerSet(
         [
-            {"name": "Strike", "damage": 2, "uses": 0},
+            {"name": "Strike", "damage": 2, "uses": 1, "modifier": 4},
             {"name": "Beguile", "action": "move", "uses": 3},
-            {"name": "Plead", "action": "move"}
+            {"name": "Plead", "action": "minor"}
         ]
     )
+    _.each _powers.models, (power) ->
+        use = _useFns[power.get("name")]
+        if use then power.set("use" , use)
     # _powers.fetch 
     #     success: ->
     #         console.log _powers

@@ -54,9 +54,11 @@
           type: 'NPC',
           "class": 'none',
           creatine: 10,
+          max_creatine: 10,
           race: 'human',
           level: 1,
           HP: 10,
+          max_HP: 10,
           attrs: {
             spd: 6,
             ac: 10,
@@ -208,7 +210,6 @@
           x = 0;
         }
         sheet = this.sheets[x + "," + y];
-        console.log(ut.floorToOne(dx) + "," + ut.floorToOne(dy));
         if (!sheet) {
           alert("FUCKED UP IN TURN");
         }
@@ -352,7 +353,9 @@
         standard: 1,
         move: 2,
         minor: 2,
-        reduce: function() {}
+        reduce: function() {
+          return this.trigger("reduce", _.pick(this, "standard", "move", "minor"));
+        }
       }, Backbone.Events);
 
       NPC.prototype.burnAction = function() {
@@ -376,8 +379,7 @@
         if (actions.standard > 0) {
           actions.standard--;
           actions.move--;
-          actions.minor--;
-          actions.trigger("reduce");
+          actions.reduce();
         }
         if (!burn) {
           this.nextPhase();
@@ -390,11 +392,14 @@
         actions = this.actions;
         if (actions.move > 0) {
           actions.move--;
-          actions.trigger("reduce");
         }
         if (actions.move === 0) {
-          actions.standard--;
+          if (actions.standard > 0) {
+            actions.standard--;
+          }
+          actions.minor--;
         }
+        actions.reduce();
         if (!burn) {
           this.nextPhase();
         }
@@ -406,7 +411,10 @@
         actions = this.actions;
         if (actions.minor > 0) {
           actions.minor--;
-          actions.trigger("reduce");
+        }
+        if (actions.minor === 0) {
+          actions.move--;
+          actions.reduce();
         }
         if (!burn) {
           this.nextPhase();
@@ -675,6 +683,16 @@
             return _this.marker.removeChild(damage);
           }
         }, 100);
+        return this;
+      };
+
+      NPC.prototype.useCreatine = function(creatine) {
+        var current;
+        current = this.get("creatine");
+        if (current - creatine < 0) {
+          return false;
+        }
+        this.set("creatine", current - creatine);
         return this;
       };
 

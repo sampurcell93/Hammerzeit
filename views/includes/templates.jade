@@ -48,7 +48,19 @@ script#menu(type='text/template')
                 li(tabindex=2).js-defend Defend
                 li(tabindex=2).js-show-inventory Inventory
                   div.inventory-list.nested-menu
-                li(tabindex=2).js-wait Wait
                 li Phase: 
                   span.phase-number <%= phase %>
-                  /3
+                  | /3
+
+script#attribute-container(type='text/template')
+    .meterwrap
+        meter.HP(linker='HP')
+        meter.creatine(linker='creatine')
+    h2 <%= name %>
+    ul
+        li Standard: 
+            span.standard <%= actions.standard %>
+        li Move : 
+            span.move <%= actions.move %>
+        li Minor : 
+            span.minor <%= actions.minor %>

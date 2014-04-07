@@ -3,6 +3,7 @@ define ["powers", "globals", "utilities", "dialog", "battler","board", "undersco
     board.focus()
 
     _menus = []
+    _menu_slots = {top: null, bottom: null}
     $wrapper = $(".wrapper")
 
     _activemenu = battler.getActive().menu
@@ -38,58 +39,115 @@ define ["powers", "globals", "utilities", "dialog", "battler","board", "undersco
         className: 'power-item'
         template: $("#power-item").html()
         initialize: ->
-            _.bindAll @, "rangeHandler"
+            _.bindAll @, "rangeHandler", "chooseTargets"
             @listenTo @model,
-                "change:uses": @renderUses
+                "change:uses": (model, uses) -> @renderUses uses
         render: ->
             @$el.html(_.template(@template, @model.toJSON()))
+            @renderUses(@model.get("uses"))
             @
-        renderUses: (model, uses) ->
-            console.log uses
+        renderUses: (uses) ->
+            console.log "re-rendering powers"
             @$(".uses").text(uses)
+            if uses <= 0 then @$el.addClass "disabled"
         rangeHandler: (target)->
             target.tileModel.boundPower = @model
             target.tileModel.trigger "attackrange"
+        chooseTargets: ->
+            console.log @$el
+            if @$el.hasClass "disabled" then return @
+            user = @model.ownedBy
+            if !user then return 
+            opts = {diagonal: true, ignoreNPCs: true, storePath: false, ignoreDifficult: true, ignoreDeltas: true}
+            battler.removeHighlighting()
+            battler.setAttacks u = user.virtualMovePossibilities(null, @rangeHandler, 1, opts)
+            battler.setState("choosingattacks")
         events: 
-            "click": ->
-                user = @model.ownedBy
-                if !user then return 
-                opts = {diagonal: true, ignoreNPCs: true, storePath: false, ignoreDifficult: true, ignoreDeltas: true}
-                battler.setAttacks u = user.virtualMovePossibilities(null, @rangeHandler, 1, opts)
-                battler.setState("choosingattacks")
+            "click": "chooseTargets"
 
     _potential_moves = null
 
     class Meter extends Backbone.View
-        tagName: 'meter'
         initialize: (attrs) ->
-            attr = attrs.model.get(@className)
-            @name = attrs.model.get("name")
+            link = @link = attrs.el.attr("linker")
+            attr = attrs.model.get(link)
+            max  = attrs.model.get("max_#{link}")
             @setMin 0
-            @setMax attr
-            @setOptimal attr/2
-            @listenTo @model, "change:" + @className, (model, m) => @set m
+            @setMax max
+            @setOptimum max
+            @setHigh max - max/4
+            @setLow max - (6*max)/7
+            @setDisplay()
+            @$el.attr("value", attr)
+            @listenTo @model, "change:#{link}", (model, m) => 
+                console.log "changing #{link}"
+                @set m
+                @setDisplay()
             @render()
-        set: (value) ->  @$el.attr("value", value); @
-        setMin: (min) -> @$el.attr("min", min); @
-        setMax: (max) -> @$el.attr("max", max); @
-        setOptimal: (optimal) -> @$el.attr("optimal", optimal); @
+        getValue: -> parseInt @$el.attr("value")
+        set: (value)->
+            @$el.attr("value", value)
+                # time -= 20
+            # , 20
+            @
+        setMin:  (min)  -> @$el.attr("min", min); @
+        setMax:  (max)  -> @$el.attr("max", max); @
+        setHigh: (high) -> @$el.attr("high", high); @
+        setLow:  (low)  -> @$el.attr("low", low); @
+        setOptimum: (optimum) -> @$el.attr("optimum", optimum); @
+        setDisplay: -> @$el.attr("title", "#{@link}: #{@model.get(@link)}")
         hide: ->
             @visible = false
             @$el.fadeOut "fast"
             @
-        show: -> 
+        show: () -> 
             @visible = true
             @$el.fadeIn "fast"
             @
         isVisible: -> @visible
         render: -> 
-            attr = @model.get(@className)
-            @$el.attr("display", "#{@className}: #{attr}")
-            @set attr
+            @set @model.get @link
             @
         events: 
             click: -> console.log @model
+
+
+    class AttributeViewer extends Backbone.View
+        tagName: 'div'
+        className: 'attribute-container'
+        template: $("#attribute-container").html()
+        initialize: (attrs) ->
+            @render()
+            @meters = {}
+            h = @meters.health = new Meter el: @$("meter.HP"), model: attrs.model
+            c = @meters.creatine = new Meter el: @$("meter.creatine"), model: attrs.model
+            @listenTo @model.actions, "reduce", (actions) => @updateActions actions
+            @
+        render: ->
+            @$el.html(_.template @template, _.extend(@model.toJSON(), {actions: @model.actions}))
+        hide: ->
+            @visible = false
+            @$el.fadeOut "fast"
+            _.each _menu_slots, (menu, i) =>
+                if menu?.id is @id then _menu_slots[i] = null
+            @
+        show: () -> 
+            bottom = if _menu_slots.bottom? then false else true
+            @visible = true
+            if bottom is true 
+                @$el.addClass "bottom"
+                _menu_slots.bottom = @
+            else
+                @$el.removeClass "bottom"
+                _menu_slots.top = @
+            # else @$el.removeClass "" Context switch weirds me out :/
+            @$el.fadeIn "fast"
+            @
+        updateActions: (actions) ->
+            actions = _.pick @model.actions, "move", "minor", "standard"
+            _.each actions, (val, action) =>
+                console.log "updating #{action} with #{val}"
+                @$(".#{action}").text(val)
 
 
     # Basic manu view
@@ -99,25 +157,22 @@ define ["powers", "globals", "utilities", "dialog", "battler","board", "undersco
         template: $("#menu").html()
         type: 'battle'
         initialize: ->
+            @setupMeters()
             @listenTo @model, 
                 "beginphase": (phase) -> @$(".phase-number").text(phase + 1)
             _.bindAll @, "close", "open", "toggle", "selectNext", "selectThis", "selectPrev"
             @close()
-            @setupMeters()
             @render()
-            @renderAttributeOverlays()
             @$el.appendTo $wrapper
         render: (quadrant = @model.getQuadrant()) ->
-            @$el.html(_.template @template, _.extend(@model.toJSON(),{phase: @model.turnPhase}))
+            extras = {phase: @model.turnPhase}
+            @$el.html(_.template @template, _.extend(@model.toJSON(),extras))
             if quadrant then @$el.attr("quadrant", quadrant)
             @showPowers()
             @showInventory()
         setupMeters: ->
-            @meters = {}
-            h = @meters.health = new Meter className: 'HP', model: @model
-            h.$el.appendTo $wrapper
-            c = @meters.creatine = new Meter className: 'creatine', model: @model
-            c.$el.appendTo $wrapper
+            container = @container = new AttributeViewer model: @model
+            container.$el.appendTo $wrapper
             @
         showInventory: ->
             list = InventoryList collection: @model.get "inventory"
@@ -155,7 +210,7 @@ define ["powers", "globals", "utilities", "dialog", "battler","board", "undersco
                     when 27 then @close()
                     when 13 then @$el.children(".selected").trigger "click"
             "click .js-virtual-move": -> 
-                battler.clearPotentialMoves()
+                battler.removeHighlighting()
                 _potential_moves = battler.getActive().virtualMovePossibilities()                
                 battler.setPotentialMoves _potential_moves
                 battler.setState("choosingmoves")
@@ -163,12 +218,12 @@ define ["powers", "globals", "utilities", "dialog", "battler","board", "undersco
         clickActiveItem: ->
             @$el.children(".selected").trigger "click"
         close: ->
-            _activemenu = null
             @showing = false
             @$el.effect "slide", _.extend({mode: 'hide'}, {direction: 'right', easing: 'easeInOutQuart'}), 300
             board.unpause().focus()
             battler.removeHighlighting()
-            _.each @meters, (meter) -> meter.hide()
+            @hideAttributeOverlay()
+            @
         open: ->
             active_player = battler.getActive()
             battler.setState("menuopen")
@@ -177,19 +232,21 @@ define ["powers", "globals", "utilities", "dialog", "battler","board", "undersco
             @showing = true 
             dir = if quadrant is 1 then "left" else "right"
             $(".game-menu").hide()
-            $("meter").hide()
+            $(".attribute-container").hide()
             @render(quadrant)
-            @renderAttributeOverlays true
+            @showAttributeOverlay()
             @$el.focus().select().effect "slide", _.extend({mode: 'show'}, {direction: dir, easing: 'easeInOutQuart'}) , 300
+            @
         toggle: ->
             if @showing then @close()
             else @open()    
-        renderAttributeOverlays: (show) ->
-            _.each @meters, (meter) ->
-                meter.render()
-                if show is true
-                    console.log meter.name
-                    meter.show()
+            @
+        showAttributeOverlay: () ->
+            @container.show()
+            @
+        hideAttributeOverlay: () ->
+            @container.hide()
+            @
 
     toggleMenu = () ->
         _activemenu.toggle()
@@ -224,4 +281,5 @@ define ["powers", "globals", "utilities", "dialog", "battler","board", "undersco
             @
         Menu: (construction) -> new Menu construction
         a: -> _menus
+        m: ->_menu_slots
     }

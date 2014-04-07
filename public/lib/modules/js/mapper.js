@@ -57,6 +57,14 @@
         return this;
       };
 
+      Tile.prototype.isOccupied = function() {
+        return this.bitmap.occupied === true;
+      };
+
+      Tile.prototype.getOccupant = function() {
+        return this.bitmap.occupiedBy;
+      };
+
       return Tile;
 
     })(Backbone.Model);

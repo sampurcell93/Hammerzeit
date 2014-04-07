@@ -16,6 +16,8 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
     class InitiativeQueue extends NPCArray
         current_index: 0
         type: 'InitiativeQueue'
+        # How long to wait in between turns? MS
+        turnDelay: 1000
         initialize: (models) ->
             _.bindAll @, "next", "prev", "getActive"
             # When a player/npc says theire turn is done, advance the queue
@@ -50,7 +52,11 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
             num = @current_index = ++@current_index % @length
             active_player = @getActive()
             _activebattle.clearAllHighlights()
-            unless init is false then active_player.initTurn()
+            unless init is false
+                setTimeout -> 
+                    active_player.initTurn()
+                , @turnDelay
+
             num
         # Shifts the queue back by one!
         prev: -> 
@@ -283,9 +289,6 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
          move_fns:
             # handler for click event on 
             clickHandler: (e, data) -> 
-                console.log "you clicked the area"
-                console.log arguments
-                console.log @model
                 active = getActive()
                 path = @model.pathFromStart.path
                 # Stop the timer while moving - player not punished for animation
@@ -311,7 +314,6 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
                 @
         attack_fns: 
             clickHandler: (e, data) -> 
-                console.log @
                 power = @model.boundPower
                 attacker = power.ownedBy
                 subject = @model.bitmap.occupiedBy
@@ -320,14 +322,27 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
             mouseoverHandler: (e, data) ->
                 @drawHitAreaSquare @colors.selected_move
                 board.mainCursor().show().move @model.bitmap
+                if @model.isOccupied()
+                    @model.getOccupant().menu.showAttributeOverlay()
             mouseoutHandler: (e, data) ->
                 @drawHitAreaSquare @colors.general
                 board.mainCursor().hide()
+                if @model.isOccupied()
+                    @model.getOccupant().menu.hideAttributeOverlay()
+        # Accepts an attacker NPC object (or subclass), 
+        # NPC subject of the attack, and the power being used
+        # Calls the power's use function and performing the default actions
         handleAttack: (attacker, subject, power) ->
             attrs = power.toJSON()
-            subject.takeDamage(attrs.damage)
+            if !attacker.can(attrs.action) then return @
+            use = attrs.use
+            if _.isFunction(use) then use.call(power, subject, attacker)
+            subject.takeDamage(attrs.damage + ut.roll(attrs.modifier))
+            # Some powers cost magic 
+            attacker.useCreatine(attrs.creatine)
             attacker.takeAction(attrs.action)
-            power.set("uses", power.get("uses") - 1)
+            power.use()
+            @
         bindMoveFns: ->
             area = @model.bitmap.hitArea
             m = @move_fns

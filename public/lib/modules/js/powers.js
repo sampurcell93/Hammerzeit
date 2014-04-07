@@ -3,7 +3,7 @@
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
   define(["globals", "utilities", "board"], function(globals, utilities, board) {
-    var Power, PowerSet, get, getPower, _default, _powers, _ref, _ref1;
+    var Power, PowerSet, get, getPower, _default, _powers, _ref, _ref1, _useFns;
     _powers = null;
     _default = ["Strike", "Beguile", "Plead"];
     Power = (function(_super) {
@@ -15,17 +15,23 @@
       }
 
       Power.prototype.defaults = {
-        creatine: 0,
+        creatine: 3,
         power: 1,
         range: 1,
         type: "single",
-        name: "basic",
+        name: "Basic",
         uses: Infinity,
         damage: 1,
+        modifier: 4,
         action: 'standard'
       };
 
       Power.prototype.idAttribute = 'name';
+
+      Power.prototype.use = function() {
+        this.set("uses", this.get("uses") - 1);
+        return this;
+      };
 
       return Power;
 
@@ -45,20 +51,34 @@
       return PowerSet;
 
     })(Backbone.Collection);
+    _useFns = {
+      "Strike": function(target, attacker) {
+        target.useCreatine(3);
+        return console.log("stole your creatine bro");
+      }
+    };
     _powers = new PowerSet([
       {
         "name": "Strike",
         "damage": 2,
-        "uses": 0
+        "uses": 1,
+        "modifier": 4
       }, {
         "name": "Beguile",
         "action": "move",
         "uses": 3
       }, {
         "name": "Plead",
-        "action": "move"
+        "action": "minor"
       }
     ]);
+    _.each(_powers.models, function(power) {
+      var use;
+      use = _useFns[power.get("name")];
+      if (use) {
+        return power.set("use", use);
+      }
+    });
     getPower = function(name) {
       var power;
       power = _powers._byId[name];

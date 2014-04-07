@@ -39,7 +39,8 @@ define ["globals", "utilities", "board", "mapper", "underscore", "backbone", "ea
             while @pathFromStart.path.length
                 @pathFromStart.path.shift()
             @
-        
+        isOccupied: -> @bitmap.occupied is true
+        getOccupant: -> @bitmap.occupiedBy
 
     class Row extends Backbone.Collection
         model: Tile

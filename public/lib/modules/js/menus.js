@@ -3,9 +3,13 @@
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
   define(["powers", "globals", "utilities", "dialog", "battler", "board", "underscore", "backbone", "jquery-ui"], function(powers, globals, ut, dialog, battler, board) {
-    var $wrapper, InventoryList, Menu, Meter, PowerList, PowerListItem, closeAll, toggleMenu, _activemenu, _menus, _potential_moves, _ref, _ref1, _ref2, _ref3;
+    var $wrapper, AttributeViewer, InventoryList, Menu, Meter, PowerList, PowerListItem, closeAll, toggleMenu, _activemenu, _menu_slots, _menus, _potential_moves, _ref, _ref1, _ref2, _ref3, _ref4;
     board.focus();
     _menus = [];
+    _menu_slots = {
+      top: null,
+      bottom: null
+    };
     $wrapper = $(".wrapper");
     _activemenu = battler.getActive().menu;
     globals.shared_events.on("closemenus", function() {
@@ -66,20 +70,26 @@
       PowerListItem.prototype.template = $("#power-item").html();
 
       PowerListItem.prototype.initialize = function() {
-        _.bindAll(this, "rangeHandler");
+        _.bindAll(this, "rangeHandler", "chooseTargets");
         return this.listenTo(this.model, {
-          "change:uses": this.renderUses
+          "change:uses": function(model, uses) {
+            return this.renderUses(uses);
+          }
         });
       };
 
       PowerListItem.prototype.render = function() {
         this.$el.html(_.template(this.template, this.model.toJSON()));
+        this.renderUses(this.model.get("uses"));
         return this;
       };
 
-      PowerListItem.prototype.renderUses = function(model, uses) {
-        console.log(uses);
-        return this.$(".uses").text(uses);
+      PowerListItem.prototype.renderUses = function(uses) {
+        console.log("re-rendering powers");
+        this.$(".uses").text(uses);
+        if (uses <= 0) {
+          return this.$el.addClass("disabled");
+        }
       };
 
       PowerListItem.prototype.rangeHandler = function(target) {
@@ -87,23 +97,30 @@
         return target.tileModel.trigger("attackrange");
       };
 
-      PowerListItem.prototype.events = {
-        "click": function() {
-          var opts, u, user;
-          user = this.model.ownedBy;
-          if (!user) {
-            return;
-          }
-          opts = {
-            diagonal: true,
-            ignoreNPCs: true,
-            storePath: false,
-            ignoreDifficult: true,
-            ignoreDeltas: true
-          };
-          battler.setAttacks(u = user.virtualMovePossibilities(null, this.rangeHandler, 1, opts));
-          return battler.setState("choosingattacks");
+      PowerListItem.prototype.chooseTargets = function() {
+        var opts, u, user;
+        console.log(this.$el);
+        if (this.$el.hasClass("disabled")) {
+          return this;
         }
+        user = this.model.ownedBy;
+        if (!user) {
+          return;
+        }
+        opts = {
+          diagonal: true,
+          ignoreNPCs: true,
+          storePath: false,
+          ignoreDifficult: true,
+          ignoreDeltas: true
+        };
+        battler.removeHighlighting();
+        battler.setAttacks(u = user.virtualMovePossibilities(null, this.rangeHandler, 1, opts));
+        return battler.setState("choosingattacks");
+      };
+
+      PowerListItem.prototype.events = {
+        "click": "chooseTargets"
       };
 
       return PowerListItem;
@@ -118,20 +135,29 @@
         return _ref2;
       }
 
-      Meter.prototype.tagName = 'meter';
-
       Meter.prototype.initialize = function(attrs) {
-        var attr,
+        var attr, link, max,
           _this = this;
-        attr = attrs.model.get(this.className);
-        this.name = attrs.model.get("name");
+        link = this.link = attrs.el.attr("linker");
+        attr = attrs.model.get(link);
+        max = attrs.model.get("max_" + link);
         this.setMin(0);
-        this.setMax(attr);
-        this.setOptimal(attr / 2);
-        this.listenTo(this.model, "change:" + this.className, function(model, m) {
-          return _this.set(m);
+        this.setMax(max);
+        this.setOptimum(max);
+        this.setHigh(max - max / 4);
+        this.setLow(max - (6 * max) / 7);
+        this.setDisplay();
+        this.$el.attr("value", attr);
+        this.listenTo(this.model, "change:" + link, function(model, m) {
+          console.log("changing " + link);
+          _this.set(m);
+          return _this.setDisplay();
         });
         return this.render();
+      };
+
+      Meter.prototype.getValue = function() {
+        return parseInt(this.$el.attr("value"));
       };
 
       Meter.prototype.set = function(value) {
@@ -149,9 +175,23 @@
         return this;
       };
 
-      Meter.prototype.setOptimal = function(optimal) {
-        this.$el.attr("optimal", optimal);
+      Meter.prototype.setHigh = function(high) {
+        this.$el.attr("high", high);
         return this;
+      };
+
+      Meter.prototype.setLow = function(low) {
+        this.$el.attr("low", low);
+        return this;
+      };
+
+      Meter.prototype.setOptimum = function(optimum) {
+        this.$el.attr("optimum", optimum);
+        return this;
+      };
+
+      Meter.prototype.setDisplay = function() {
+        return this.$el.attr("title", "" + this.link + ": " + (this.model.get(this.link)));
       };
 
       Meter.prototype.hide = function() {
@@ -171,10 +211,7 @@
       };
 
       Meter.prototype.render = function() {
-        var attr;
-        attr = this.model.get(this.className);
-        this.$el.attr("display", "" + this.className + ": " + attr);
-        this.set(attr);
+        this.set(this.model.get(this.link));
         return this;
       };
 
@@ -187,12 +224,90 @@
       return Meter;
 
     })(Backbone.View);
+    AttributeViewer = (function(_super) {
+      __extends(AttributeViewer, _super);
+
+      function AttributeViewer() {
+        _ref3 = AttributeViewer.__super__.constructor.apply(this, arguments);
+        return _ref3;
+      }
+
+      AttributeViewer.prototype.tagName = 'div';
+
+      AttributeViewer.prototype.className = 'attribute-container';
+
+      AttributeViewer.prototype.template = $("#attribute-container").html();
+
+      AttributeViewer.prototype.initialize = function(attrs) {
+        var c, h,
+          _this = this;
+        this.render();
+        this.meters = {};
+        h = this.meters.health = new Meter({
+          el: this.$("meter.HP"),
+          model: attrs.model
+        });
+        c = this.meters.creatine = new Meter({
+          el: this.$("meter.creatine"),
+          model: attrs.model
+        });
+        this.listenTo(this.model.actions, "reduce", function(actions) {
+          return _this.updateActions(actions);
+        });
+        return this;
+      };
+
+      AttributeViewer.prototype.render = function() {
+        return this.$el.html(_.template(this.template, _.extend(this.model.toJSON(), {
+          actions: this.model.actions
+        })));
+      };
+
+      AttributeViewer.prototype.hide = function() {
+        var _this = this;
+        this.visible = false;
+        this.$el.fadeOut("fast");
+        _.each(_menu_slots, function(menu, i) {
+          if ((menu != null ? menu.id : void 0) === _this.id) {
+            return _menu_slots[i] = null;
+          }
+        });
+        return this;
+      };
+
+      AttributeViewer.prototype.show = function() {
+        var bottom;
+        bottom = _menu_slots.bottom != null ? false : true;
+        this.visible = true;
+        if (bottom === true) {
+          this.$el.addClass("bottom");
+          _menu_slots.bottom = this;
+        } else {
+          this.$el.removeClass("bottom");
+          _menu_slots.top = this;
+        }
+        this.$el.fadeIn("fast");
+        return this;
+      };
+
+      AttributeViewer.prototype.updateActions = function(actions) {
+        var _this = this;
+        actions = _.pick(this.model.actions, "move", "minor", "standard");
+        return _.each(actions, function(val, action) {
+          console.log("updating " + action + " with " + val);
+          return _this.$("." + action).text(val);
+        });
+      };
+
+      return AttributeViewer;
+
+    })(Backbone.View);
     Menu = (function(_super) {
       __extends(Menu, _super);
 
       function Menu() {
-        _ref3 = Menu.__super__.constructor.apply(this, arguments);
-        return _ref3;
+        _ref4 = Menu.__super__.constructor.apply(this, arguments);
+        return _ref4;
       }
 
       Menu.prototype.type = 'default';
@@ -204,6 +319,7 @@
       Menu.prototype.type = 'battle';
 
       Menu.prototype.initialize = function() {
+        this.setupMeters();
         this.listenTo(this.model, {
           "beginphase": function(phase) {
             return this.$(".phase-number").text(phase + 1);
@@ -211,19 +327,19 @@
         });
         _.bindAll(this, "close", "open", "toggle", "selectNext", "selectThis", "selectPrev");
         this.close();
-        this.setupMeters();
         this.render();
-        this.renderAttributeOverlays();
         return this.$el.appendTo($wrapper);
       };
 
       Menu.prototype.render = function(quadrant) {
+        var extras;
         if (quadrant == null) {
           quadrant = this.model.getQuadrant();
         }
-        this.$el.html(_.template(this.template, _.extend(this.model.toJSON(), {
+        extras = {
           phase: this.model.turnPhase
-        })));
+        };
+        this.$el.html(_.template(this.template, _.extend(this.model.toJSON(), extras)));
         if (quadrant) {
           this.$el.attr("quadrant", quadrant);
         }
@@ -232,18 +348,11 @@
       };
 
       Menu.prototype.setupMeters = function() {
-        var c, h;
-        this.meters = {};
-        h = this.meters.health = new Meter({
-          className: 'HP',
+        var container;
+        container = this.container = new AttributeViewer({
           model: this.model
         });
-        h.$el.appendTo($wrapper);
-        c = this.meters.creatine = new Meter({
-          className: 'creatine',
-          model: this.model
-        });
-        c.$el.appendTo($wrapper);
+        container.$el.appendTo($wrapper);
         return this;
       };
 
@@ -310,7 +419,7 @@
           }
         },
         "click .js-virtual-move": function() {
-          battler.clearPotentialMoves();
+          battler.removeHighlighting();
           _potential_moves = battler.getActive().virtualMovePossibilities();
           battler.setPotentialMoves(_potential_moves);
           return battler.setState("choosingmoves");
@@ -322,7 +431,6 @@
       };
 
       Menu.prototype.close = function() {
-        _activemenu = null;
         this.showing = false;
         this.$el.effect("slide", _.extend({
           mode: 'hide'
@@ -332,9 +440,8 @@
         }), 300);
         board.unpause().focus();
         battler.removeHighlighting();
-        return _.each(this.meters, function(meter) {
-          return meter.hide();
-        });
+        this.hideAttributeOverlay();
+        return this;
       };
 
       Menu.prototype.open = function() {
@@ -346,33 +453,35 @@
         this.showing = true;
         dir = quadrant === 1 ? "left" : "right";
         $(".game-menu").hide();
-        $("meter").hide();
+        $(".attribute-container").hide();
         this.render(quadrant);
-        this.renderAttributeOverlays(true);
-        return this.$el.focus().select().effect("slide", _.extend({
+        this.showAttributeOverlay();
+        this.$el.focus().select().effect("slide", _.extend({
           mode: 'show'
         }, {
           direction: dir,
           easing: 'easeInOutQuart'
         }), 300);
+        return this;
       };
 
       Menu.prototype.toggle = function() {
         if (this.showing) {
-          return this.close();
+          this.close();
         } else {
-          return this.open();
+          this.open();
         }
+        return this;
       };
 
-      Menu.prototype.renderAttributeOverlays = function(show) {
-        return _.each(this.meters, function(meter) {
-          meter.render();
-          if (show === true) {
-            console.log(meter.name);
-            return meter.show();
-          }
-        });
+      Menu.prototype.showAttributeOverlay = function() {
+        this.container.show();
+        return this;
+      };
+
+      Menu.prototype.hideAttributeOverlay = function() {
+        this.container.hide();
+        return this;
       };
 
       return Menu;
@@ -422,6 +531,9 @@
       },
       a: function() {
         return _menus;
+      },
+      m: function() {
+        return _menu_slots;
       }
     };
   });

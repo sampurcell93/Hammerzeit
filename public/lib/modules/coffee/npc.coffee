@@ -36,9 +36,11 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 				type: 'NPC'
 				class: 'none'
 				creatine: 10
+				max_creatine: 10
 				race: 'human'
 				level: 1
 				HP: 10
+				max_HP: 10
 				attrs:
 					spd: 6
 					ac: 10
@@ -150,7 +152,6 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 			y = ut.floorToOne(dy)
 			if x isnt 0 and y isnt 0 then x = 0
 			sheet = @sheets[x+","+y]
-			console.log ut.floorToOne(dx)+","+ut.floorToOne(dy)
 			if !sheet then alert("FUCKED UP IN TURN")
 			@marker.icon.spriteSheet = sheet
 		# The square that the NPC was previously in should be cleared when left
@@ -244,6 +245,7 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 				move: 2
 				minor: 2
 				reduce: -> 
+					@trigger "reduce", _.pick @, "standard", "move", "minor"
 			}, Backbone.Events
 		# If a user doens't move before the timer runs out, they must burn an action
 		# Tries move first, then standard, then minor
@@ -260,8 +262,7 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 			if actions.standard > 0
 				actions.standard--
 				actions.move--
-				actions.minor--
-				actions.trigger "reduce"
+				actions.reduce()
 			unless burn then @nextPhase()
 			@
 		# Take a move action
@@ -269,8 +270,10 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 			actions = @actions
 			if actions.move > 0
 				actions.move--
-				actions.trigger "reduce"
-			if actions.move is 0 then actions.standard--
+			if actions.move is 0
+				if actions.standard > 0 then actions.standard--
+				actions.minor--
+			actions.reduce()
 			unless burn then @nextPhase()
 			@
 		# Take a minor action
@@ -278,7 +281,9 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 			actions = @actions
 			if actions.minor > 0
 				actions.minor--
-				actions.trigger "reduce"
+			if actions.minor is 0
+				actions.move--
+				actions.reduce()
 			unless burn then @nextPhase()
 			@
 		takeAction: (type) ->
@@ -486,6 +491,11 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 					clearInterval d_i
 					@marker.removeChild damage
 			, 100
+			@
+		useCreatine: (creatine) ->
+			current = @get "creatine"
+			if current - creatine < 0 then return false
+			@set("creatine", current-creatine)
 			@
 		# Returns the cartesian quadrant of the screen the NPC occupies so that the menu
 		# Can make sure not to open over them

@@ -214,5 +214,7 @@ define  ["jquery", "underscore"], ->
 				continue if not o.hasOwnProperty(propKey) or (typeof prop isnt "object") or Object.isFrozen(prop)
 				deepFreeze prop # Recursively call deepFreeze.
 			return
+		# Rolls a dice with sides sides
+		roll: (sides) -> Math.ceil(Math.random()*sides)
 
 	}

@@ -26,6 +26,8 @@
 
       InitiativeQueue.prototype.type = 'InitiativeQueue';
 
+      InitiativeQueue.prototype.turnDelay = 1000;
+
       InitiativeQueue.prototype.initialize = function(models) {
         var _this = this;
         _.bindAll(this, "next", "prev", "getActive");
@@ -84,7 +86,9 @@
         active_player = this.getActive();
         _activebattle.clearAllHighlights();
         if (init !== false) {
-          active_player.initTurn();
+          setTimeout(function() {
+            return active_player.initTurn();
+          }, this.turnDelay);
         }
         return num;
       };
@@ -476,9 +480,6 @@
         clickHandler: function(e, data) {
           var active, moveInterval, path,
             _this = this;
-          console.log("you clicked the area");
-          console.log(arguments);
-          console.log(this.model);
           active = getActive();
           path = this.model.pathFromStart.path;
           _timer.stop();
@@ -513,7 +514,6 @@
       GridSquare.prototype.attack_fns = {
         clickHandler: function(e, data) {
           var attacker, power, subject;
-          console.log(this);
           power = this.model.boundPower;
           attacker = power.ownedBy;
           subject = this.model.bitmap.occupiedBy;
@@ -525,20 +525,35 @@
         },
         mouseoverHandler: function(e, data) {
           this.drawHitAreaSquare(this.colors.selected_move);
-          return board.mainCursor().show().move(this.model.bitmap);
+          board.mainCursor().show().move(this.model.bitmap);
+          if (this.model.isOccupied()) {
+            return this.model.getOccupant().menu.showAttributeOverlay();
+          }
         },
         mouseoutHandler: function(e, data) {
           this.drawHitAreaSquare(this.colors.general);
-          return board.mainCursor().hide();
+          board.mainCursor().hide();
+          if (this.model.isOccupied()) {
+            return this.model.getOccupant().menu.hideAttributeOverlay();
+          }
         }
       };
 
       GridSquare.prototype.handleAttack = function(attacker, subject, power) {
-        var attrs;
+        var attrs, use;
         attrs = power.toJSON();
-        subject.takeDamage(attrs.damage);
+        if (!attacker.can(attrs.action)) {
+          return this;
+        }
+        use = attrs.use;
+        if (_.isFunction(use)) {
+          use.call(power, subject, attacker);
+        }
+        subject.takeDamage(attrs.damage + ut.roll(attrs.modifier));
+        attacker.useCreatine(attrs.creatine);
         attacker.takeAction(attrs.action);
-        return power.set("uses", power.get("uses") - 1);
+        power.use();
+        return this;
       };
 
       GridSquare.prototype.bindMoveFns = function() {
