@@ -469,13 +469,12 @@
         return target;
       };
 
-      NPC.prototype.virtualMovePossibilities = function(start, done, speed, opts) {
+      NPC.prototype.virtualMovePossibilities = function(start, done, opts) {
         var checkQueue, defaults, enqueue, i, movable, square, tile, _i;
         start || (start = this.getTargetTile(0, 0));
         done || (done = function(target) {
           return target.tileModel.trigger("potentialmove");
         });
-        speed || (speed = this.get("attrs").spd);
         defaults = {
           diagonal: false,
           ignoreNPCs: false,
@@ -483,7 +482,8 @@
           ignoreEmpty: false,
           ignoreDifficult: false,
           storePath: true,
-          ignoreDeltas: false
+          ignoreDeltas: false,
+          range: this.get("attrs").spd
         };
         opts = _.extend(defaults, opts);
         checkQueue = [];
@@ -515,7 +515,7 @@
           if (opts.ignoreDifficult) {
             d = 1;
           }
-          if (distance + d > speed) {
+          if (distance + d > opts.range) {
             return;
           } else {
             target.tileModel.distance = distance + d;

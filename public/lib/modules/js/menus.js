@@ -71,24 +71,47 @@
 
       PowerListItem.prototype.initialize = function() {
         _.bindAll(this, "rangeHandler", "chooseTargets");
-        return this.listenTo(this.model, {
+        this.listenTo(this.model, {
           "change:uses": function(model, uses) {
             return this.renderUses(uses);
           }
         });
+        return this.listenTo(this.model.ownedBy.actions, "reduce", this.renderDisabled);
       };
 
       PowerListItem.prototype.render = function() {
         this.$el.html(_.template(this.template, this.model.toJSON()));
         this.renderUses(this.model.get("uses"));
+        this.renderDisabled();
+        return this;
+      };
+
+      PowerListItem.prototype.disable = function() {
+        this.$el.addClass("disabled");
+        return this;
+      };
+
+      PowerListItem.prototype.enable = function() {
+        this.$el.removeClass("disabled");
         return this;
       };
 
       PowerListItem.prototype.renderUses = function(uses) {
-        console.log("re-rendering powers");
         this.$(".uses").text(uses);
         if (uses <= 0) {
-          return this.$el.addClass("disabled");
+          this.disable();
+        } else {
+          this.enable();
+        }
+        return this;
+      };
+
+      PowerListItem.prototype.renderDisabled = function() {
+        console.log("check disabilit");
+        if (!(this.model.ownedBy.can(this.model.get("action")))) {
+          return this.disable();
+        } else {
+          return this.enable();
         }
       };
 
@@ -112,10 +135,11 @@
           ignoreNPCs: true,
           storePath: false,
           ignoreDifficult: true,
-          ignoreDeltas: true
+          ignoreDeltas: true,
+          range: this.model.get("range")
         };
         battler.removeHighlighting();
-        battler.setAttacks(u = user.virtualMovePossibilities(null, this.rangeHandler, 1, opts));
+        battler.setAttacks(u = user.virtualMovePossibilities(null, this.rangeHandler, opts));
         return battler.setState("choosingattacks");
       };
 

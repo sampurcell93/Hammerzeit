@@ -326,10 +326,9 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 		# Runs through the currently visible tiles in a battle and determines which moves are possible
 		# Returns array of tiles. If true, silent prevents observation 
 		# Still inefficient - keeps checking past max distance - todo
-		virtualMovePossibilities: (start, done, speed, opts) ->
+		virtualMovePossibilities: (start, done, opts) ->
 			start 	   || (start = @getTargetTile 0, 0)
 			done	   || (done = (target) -> target.tileModel.trigger("potentialmove"))
-			speed 	   || (speed = @get("attrs").spd)
 			defaults = {
 				# Compute diagonals as a distance-1 move?
 				diagonal: false
@@ -345,6 +344,8 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 				storePath: true
 				# Should the acceptable directions of a square
 				ignoreDeltas: false
+				# How long should we search for
+				range: @get("attrs").spd
 				
 			}
 			opts = _.extend defaults, opts
@@ -367,7 +368,7 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 				if !target then return
 				d = if target.m then target.m else 1
 				if opts.ignoreDifficult then d = 1
-				if distance + d > speed then return
+				if distance + d > opts.range then return
 				else target.tileModel.distance = distance + d
 				target.tileModel.discovered = true
 				checkQueue.unshift target

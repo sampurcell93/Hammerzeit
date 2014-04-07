@@ -146,7 +146,6 @@ define ["globals", "utilities", "board", "mapper", "underscore", "backbone", "ea
                 tile.x = tilewidth * i
                 tile.y = tileheight * vertindex
                 tile.hitArea = createBitEventRegister(tile, tile.x, tile.y)
-                tile.hitArea.on "click", -> console.log "hitarea invisible"
                 if tile.t isnt "e" and tile.t isnt "p"
                     _3dtiles.addChild tile
                 else container.addChild tile

@@ -214,9 +214,6 @@
           tile.x = tilewidth * i;
           tile.y = tileheight * vertindex;
           tile.hitArea = createBitEventRegister(tile, tile.x, tile.y);
-          tile.hitArea.on("click", function() {
-            return console.log("hitarea invisible");
-          });
           if (tile.t !== "e" && tile.t !== "p") {
             return _3dtiles.addChild(tile);
           } else {

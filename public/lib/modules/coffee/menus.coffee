@@ -42,14 +42,26 @@ define ["powers", "globals", "utilities", "dialog", "battler","board", "undersco
             _.bindAll @, "rangeHandler", "chooseTargets"
             @listenTo @model,
                 "change:uses": (model, uses) -> @renderUses uses
+            @listenTo @model.ownedBy.actions, "reduce", @renderDisabled
         render: ->
             @$el.html(_.template(@template, @model.toJSON()))
             @renderUses(@model.get("uses"))
+            @renderDisabled()
+            @
+        disable: ->
+            @$el.addClass "disabled"
+            @
+        enable: ->
+            @$el.removeClass "disabled"
             @
         renderUses: (uses) ->
-            console.log "re-rendering powers"
             @$(".uses").text(uses)
-            if uses <= 0 then @$el.addClass "disabled"
+            if uses <= 0 then @disable() else @enable()
+            @
+        renderDisabled: ->
+            console.log "check disabilit"
+            if !(@model.ownedBy.can(@model.get("action"))) then @disable()
+            else @enable()
         rangeHandler: (target)->
             target.tileModel.boundPower = @model
             target.tileModel.trigger "attackrange"
@@ -58,9 +70,9 @@ define ["powers", "globals", "utilities", "dialog", "battler","board", "undersco
             if @$el.hasClass "disabled" then return @
             user = @model.ownedBy
             if !user then return 
-            opts = {diagonal: true, ignoreNPCs: true, storePath: false, ignoreDifficult: true, ignoreDeltas: true}
+            opts = {diagonal: true, ignoreNPCs: true, storePath: false, ignoreDifficult: true, ignoreDeltas: true, range: @model.get("range")}
             battler.removeHighlighting()
-            battler.setAttacks u = user.virtualMovePossibilities(null, @rangeHandler, 1, opts)
+            battler.setAttacks u = user.virtualMovePossibilities(null, @rangeHandler, opts)
             battler.setState("choosingattacks")
         events: 
             "click": "chooseTargets"

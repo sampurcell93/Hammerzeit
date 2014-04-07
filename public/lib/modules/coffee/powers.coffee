@@ -6,7 +6,7 @@ define ["globals", "utilities", "board"], (globals, utilities, board) ->
         defaults:
             creatine: 3
             power: 1
-            range: 1
+            range: 3
             type: "single"
             name: "Basic"
             uses: Infinity

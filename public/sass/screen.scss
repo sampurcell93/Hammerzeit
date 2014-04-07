@@ -253,6 +253,7 @@ textarea {
     }
 
     li {
+        @include no-user-select();
         display: block;
         line-height: 2em;
         color: #bbb;
@@ -293,9 +294,10 @@ textarea {
 
         > li {
             @extend .clearfix;
+            text-shadow: 0px 1px 0px #000;
             
             &.disabled {
-                color: #999;
+                color: #666;
                 cursor: not-allowed;
                 text-decoration: line-through;
             }
