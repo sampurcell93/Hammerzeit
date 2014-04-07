@@ -40,13 +40,15 @@ script#power-item(type='text/template')
                 li(data-tooltip='Range').range <%= range %>
                 <li data-tooltip='Action Type: <%= action %>' class='action'><%= action == "standard" ? "Std" : (action == "move" ? "Mov" : "Min") %></li>
 
-script#battle-menu(type='text/template')
-        li(tabindex=2).js-virtual-move.selected Move
-        li(tabindex=2).js-attack Attack
-          div.power-list.nested-menu
-        li(tabindex=2).js-defend Defend
-        li(tabindex=2).js-show-inventory Inventory
-          div.inventory-list.nested-menu
-        li Phase: 
-          span.phase-number <%= phase %>
-          /3
+script#menu(type='text/template')
+        ul
+                li(tabindex=2).js-virtual-move.selected Move
+                li(tabindex=2).js-attack Attack
+                  div.power-list.nested-menu
+                li(tabindex=2).js-defend Defend
+                li(tabindex=2).js-show-inventory Inventory
+                  div.inventory-list.nested-menu
+                li(tabindex=2).js-wait Wait
+                li Phase: 
+                  span.phase-number <%= phase %>
+                  /3

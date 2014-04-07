@@ -3,7 +3,7 @@
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
   define(["globals", "utilities", "board", "items", "powers", "mapper", "underscore", "backbone"], function(globals, ut, board, items, powers, mapper) {
-    var CharacterArray, CharacterPropertyView, NPC, Row, coordToDir, _checkEntry, _events, _p, _ref, _ref1, _ref2, _ts;
+    var CharacterArray, CharacterPropertyView, Enemy, NPC, Row, coordToDir, _checkEntry, _events, _p, _ref, _ref1, _ref2, _ref3, _ts;
     _checkEntry = ut.tileEntryCheckers;
     _ts = globals.map.tileside;
     _events = globals.shared_events;
@@ -157,17 +157,19 @@
       };
 
       NPC.prototype.checkEnterable = function(target, dx, dy, start, opts) {
-        opts || (opts = {});
+        if (opts == null) {
+          opts = {};
+        }
         try {
           if (!this.checkElevation(target, start)) {
             return false;
           }
           if (target.e != null) {
-            if (target.e === false || target.e === "f") {
+            if (target.e === false || target.e === "f" && !opts.ignoreDeltas) {
               return false;
             } else if (target.occupied === true && !opts.ignoreNPCs) {
               return false;
-            } else if (typeof target.e === "string") {
+            } else if (_.isString(target.e) && !opts.ignoreDeltas) {
               return _checkEntry[target.e](dx, dy);
             } else {
               return true;
@@ -247,7 +249,6 @@
       NPC.prototype.reanimate = function(animation, speed, next) {
         var sheet;
         sheet = this.marker.icon.spriteSheet;
-        console.log(this);
         sheet.getAnimation(animation || "run").speed = speed;
         return sheet.getAnimation(animation || "run").next = next;
       };
@@ -316,7 +317,7 @@
           if (count < 10) {
             _this.marker.x += 5 * dx;
             _this.marker.y += 5 * dy;
-            if (_this.cursor().isVisible()) {
+            if (_this.c.isVisible()) {
               _this.c.move(_this.marker);
             }
             cbs.change.call(_this, dx, dy);
@@ -472,7 +473,9 @@
           ignoreNPCs: false,
           ignorePCs: false,
           ignoreEmpty: false,
-          storePath: true
+          ignoreDifficult: false,
+          storePath: true,
+          ignoreDeltas: false
         };
         opts = _.extend(defaults, opts);
         checkQueue = [];
@@ -501,6 +504,9 @@
             return;
           }
           d = target.m ? target.m : 1;
+          if (opts.ignoreDifficult) {
+            d = 1;
+          }
           if (distance + d > speed) {
             return;
           } else {
@@ -585,9 +591,12 @@
         y = Math.abs(Math.ceil(Math.random() * globals.map.c_height / _ts - 1));
         tile = (_ref2 = chunk[y]) != null ? _ref2.children[x] : void 0;
         while (this.canOccupy(tile) === false) {
-          tile = (_ref3 = chunk[++y]) != null ? _ref3.children[++x] : void 0;
+          y++;
+          x++;
+          tile = (_ref3 = chunk[y = y % (globals.map.tileheight - 1)]) != null ? _ref3.children[x = x % (globals.map.tilewidth - 1)] : void 0;
         }
         this.setCurrentSpace(tile);
+        this.enterSquare(tile);
         this.marker.x = x * _ts;
         this.marker.y = y * _ts;
         return this;
@@ -623,6 +632,7 @@
       NPC.prototype.initTurn = function() {
         this.indicateActive();
         globals.shared_events.trigger("closemenus");
+        this.menu.open();
         return this.nextPhase();
       };
 
@@ -731,9 +741,23 @@
       return CharacterPropertyView;
 
     })(Backbone.View);
+    Enemy = (function(_super) {
+      __extends(Enemy, _super);
+
+      function Enemy() {
+        _ref3 = Enemy.__super__.constructor.apply(this, arguments);
+        return _ref3;
+      }
+
+      Enemy.prototype.type = 'enemy';
+
+      return Enemy;
+
+    })(NPC);
     return {
       NPC: NPC,
-      NPCArray: CharacterArray
+      NPCArray: CharacterArray,
+      Enemy: Enemy
     };
   });
 

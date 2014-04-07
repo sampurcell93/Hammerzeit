@@ -64,7 +64,7 @@ define ["utilities", "globals", "dialog", "npc", "mapper", "mapcreator", "battle
 						when kc["RIGHT"] then activeplayer.moveRight()
 						when kc["DOWN"]  then activeplayer.moveDown()
 						when kc["LEFT"]  then activeplayer.moveLeft()
-						when kc['SPACE'] then menus.toggleMenu("battle")
+						when kc['SPACE'] then menus.toggleMenu()
 				else 
 					console.log "you can't go now: a player character is NOT active. The active player is "
 					console.log battler.getActive()

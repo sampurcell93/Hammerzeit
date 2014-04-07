@@ -62,7 +62,7 @@ define ["utilities", "npc", "board", "globals", "mapper", "items", "powers", "ba
 			_.each inventory.models, (item) => item.set("belongsTo", @)
 			inventory.sort()
 			return _.extend defaults, {
-				current_chunk: { x: 0, y: 0 }
+				current_chunk: { x: 1, y: 1 }
 				inventory: inventory
 				type: "PC"
 				name: "Hero"
@@ -75,9 +75,9 @@ define ["utilities", "npc", "board", "globals", "mapper", "items", "powers", "ba
 
 	PCs = new NPC.NPCArray
 	PCs.add new player null, main: true
-	PCs.add new player init: 4, name: 'Fighter'
-	PCs.add new player init: 2, name: 'Mage'
-	PCs.add new player init: 3, name: 'Cleric'
+	# PCs.add new player init: 4, name: 'Fighter'
+	# PCs.add new player init: 2, name: 'Mage'
+	# PCs.add new player init: 3, name: 'Cleric'
 
 	return {
 		model: player

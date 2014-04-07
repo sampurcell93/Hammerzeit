@@ -60,7 +60,7 @@
               case kc["LEFT"]:
                 return activeplayer.moveLeft();
               case kc['SPACE']:
-                return menus.toggleMenu("battle");
+                return menus.toggleMenu();
             }
           } else {
             console.log("you can't go now: a player character is NOT active. The active player is ");

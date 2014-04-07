@@ -92,9 +92,7 @@ define ["globals", "utilities", "board", "mapper", "underscore", "backbone", "ea
     # Since PNG files are transparent and therefore unclickable in easel,
     # We add a "click area" to each tile
     createBitEventRegister = (bitmap, x, y) ->
-        hit = new createjs.Shape()
-        hit.graphics.beginFill("#000").drawRect 0, 0, 50, 50
-        hit
+        new createjs.Shape(new createjs.Graphics().beginFill("#f00").drawRect(0,0,50,50))
 
 
     loadChunkFromURL: (url) ->
@@ -147,6 +145,7 @@ define ["globals", "utilities", "board", "mapper", "underscore", "backbone", "ea
                 tile.x = tilewidth * i
                 tile.y = tileheight * vertindex
                 tile.hitArea = createBitEventRegister(tile, tile.x, tile.y)
+                tile.hitArea.on "click", -> console.log "hitarea invisible"
                 if tile.t isnt "e" and tile.t isnt "p"
                     _3dtiles.addChild tile
                 else container.addChild tile

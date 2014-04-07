@@ -146,10 +146,7 @@
       }
     };
     createBitEventRegister = function(bitmap, x, y) {
-      var hit;
-      hit = new createjs.Shape();
-      hit.graphics.beginFill("#000").drawRect(0, 0, 50, 50);
-      return hit;
+      return new createjs.Shape(new createjs.Graphics().beginFill("#f00").drawRect(0, 0, 50, 50));
     };
     ({
       loadChunkFromURL: function(url) {}
@@ -209,6 +206,9 @@
           tile.x = tilewidth * i;
           tile.y = tileheight * vertindex;
           tile.hitArea = createBitEventRegister(tile, tile.x, tile.y);
+          tile.hitArea.on("click", function() {
+            return console.log("hitarea invisible");
+          });
           if (tile.t !== "e" && tile.t !== "p") {
             return _3dtiles.addChild(tile);
           } else {

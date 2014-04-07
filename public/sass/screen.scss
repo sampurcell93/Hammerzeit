@@ -48,7 +48,6 @@ body {
 h2 {
     font-size: 1.7em;
     margin: 10px 0;
-    border-bottom: 1px solid #ccc;
 }
 
 .modal {
@@ -233,18 +232,20 @@ textarea {
     background: rgba(0,0,0,.6);
     // outline: none;
 
+    
+    h2 {
+        color: #aaa;
+        text-indent: 1em;
+    }
+
     &[quadrant='1'] { 
         left: 15px;
+        top: 100px;
 
         li .nested-menu > ul {
             left: 230px;
-            li { background: rgba(0,0,0,.6); }
         }
 
-    }
-
-    ul {
-        background: rgba(0,0,0,.6);
     }
 
     li {
@@ -278,6 +279,7 @@ textarea {
         top: 0;
         max-height: 500px;
         display: none;
+        background: rgba(0,0,0,.6);
 
         > li {
             text-align: left;
@@ -395,4 +397,33 @@ textarea {
         left: 100%;
         z-index: 99;
     }
+}
+
+meter {
+    @include border-radius(4px);
+    position: absolute; 
+    left: 15px;
+    width: 400px;
+    display: none;
+
+    &.creatine {
+        top: 45px;
+    }
+
+    &.HP {
+        top: 70px;
+    }
+
+    &:after {
+        content: attr(display);
+        right: 10px;
+        color: #fff;
+        text-shadow: 0px 2px 3px #333;
+        font-size: 1em;
+        top: 0;
+        position: absolute;
+        white-space: nowrap;
+
+    }
+
 }

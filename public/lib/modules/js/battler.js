@@ -3,10 +3,11 @@
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
   define(["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player", "backbone", "underscore", "jquery"], function(board, globals, ut, mapper, NPC, mapcreator, player) {
-    var Battle, GridOverlay, GridSquare, InitiativeQueue, NPCArray, PCs, Player, Timer, getActive, map, stage, states, _active_chars, _activebattle, _activemap, _b, _grid, _ref, _ref1, _ref2, _ref3, _shared, _sm, _timer, _ts;
+    var Battle, Enemy, GridOverlay, GridSquare, InitiativeQueue, NPCArray, PCs, Player, Timer, getActive, map, stage, states, _active_chars, _activebattle, _activemap, _b, _grid, _ref, _ref1, _ref2, _ref3, _shared, _sm, _timer, _ts;
     PCs = player.PCs;
     Player = player.model;
     NPCArray = NPC.NPCArray;
+    Enemy = NPC.Enemy;
     NPC = NPC.NPC;
     stage = board.getStage();
     map = globals.map;
@@ -52,6 +53,9 @@
             break;
           case 'npc':
             m = new NPC(attrs, options);
+            break;
+          case 'enemy':
+            m = new Enemy(attrs, options);
         }
         m.queue = this;
         return m;
@@ -77,7 +81,6 @@
       InitiativeQueue.prototype.next = function(init) {
         var active_player, num;
         num = this.current_index = ++this.current_index % this.length;
-        console.log(this.getActive());
         active_player = this.getActive();
         _activebattle.clearAllHighlights();
         if (init !== false) {
@@ -110,7 +113,7 @@
         NPCs: new NPCArray,
         InitQueue: new InitiativeQueue(PCs.models),
         avglevel: PCs.getAverageLevel(),
-        numenemies: Math.ceil(Math.random() * PCs.length * 2 + 1),
+        numenemies: 1,
         enemyBounds: {
           min_x: 0,
           max_x: map.c_width,
@@ -179,10 +182,9 @@
 
       Battle.prototype.addPCs = function() {
         return _.each(PCs.models, function(pc, i) {
-          if (i !== 0) {
-            pc.addToMap();
-            return board.addMarker(pc);
-          }
+          pc.addToMap();
+          globals.shared_events.trigger("bindmenu", pc);
+          return board.addMarker(pc);
         });
       };
 
@@ -208,11 +210,12 @@
         var i, n, _i, _ref2;
         o = _.extend(this.defaults, o);
         for (i = _i = 0, _ref2 = o.numenemies; 0 <= _ref2 ? _i < _ref2 : _i > _ref2; i = 0 <= _ref2 ? ++_i : --_i) {
-          this.get("NPCs").add(n = new NPC({
+          this.get("NPCs").add(n = new Enemy({
             level: o.avglevel
           }));
           this.get("InitQueue").add(n);
           n.addToMap();
+          globals.shared_events.trigger("bindmenu", n);
           board.addMarker(n);
         }
         this.get("InitQueue").sort();
@@ -478,6 +481,7 @@
           console.log(this.model);
           active = getActive();
           path = this.model.pathFromStart.path;
+          _timer.stop();
           moveInterval = function() {
             var deltas;
             if (_.isEmpty(path)) {
@@ -739,6 +743,9 @@
       },
       clearPotentialMoves: function() {
         return _activebattle.clearPotentialMoves();
+      },
+      removeHighlighting: function() {
+        return _activebattle.clearAllHighlights();
       }
     };
     window.t = function() {

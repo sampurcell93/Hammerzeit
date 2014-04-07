@@ -3,6 +3,7 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
     PCs = player.PCs
     Player = player.model
     NPCArray = NPC.NPCArray
+    Enemy = NPC.Enemy
     NPC = NPC.NPC
     stage = board.getStage()
     map = globals.map
@@ -31,6 +32,7 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
             switch attrs.type
               when 'player' then m = new player.model attrs, options
               when 'npc' then m = new NPC attrs, options
+              when 'enemy' then m = new Enemy attrs, options
             # Deflects against multiple collections
             m.queue = @
             m
@@ -46,7 +48,6 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
         # Pass in false to prevent this.
         next: (init) -> 
             num = @current_index = ++@current_index % @length
-            console.log @getActive()
             active_player = @getActive()
             _activebattle.clearAllHighlights()
             unless init is false then active_player.initTurn()
@@ -64,7 +65,7 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
             NPCs: new NPCArray
             InitQueue: new InitiativeQueue(PCs.models)
             avglevel: PCs.getAverageLevel()
-            numenemies: Math.ceil(Math.random() * PCs.length * 2 + 1)
+            numenemies: 1#Math.ceil(Math.random() * PCs.length * 2 + 1)
             enemyBounds: {
                 min_x: 0
                 max_x: map.c_width
@@ -103,9 +104,10 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
             false
         addPCs: ->
             _.each PCs.models, (pc, i) ->
-                unless i is 0
-                    pc.addToMap()
-                    board.addMarker pc
+                # unless i is 0
+                pc.addToMap()
+                globals.shared_events.trigger "bindmenu", pc
+                board.addMarker pc
         begin: (type, opts)->
             @addPCs()
             if type is "random" then @randomize(opts)
@@ -119,9 +121,10 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
         randomize: (o) ->
             o = _.extend @defaults, o
             for i in [0...o.numenemies]
-                @get("NPCs").add(n = new NPC level: o.avglevel)
+                @get("NPCs").add(n = new Enemy level: o.avglevel)
                 @get("InitQueue").add n
                 n.addToMap()
+                globals.shared_events.trigger "bindmenu", n
                 board.addMarker n
             @get("InitQueue").sort()
             @
@@ -285,6 +288,8 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
                 console.log @model
                 active = getActive()
                 path = @model.pathFromStart.path
+                # Stop the timer while moving - player not punished for animation
+                _timer.stop()
                 moveInterval = =>
                     if _.isEmpty(path)
                         @stopListening active, "donemoving"
@@ -459,6 +464,8 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
             _activebattle.attack_zone = squares
         clearPotentialMoves: ->
             _activebattle.clearPotentialMoves()
+        removeHighlighting: ->
+            _activebattle.clearAllHighlights()
     }   
 
 

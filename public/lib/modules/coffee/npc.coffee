@@ -116,15 +116,14 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 			!(Math.abs(start.elv - target.elv) > @get("attrs").jmp)
 		# Pass in the target tile and the move deltas, and the NPC will use the current 
 		# active chunk to determine if the spot is enterable.
-		checkEnterable: (target, dx, dy, start, opts)->
-			opts || opts = {}
+		checkEnterable: (target, dx, dy, start, opts = {})->
 			try 
 				if !@checkElevation(target, start)
 					return false
 				if target.e?
-					if target.e is false or target.e is "f" then return false
+					if target.e is false or target.e is "f" and !opts.ignoreDeltas then return false
 					else if target.occupied is true and !opts.ignoreNPCs then return false
-					else if typeof target.e is "string"
+					else if _.isString(target.e) and !opts.ignoreDeltas
 						return _checkEntry[target.e](dx, dy)
 					else true
 				else true
@@ -175,7 +174,6 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 		# Reset an animation's properties
 		reanimate: (animation, speed, next) ->
 			sheet = @marker.icon.spriteSheet
-			console.log @
 			sheet.getAnimation(animation || "run").speed = speed
 			sheet.getAnimation(animation || "run").next = next
 		# Takes in a half position (say x= 476, y= 450) and rounds to the nearest 50 (up or down deps on dx,dy)
@@ -214,7 +212,7 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 				if count < 10
 					@marker.x += 5*dx
 					@marker.y += 5*dy
-					if @cursor().isVisible() then @c.move @marker
+					if @c.isVisible() then @c.move @marker
 					cbs.change.call(@, dx, dy)
 				else 
 					clearInterval m_i
@@ -336,8 +334,13 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 				ignorePCs: false
 				# Only designate occupied squares as valid.
 				ignoreEmpty: false
+				# Should difficult terrain factor into distance?
+				ignoreDifficult: false
 				# Should the path be stored?
 				storePath: true
+				# Should the acceptable directions of a square
+				ignoreDeltas: false
+				
 			}
 			opts = _.extend defaults, opts
 			checkQueue = []
@@ -358,6 +361,7 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 					pathFromStart.start = previous.pathFromStart.start
 				if !target then return
 				d = if target.m then target.m else 1
+				if opts.ignoreDifficult then d = 1
 				if distance + d > speed then return
 				else target.tileModel.distance = distance + d
 				target.tileModel.discovered = true
@@ -413,14 +417,18 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 			if t.occupied is true then return false
 			true
 		# Adds the NPC's marker to the current map at a random valid square
+		# Bug - sometimes t
 		addToMap: () ->
 			chunk = mapper.getVisibleChunk()?.children
 			x = Math.abs Math.ceil(Math.random()*globals.map.c_width/_ts - 1)
 			y = Math.abs Math.ceil(Math.random()*globals.map.c_height/_ts - 1)
 			tile = chunk[y]?.children[x] 
 			while @canOccupy(tile) is false
-				tile = chunk[++y]?.children[++x]
+				y++
+				x++
+				tile = chunk[y = y % (globals.map.tileheight-1)]?.children[x = x % (globals.map.tilewidth-1)]
 			@setCurrentSpace tile
+			@enterSquare tile
 			@marker.x = x*_ts
 			@marker.y = y*_ts
 			@
@@ -449,6 +457,7 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 		initTurn: ->
 			@indicateActive()
 			globals.shared_events.trigger "closemenus"
+			@menu.open()
 			@nextPhase()
 		# Increments the phase counter and sets the game timer according to the 
 		# NPC's initiative roll
@@ -506,6 +515,8 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 			@$el.html(_.template @template, @model.toJSON())
 			@
 
+	class Enemy extends NPC
+		type: 'enemy'
 	# Bind all the private functions to the public object.... invisibly 0_0
 	# _.each move_fns, (fn) ->
 		# if typeof fn == "function" then _.bind fn, NPC
@@ -514,4 +525,5 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 	{
 		NPC: NPC
 		NPCArray: CharacterArray
+		Enemy: Enemy
 	}
