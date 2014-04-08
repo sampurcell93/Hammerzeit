@@ -46,6 +46,8 @@
 
       PowerSet.prototype.model = Power;
 
+      PowerSet.prototype.type = 'PowerSet';
+
       PowerSet.prototype.url = 'lib/json_packs/attacks.json';
 
       return PowerSet;

@@ -17,7 +17,7 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
         current_index: 0
         type: 'InitiativeQueue'
         # How long to wait in between turns? MS
-        turnDelay: 1000
+        turnDelay: 300
         initialize: (models) ->
             _.bindAll @, "next", "prev", "getActive"
             # When a player/npc says theire turn is done, advance the queue
@@ -71,7 +71,7 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
             NPCs: new NPCArray
             InitQueue: new InitiativeQueue(PCs.models)
             avglevel: PCs.getAverageLevel()
-            numenemies: 1#Math.ceil(Math.random() * PCs.length * 2 + 1)
+            numenemies: 5#Math.ceil(Math.random() * PCs.length * 2 + 1)
             enemyBounds: {
                 min_x: 0
                 max_x: map.c_width
@@ -124,14 +124,14 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
             @fetch success: (battle) ->
                 console.log battle
         # A function for creating a random battle, within parameters (or NOT?!!)
-        randomize: (o) ->
+        randomize: (o={}) ->
             o = _.extend @defaults, o
             for i in [0...o.numenemies]
+                console.log "in loop"
                 @get("NPCs").add(n = new Enemy level: o.avglevel)
                 @get("InitQueue").add n
                 n.addToMap()
                 globals.shared_events.trigger "bindmenu", n
-                board.addMarker n
             @get("InitQueue").sort()
             @
         destroy: ->
@@ -319,6 +319,7 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
                 subject = @model.bitmap.occupiedBy
                 if !subject? then return "Trying to attack an empty square"
                 else @handleAttack(attacker, subject, power)
+
             mouseoverHandler: (e, data) ->
                 @drawHitAreaSquare @colors.selected_move
                 board.mainCursor().show().move @model.bitmap
@@ -342,6 +343,7 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
             attacker.useCreatine(attrs.creatine)
             attacker.takeAction(attrs.action)
             power.use()
+            _activebattle.clearAttackZone()
             @
         bindMoveFns: ->
             area = @model.bitmap.hitArea
@@ -485,5 +487,5 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
 
 
     window.t = ->
-      _activebattle.get("InitQueue").getActive().turnDone()
+      _activebattle.get("InitQueue").getActive().endTurn()
     _b

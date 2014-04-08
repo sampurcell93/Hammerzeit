@@ -3,7 +3,6 @@ define ["powers", "globals", "utilities", "dialog", "battler","board", "undersco
     board.focus()
 
     _menus = []
-    _menu_slots = {top: null, bottom: null}
     $wrapper = $(".wrapper")
 
     _activemenu = battler.getActive().menu
@@ -25,6 +24,7 @@ define ["powers", "globals", "utilities", "dialog", "battler","board", "undersco
         tagName: 'ul'
         initialize: ->
             _.bindAll @, "append"
+            @
         render: ->
             @$el.empty()
             _.each @collection.models, @append
@@ -42,18 +42,21 @@ define ["powers", "globals", "utilities", "dialog", "battler","board", "undersco
             _.bindAll @, "rangeHandler", "chooseTargets"
             @listenTo @model,
                 "change:uses": (model, uses) -> @renderUses uses
-            @listenTo @model.ownedBy.actions, "reduce", @renderDisabled
+            @listenTo @model.ownedBy.actions, "change", @renderDisabled
         render: ->
             @$el.html(_.template(@template, @model.toJSON()))
             @renderUses(@model.get("uses"))
             @renderDisabled()
             @
         disable: ->
-            @$el.addClass "disabled"
+            @disabled = true
+            @$el.addClass("disabled").removeClass "selected"
             @
         enable: ->
+            @disabled = false
             @$el.removeClass "disabled"
             @
+        isDisabled: -> @disabled
         renderUses: (uses) ->
             @$(".uses").text(uses)
             if uses <= 0 then @disable() else @enable()
@@ -66,11 +69,10 @@ define ["powers", "globals", "utilities", "dialog", "battler","board", "undersco
             target.tileModel.boundPower = @model
             target.tileModel.trigger "attackrange"
         chooseTargets: ->
-            console.log @$el
-            if @$el.hasClass "disabled" then return @
+            if @isDisabled() then return @
             user = @model.ownedBy
             if !user then return 
-            opts = {diagonal: true, ignoreNPCs: true, storePath: false, ignoreDifficult: true, ignoreDeltas: true, range: @model.get("range")}
+            opts = {ignoreNPCs: true, storePath: false, ignoreDifficult: true, ignoreDeltas: true, range: @model.get("range")}
             battler.removeHighlighting()
             battler.setAttacks u = user.virtualMovePossibilities(null, @rangeHandler, opts)
             battler.setState("choosingattacks")
@@ -124,42 +126,82 @@ define ["powers", "globals", "utilities", "dialog", "battler","board", "undersco
             click: -> console.log @model
 
 
+    class AttributeList extends Backbone.View
+        tagName: 'ul'
+        className: 'attribute-list'
+        template: "<li><span class='key'><%= key %>:</span> <%= val %></li>"
+        objTemplate: "<li><span class='key'><%= key %>:</span>"
+        render: ->
+            @$el.empty()
+            objects = []
+            keys = Object.keys(@model).sort()
+            _.each keys, (key) =>
+                val = @model[key]
+                key = key.capitalize()
+                if _.isObject(val)
+                    obj = {}
+                    obj[key] = val
+                    objects.push(obj)
+                else
+                    if _.isString(val) then val = val.capitalize()
+                    @$el.append(_.template(@template, {val: val, key: key}))
+            @
+
+
     class AttributeViewer extends Backbone.View
         tagName: 'div'
         className: 'attribute-container'
         template: $("#attribute-container").html()
         initialize: (attrs) ->
+            cleanModel = _.omit @model.toJSON(), "creatine", "HP", "max_HP", "max_creatine", "current_chunk"
+            @attrlist = new AttributeList model: cleanModel
             @render()
             @meters = {}
             h = @meters.health = new Meter el: @$("meter.HP"), model: attrs.model
             c = @meters.creatine = new Meter el: @$("meter.creatine"), model: attrs.model
-            @listenTo @model.actions, "reduce", (actions) => @updateActions actions
+            @listenTo @model.actions, "change", (actions) => @updateActions actions
             @
         render: ->
             @$el.html(_.template @template, _.extend(@model.toJSON(), {actions: @model.actions}))
+            @$(".full-attributes").html(@attrlist.render().el)
         hide: ->
             @visible = false
-            @$el.fadeOut "fast"
-            _.each _menu_slots, (menu, i) =>
-                if menu?.id is @id then _menu_slots[i] = null
+            @$el.slideUp "fast"
+            @hideFullView()
             @
         show: () -> 
-            bottom = if _menu_slots.bottom? then false else true
             @visible = true
-            if bottom is true 
+            if @model.isActive() is false
                 @$el.addClass "bottom"
-                _menu_slots.bottom = @
             else
                 @$el.removeClass "bottom"
-                _menu_slots.top = @
             # else @$el.removeClass "" Context switch weirds me out :/
-            @$el.fadeIn "fast"
+            @$el.slideDown "fast"
             @
         updateActions: (actions) ->
             actions = _.pick @model.actions, "move", "minor", "standard"
             _.each actions, (val, action) =>
                 console.log "updating #{action} with #{val}"
                 @$(".#{action}").text(val)
+        showFullView: ->
+            @fullViewOpen = true
+            @$(".js-toggle-full").text("Less")
+            @$(".full-attributes").slideDown "fast"
+            @
+        hideFullView: ->
+            @fullViewOpen = false
+            @$(".js-toggle-full").text("More")
+            @$(".full-attributes").slideUp "fast"
+            @
+        toggleFullView: (e) ->
+            if @fullViewOpen is true 
+                @hideFullView()
+            else
+                @showFullView()
+            @
+        events: 
+            "click .js-toggle-full": "toggleFullView"
+
 
 
     # Basic manu view
@@ -172,6 +214,7 @@ define ["powers", "globals", "utilities", "dialog", "battler","board", "undersco
             @setupMeters()
             @listenTo @model, 
                 "beginphase": (phase) -> @$(".phase-number").text(phase + 1)
+            @listenTo @model.actions, "change", (actions) => @updateActions actions
             _.bindAll @, "close", "open", "toggle", "selectNext", "selectThis", "selectPrev"
             @close()
             @render()
@@ -182,10 +225,19 @@ define ["powers", "globals", "utilities", "dialog", "battler","board", "undersco
             if quadrant then @$el.attr("quadrant", quadrant)
             @showPowers()
             @showInventory()
+            @updateActions @model.actions
         setupMeters: ->
             container = @container = new AttributeViewer model: @model
             container.$el.appendTo $wrapper
             @
+        # When actions are used, re-render that portion of the view
+        updateActions: (actions) ->
+            model = @model
+            @$el.children("ul").children("li[actiontype]").each ->
+                $t = $ @
+                needed = $t.attr("actiontype")
+                if !model.can(needed)
+                    $t.addClass("disabled")
         showInventory: ->
             list = InventoryList collection: @model.get "inventory"
             @$(".inventory-list").html(list.render().el)
@@ -212,6 +264,12 @@ define ["powers", "globals", "utilities", "dialog", "battler","board", "undersco
                 @showInventory()
                 e.stopPropagation()
             "click li": (e) ->
+                $t = $(e.currentTarget)
+                if $t.hasClass "disabled"
+                    e.stopPropagation()
+                    e.stopImmediatePropagation()
+                    e.preventDefault()
+                    return @
                 @selectThis $(e.currentTarget)
             "keyup": (e) ->
                 key = e.keyCode || e.which
@@ -222,10 +280,14 @@ define ["powers", "globals", "utilities", "dialog", "battler","board", "undersco
                     when 27 then @close()
                     when 13 then @$el.children(".selected").trigger "click"
             "click .js-virtual-move": -> 
+                console.log "specific click"
                 battler.removeHighlighting()
-                _potential_moves = battler.getActive().virtualMovePossibilities()                
+                _potential_moves = @model.virtualMovePossibilities()                
                 battler.setPotentialMoves _potential_moves
                 battler.setState("choosingmoves")
+            "click .js-defend": ->
+                if @model.can("move") then @model.defend()
+            "click .js-end-turn": -> @model.endTurn()
             # "click": -> board.$canvas.focus()
         clickActiveItem: ->
             @$el.children(".selected").trigger "click"
@@ -292,6 +354,4 @@ define ["powers", "globals", "utilities", "dialog", "battler","board", "undersco
             closeAll()
             @
         Menu: (construction) -> new Menu construction
-        a: -> _menus
-        m: ->_menu_slots
     }

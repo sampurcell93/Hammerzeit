@@ -48,6 +48,8 @@
 
       Inventory.prototype.model = Item;
 
+      Inventory.prototype.type = 'Inventory';
+
       Inventory.prototype.parse = function(resp) {
         _.each(resp, function(item) {
           item.use = _usefns[item.name] || function() {};
@@ -74,7 +76,8 @@
       InventoryList.prototype.tagName = 'ul';
 
       InventoryList.prototype.initialize = function() {
-        return _.bindAll(this, "render", "addItem");
+        _.bindAll(this, "render", "addItem");
+        return this;
       };
 
       InventoryList.prototype.addItem = function(item) {

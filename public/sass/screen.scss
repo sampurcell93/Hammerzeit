@@ -23,6 +23,7 @@
 * html .clearfix { height: 1%; }
 .clearfix { display: block; }
 /* close commented backslash hack */
+.clear { clear: both; }
 
 * {
 	@include box-sizing(border-box);
@@ -121,6 +122,24 @@ canvas {
 	width: $boardwidth;
 	margin: 10px auto;
     position: relative;
+}
+
+.button {
+    @include border-radius(3px);
+    @include box-shadow(0px 0px 1px 1px #fff inset);
+    display: inline-block;
+    // needs latest Compass, add '@import "compass"' to your scss
+    background-color: #d6d6d6; // Old browsers
+    @include filter-gradient(#d6d6d6, #b5b5b5, vertical); // IE6-9
+    @include background-image(linear-gradient(top,  #d6d6d6 0%,#d3d3d3 41%,#b5b5b5 100%));
+    padding: 3px 5px;
+    color: #222;
+    cursor: pointer;
+
+    &:hover {
+        text-decoration: underline;
+    }
+
 }
 
 ol {
@@ -276,6 +295,11 @@ textarea {
             color: #ddd;
             background: rgba(0,0,0,.3);
         }
+        &.disabled {
+            color: #666;
+            cursor: not-allowed;
+            text-decoration: line-through;
+        }
     }
 
     li .nested-menu > ul {
@@ -295,13 +319,6 @@ textarea {
         > li {
             @extend .clearfix;
             text-shadow: 0px 1px 0px #000;
-            
-            &.disabled {
-                color: #666;
-                cursor: not-allowed;
-                text-decoration: line-through;
-            }
-
 
             .info {
                 float: right;
@@ -416,6 +433,8 @@ textarea {
     @extend .clearfix;
     @include border-radius(2px);
     @include no-user-select();
+    @include box-shadow(0px 0px 4px #111, 0px 3px 7px #000);
+    color: #aaa;
     top: 55px;
     left: 15px;
     position: absolute;
@@ -423,7 +442,7 @@ textarea {
     display: none;
     background: rgba(0,0,0,.5);
     padding: 5px;
-
+    border-top: 1px solid #888;
 
 
     &.bottom {
@@ -445,12 +464,50 @@ textarea {
         text-align: center;
 
     }
-    ul {
+    ul.actions-remaining {
         color: #aaa;
+        width: 100%;
 
         li {
             display: inline-block;
-            width: 33%;
+            width: 15%;
+            font-weight: bold;
+
+            &:first-of-type {
+                width: 20%;
+                // border: 1px solid red;
+            }
+            &:last-of-type {
+                text-align: right;
+                width: 30%;
+            }
+        }
+    }
+
+    .full-attributes {
+        @include box-shadow(0px 3px 6px #000 inset);
+        @include border-radius(2px);
+        padding: 10px 20px;
+        margin: 10px 2px;
+        background: rgba(0,0,0,.6);
+        // border-top: 1px solid #aaa;
+
+
+        li {
+            display: inline-block;
+            width: 40%;
+            color: #ccc;
+            border-bottom: 1px solid #aaa;
+            margin: 5px 0;
+
+            &:nth-of-type(2n) {
+                margin-left: 20%;
+            }
+        }
+
+        span.key {
+            font-weight: bold;
+            padding: 0 5px 0 0;
         }
     }
 }
@@ -465,14 +522,14 @@ meter {
         -webkit-user-modify: read-only !important;
     }
     &::-webkit-meter-optimum-value, &::-webkit-meter-suboptimum-value,&::-webkit-meter-bar {
-        @include border-radius(4px);
+        @include border-radius(2px);
         @include transition(.3s width ease-in-out);
+        background-size: 260px 20px;
     }
     &::-webkit-meter-bar {
-        @include border-radius(4px);
         @include box-shadow(0px 1px 3px #000 inset, 0px 0px 4px #222);
         background: rgba(0,0,0,.6);
-        border: 3px solid transparent;
+        border: 5px solid transparent;
     }
 
 
@@ -484,7 +541,6 @@ meter {
             background-color: #7f003f; // Old browsers
             @include filter-gradient(#7f003f, #00abef, horizontal); // IE6-9
             @include background-image(linear-gradient(left,  #7f003f 0%,#4f007c 51%,#00abef 85%,#00abef 85%));
-            background-size: 400px 20px;
         }
     }
 
@@ -496,7 +552,6 @@ meter {
             background-color: #7f0000; // Old browsers
             @include filter-gradient(#7f0000, #00bc28, horizontal); // IE6-9
             @include background-image(linear-gradient(left,  #7f0000 0%,#a7ba00 51%,#00bc28 100%));
-            background-size: 400px 20px;
         }
     
     }

@@ -27,6 +27,7 @@ define ["globals", "utilities", "underscore", "backbone"], (globals, ut) ->
     # Simply a collection of items, regardless of context
     class Inventory extends Backbone.Collection
         model: Item
+        type: 'Inventory'
         parse: (resp) ->
             _.each resp, (item) ->
                 item.use  = _usefns[item.name]  || ->
@@ -40,6 +41,7 @@ define ["globals", "utilities", "underscore", "backbone"], (globals, ut) ->
         tagName: 'ul'
         initialize: ->
             _.bindAll @, "render", "addItem"
+            @
         addItem: (item) ->
             item = new ItemView model: item
             item.render().$el.appendTo @$el

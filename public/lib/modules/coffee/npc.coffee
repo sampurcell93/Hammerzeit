@@ -25,6 +25,7 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 
 	class NPC extends Backbone.Model
 		currentspace: {}
+		active: false
 		defaults: ->
 			pow = powers.defaultPowers()
 			_.each pow.models, (power) => power.ownedBy = @
@@ -34,18 +35,17 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 				powers: pow
 				init: 1
 				type: 'NPC'
-				class: 'none'
+				class: 'peasant'
 				creatine: 10
 				max_creatine: 10
 				race: 'human'
 				level: 1
 				HP: 10
 				max_HP: 10
-				attrs:
-					spd: 6
-					ac: 10
-					jmp: 2
-					atk: 3
+				spd: 10
+				AC: 10
+				jmp: 2
+				atk: 3
 				# powers: 
 				current_chunk: { x: 0, y: 0 }
 			}
@@ -115,7 +115,7 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 		# score of the NPC, it is unenterable.
 		checkElevation: (target, start) -> 
 			start || start = @currentspace
-			!(Math.abs(start.elv - target.elv) > @get("attrs").jmp)
+			!(Math.abs(start.elv - target.elv) > @get('jmp'))
 		# Pass in the target tile and the move deltas, and the NPC will use the current 
 		# active chunk to determine if the spot is enterable.
 		checkEnterable: (target, dx, dy, start, opts = {})->
@@ -220,6 +220,7 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 					@moving = false
 					@checkTrigger target
 					do @leaveSquare
+					@c.move(@marker).show()
 					@enterSquare target, dx, dy
 					@reanimate "run", .13, "run"
 					@trigger "donemoving"
@@ -238,14 +239,15 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 				move: 2
 				minor: 2
 			}
+			@actions.change()
 			@
 		# Default action values. Can be reset with initTurn or augmented with items
 		actions: _.extend {
 				standard: 1
 				move: 2
 				minor: 2
-				reduce: -> 
-					@trigger "reduce", _.pick @, "standard", "move", "minor"
+				change: -> 
+					@trigger "change", _.pick @, "standard", "move", "minor"
 			}, Backbone.Events
 		# If a user doens't move before the timer runs out, they must burn an action
 		# Tries move first, then standard, then minor
@@ -262,7 +264,7 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 			if actions.standard > 0
 				actions.standard--
 				actions.move--
-				actions.reduce()
+				actions.change()
 			unless burn then @nextPhase()
 			@
 		# Take a move action
@@ -273,7 +275,7 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 			if actions.move is 0
 				if actions.standard > 0 then actions.standard--
 				actions.minor--
-			actions.reduce()
+			actions.change()
 			unless burn then @nextPhase()
 			@
 		# Take a minor action
@@ -283,7 +285,7 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 				actions.minor--
 			if actions.minor is 0
 				actions.move--
-				actions.reduce()
+				actions.change()
 			unless burn then @nextPhase()
 			@
 		takeAction: (type) ->
@@ -302,6 +304,12 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 			y = if start then start.y else @marker.y
 			x = if start then start.x else @marker.x
 			chunk[(y+(50*dy))/50]?.children[(x+(50*dx))/50] || {}
+		# Defend until next turn; burns a move action
+		defend: ->
+			@set("AC", @get("AC") + 2)
+			@takeMove()
+			console.log @get "AC"
+			@
 
 		# Like move, but lightweight and with no transitions - simple arithmetic check
 		# Because we're not updating marker, we can pass in a start object (x:,y:) to be virtualized from
@@ -345,7 +353,7 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 				# Should the acceptable directions of a square
 				ignoreDeltas: false
 				# How long should we search for
-				range: @get("attrs").spd
+				range: @get("spd")
 				
 			}
 			opts = _.extend defaults, opts
@@ -388,11 +396,6 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 			_.each movable.models, (tile) ->
 				tile.discovered = false
 			movable
-		# Attrs is a sub object, so this saves time
-		# May want to remove for security
-		setAttrs: (attrs) ->
-			current = @get "attrs"
-			@set "attrs", _.extend(current, attrs)
 		# Default to not dead
 		dead: false
 		# Kill NPC
@@ -435,8 +438,10 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 				tile = chunk[y = y % (globals.map.tileheight-1)]?.children[x = x % (globals.map.tilewidth-1)]
 			@setCurrentSpace tile
 			@enterSquare tile
+			console.log "putting #{@get('name')} at #{tile.x},#{tile.y}"
 			@marker.x = x*_ts
 			@marker.y = y*_ts
+			board.addMarker @
 			@
 		# Pass in a color to highlight the current space of the NPC
 		highlightTile: (color) ->
@@ -447,7 +452,8 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 		# What phase of the user's turn are they at? Max 3
 		turnPhase: 0
 		# Resets the NPC's phase counter and alerts all listeners that the turn is done
-		turnDone: ->
+		endTurn: ->
+			@active = false
 			@turnPhase = 0
 			@trigger "turndone"
 			@resetActions()
@@ -462,6 +468,7 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 		# and starting the first phase
 		initTurn: ->
 			@indicateActive()
+			@active = true
 			globals.shared_events.trigger "closemenus"
 			@menu.open()
 			@nextPhase()
@@ -470,7 +477,7 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 		nextPhase: ->
 			t = @turnPhase
 			if t is 3 
-				return @turnDone()
+				return @endTurn()
 			battler.resetTimer().startTimer @i || @get("init"), => 
 				@burnAction()
 				console.log @actions
@@ -501,12 +508,13 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 		# Returns the cartesian quadrant of the screen the NPC occupies so that the menu
 		# Can make sure not to open over them
 		getQuadrant: ->
-			x = @marker.x - globals.map.c_width/2
+			x = @marker.x - 3*globals.map.c_width/4
 			y = @marker.y - globals.map.c_height/2
 			if x < 0 and y < 0 then 2
 			else if x <= 0 and y >= 0 then 3
 			else if x >= 0 and y <= 0 then 1
 			else 4
+		isActive: -> @active
 
 	# A basic collection of NPCs
 	class CharacterArray extends Backbone.Collection
@@ -528,6 +536,10 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 
 	class Enemy extends NPC
 		type: 'enemy'
+		defaults: ->
+			defaults = super
+			console.log defaults
+			_.extend defaults, {type: 'enemy'}
 	# Bind all the private functions to the public object.... invisibly 0_0
 	# _.each move_fns, (fn) ->
 		# if typeof fn == "function" then _.bind fn, NPC

@@ -39,6 +39,8 @@
 
       NPC.prototype.currentspace = {};
 
+      NPC.prototype.active = false;
+
       NPC.prototype.defaults = function() {
         var pow,
           _this = this;
@@ -52,19 +54,17 @@
           powers: pow,
           init: 1,
           type: 'NPC',
-          "class": 'none',
+          "class": 'peasant',
           creatine: 10,
           max_creatine: 10,
           race: 'human',
           level: 1,
           HP: 10,
           max_HP: 10,
-          attrs: {
-            spd: 6,
-            ac: 10,
-            jmp: 2,
-            atk: 3
-          },
+          spd: 10,
+          AC: 10,
+          jmp: 2,
+          atk: 3,
           current_chunk: {
             x: 0,
             y: 0
@@ -155,7 +155,7 @@
 
       NPC.prototype.checkElevation = function(target, start) {
         start || (start = this.currentspace);
-        return !(Math.abs(start.elv - target.elv) > this.get("attrs").jmp);
+        return !(Math.abs(start.elv - target.elv) > this.get('jmp'));
       };
 
       NPC.prototype.checkEnterable = function(target, dx, dy, start, opts) {
@@ -327,6 +327,7 @@
             _this.moving = false;
             _this.checkTrigger(target);
             _this.leaveSquare();
+            _this.c.move(_this.marker).show();
             _this.enterSquare(target, dx, dy);
             _this.reanimate("run", .13, "run");
             _this.trigger("donemoving");
@@ -346,6 +347,7 @@
           move: 2,
           minor: 2
         });
+        this.actions.change();
         return this;
       };
 
@@ -353,8 +355,8 @@
         standard: 1,
         move: 2,
         minor: 2,
-        reduce: function() {
-          return this.trigger("reduce", _.pick(this, "standard", "move", "minor"));
+        change: function() {
+          return this.trigger("change", _.pick(this, "standard", "move", "minor"));
         }
       }, Backbone.Events);
 
@@ -379,7 +381,7 @@
         if (actions.standard > 0) {
           actions.standard--;
           actions.move--;
-          actions.reduce();
+          actions.change();
         }
         if (!burn) {
           this.nextPhase();
@@ -399,7 +401,7 @@
           }
           actions.minor--;
         }
-        actions.reduce();
+        actions.change();
         if (!burn) {
           this.nextPhase();
         }
@@ -414,7 +416,7 @@
         }
         if (actions.minor === 0) {
           actions.move--;
-          actions.reduce();
+          actions.change();
         }
         if (!burn) {
           this.nextPhase();
@@ -450,6 +452,13 @@
         return ((_ref2 = chunk[(y + (50 * dy)) / 50]) != null ? _ref2.children[(x + (50 * dx)) / 50] : void 0) || {};
       };
 
+      NPC.prototype.defend = function() {
+        this.set("AC", this.get("AC") + 2);
+        this.takeMove();
+        console.log(this.get("AC"));
+        return this;
+      };
+
       NPC.prototype.virtualMove = function(dx, dy, start, opts) {
         var target;
         opts || (opts = {});
@@ -483,7 +492,7 @@
           ignoreDifficult: false,
           storePath: true,
           ignoreDeltas: false,
-          range: this.get("attrs").spd
+          range: this.get("spd")
         };
         opts = _.extend(defaults, opts);
         checkQueue = [];
@@ -546,12 +555,6 @@
         return movable;
       };
 
-      NPC.prototype.setAttrs = function(attrs) {
-        var current;
-        current = this.get("attrs");
-        return this.set("attrs", _.extend(current, attrs));
-      };
-
       NPC.prototype.dead = false;
 
       NPC.prototype.die = function() {
@@ -605,8 +608,10 @@
         }
         this.setCurrentSpace(tile);
         this.enterSquare(tile);
+        console.log("putting " + (this.get('name')) + " at " + tile.x + "," + tile.y);
         this.marker.x = x * _ts;
         this.marker.y = y * _ts;
+        board.addMarker(this);
         return this;
       };
 
@@ -622,7 +627,8 @@
 
       NPC.prototype.turnPhase = 0;
 
-      NPC.prototype.turnDone = function() {
+      NPC.prototype.endTurn = function() {
+        this.active = false;
         this.turnPhase = 0;
         this.trigger("turndone");
         this.resetActions();
@@ -639,6 +645,7 @@
 
       NPC.prototype.initTurn = function() {
         this.indicateActive();
+        this.active = true;
         globals.shared_events.trigger("closemenus");
         this.menu.open();
         return this.nextPhase();
@@ -649,7 +656,7 @@
           _this = this;
         t = this.turnPhase;
         if (t === 3) {
-          return this.turnDone();
+          return this.endTurn();
         }
         battler.resetTimer().startTimer(this.i || this.get("init"), function() {
           _this.burnAction();
@@ -698,7 +705,7 @@
 
       NPC.prototype.getQuadrant = function() {
         var x, y;
-        x = this.marker.x - globals.map.c_width / 2;
+        x = this.marker.x - 3 * globals.map.c_width / 4;
         y = this.marker.y - globals.map.c_height / 2;
         if (x < 0 && y < 0) {
           return 2;
@@ -709,6 +716,10 @@
         } else {
           return 4;
         }
+      };
+
+      NPC.prototype.isActive = function() {
+        return this.active;
       };
 
       return NPC;
@@ -768,6 +779,15 @@
       }
 
       Enemy.prototype.type = 'enemy';
+
+      Enemy.prototype.defaults = function() {
+        var defaults;
+        defaults = Enemy.__super__.defaults.apply(this, arguments);
+        console.log(defaults);
+        return _.extend(defaults, {
+          type: 'enemy'
+        });
+      };
 
       return Enemy;
 

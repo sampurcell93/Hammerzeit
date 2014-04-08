@@ -20,6 +20,7 @@ define ["globals", "utilities", "board"], (globals, utilities, board) ->
 
     class PowerSet extends Backbone.Collection
         model: Power
+        type: 'PowerSet'
         url: 'lib/json_packs/attacks.json'
 
     _useFns = {

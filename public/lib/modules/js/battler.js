@@ -26,7 +26,7 @@
 
       InitiativeQueue.prototype.type = 'InitiativeQueue';
 
-      InitiativeQueue.prototype.turnDelay = 1000;
+      InitiativeQueue.prototype.turnDelay = 300;
 
       InitiativeQueue.prototype.initialize = function(models) {
         var _this = this;
@@ -117,7 +117,7 @@
         NPCs: new NPCArray,
         InitQueue: new InitiativeQueue(PCs.models),
         avglevel: PCs.getAverageLevel(),
-        numenemies: 1,
+        numenemies: 5,
         enemyBounds: {
           min_x: 0,
           max_x: map.c_width,
@@ -212,15 +212,18 @@
 
       Battle.prototype.randomize = function(o) {
         var i, n, _i, _ref2;
+        if (o == null) {
+          o = {};
+        }
         o = _.extend(this.defaults, o);
         for (i = _i = 0, _ref2 = o.numenemies; 0 <= _ref2 ? _i < _ref2 : _i > _ref2; i = 0 <= _ref2 ? ++_i : --_i) {
+          console.log("in loop");
           this.get("NPCs").add(n = new Enemy({
             level: o.avglevel
           }));
           this.get("InitQueue").add(n);
           n.addToMap();
           globals.shared_events.trigger("bindmenu", n);
-          board.addMarker(n);
         }
         this.get("InitQueue").sort();
         return this;
@@ -553,6 +556,7 @@
         attacker.useCreatine(attrs.creatine);
         attacker.takeAction(attrs.action);
         power.use();
+        _activebattle.clearAttackZone();
         return this;
       };
 
@@ -764,7 +768,7 @@
       }
     };
     window.t = function() {
-      return _activebattle.get("InitQueue").getActive().turnDone();
+      return _activebattle.get("InitQueue").getActive().endTurn();
     };
     return _b;
   });

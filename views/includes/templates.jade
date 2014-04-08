@@ -42,12 +42,13 @@ script#power-item(type='text/template')
 
 script#menu(type='text/template')
         ul
-                li(tabindex=2).js-virtual-move.selected Move
+                li(tabindex=2, actiontype="move").js-virtual-move.selected Move
                 li(tabindex=2).js-attack Attack
                   div.power-list.nested-menu
-                li(tabindex=2).js-defend Defend
+                li(tabindex=2, actiontype="move").js-defend Defend
                 li(tabindex=2).js-show-inventory Inventory
                   div.inventory-list.nested-menu
+                li(tabindex=2).js-end-turn End Turn
                 li Phase: 
                   span.phase-number <%= phase %>
                   | /3
@@ -57,10 +58,16 @@ script#attribute-container(type='text/template')
         meter.HP(linker='HP')
         meter.creatine(linker='creatine')
     h2 <%= name %>
-    ul
-        li Standard: 
+    .clear
+    ul.actions-remaining
+        li Actions:
+        li Std: 
             span.standard <%= actions.standard %>
-        li Move : 
+        li Mov: 
             span.move <%= actions.move %>
-        li Minor : 
+        li Min: 
             span.minor <%= actions.minor %>
+        li
+            span.js-toggle-full.button More
+    div.full-attributes
+        | These are suome full attributes

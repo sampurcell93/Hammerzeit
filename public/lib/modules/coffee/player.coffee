@@ -66,18 +66,17 @@ define ["utilities", "npc", "board", "globals", "mapper", "items", "powers", "ba
 				inventory: inventory
 				type: "PC"
 				name: "Hero"
-				attrs:
-					spd: 10
-					ac: 10
-					jmp: 2
-					atk: 3
+				spd: 10
+				AC: 10
+				jmp: 2
+				atk: 3
 			}
 
 	PCs = new NPC.NPCArray
 	PCs.add new player null, main: true
-	# PCs.add new player init: 4, name: 'Fighter'
-	# PCs.add new player init: 2, name: 'Mage'
-	# PCs.add new player init: 3, name: 'Cleric'
+	PCs.add new player init: 4, name: 'Fighter'
+	PCs.add new player init: 2, name: 'Mage'
+	PCs.add new player init: 3, name: 'Cleric'
 
 	return {
 		model: player
