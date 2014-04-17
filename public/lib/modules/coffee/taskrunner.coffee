@@ -1,6 +1,7 @@
 define ["globals", "utilities", "battler", "board", "player", "controls", "mapper", "mapcreator", "menus", "underscore"], (globals, ut, battler, board, player, controls, mapper, mapcreator, menus) ->
 	window.PC = player.PC
 
+
 	taskrunner = {
 		newGame: () ->
 			@loadStage 1
@@ -19,4 +20,6 @@ define ["globals", "utilities", "battler", "board", "player", "controls", "mappe
 					mapper.renderChunk full_chunk, board.getStage()
 					battler.clearPotentialMoves()
 	}
+	globals.shared_events.on "newgame", -> taskrunner.newGame()
+
 	taskrunner

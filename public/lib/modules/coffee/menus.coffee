@@ -67,10 +67,10 @@ define ["powers", "globals", "utilities", "dialog", "battler","board", "jquery-u
             if @isDisabled() then return @
             user = @model.ownedBy
             if !user then return 
-            opts = {ignoreNPCs: true, storePath: false, ignoreDifficult: true, ignoreDeltas: true, range: @model.get("range")}
-            opts = _.extend opts, @model.getPathOptions()
             battler.removeHighlighting()
             handler = @model.getHandler()
+            opts = {ignoreNPCs: true, storePath: false, ignoreDifficult: true, ignoreDeltas: true, range: @model.get("range"), handlerContext: @model}
+            opts = _.extend opts, @model.getPathOptions()
             battler.setAttacks u = battler.virtualMovePossibilities(user.getCurrentSpace(), handler, opts)
             battler.setState("choosingattacks")
         events: 

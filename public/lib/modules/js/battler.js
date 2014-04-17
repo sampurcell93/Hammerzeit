@@ -418,6 +418,18 @@
         return this.showing = false;
       };
 
+      GridOverlay.prototype.path_defaults = {
+        diagonal: false,
+        ignoreNPCs: false,
+        ignorePCs: false,
+        ignoreEmpty: false,
+        ignoreDifficult: false,
+        storePath: true,
+        ignoreDeltas: false,
+        range: 6,
+        handlerContext: GridOverlay
+      };
+
       GridOverlay.prototype.virtualMove = function(dx, dy, start, opts) {
         var target;
         opts || (opts = {});
@@ -438,21 +450,11 @@
       };
 
       GridOverlay.prototype.virtualMovePossibilities = function(start, done, opts) {
-        var checkQueue, defaults, enqueue, i, movable, square, tile, _i;
+        var checkQueue, enqueue, i, movable, square, tile, _i;
         done || (done = function(target) {
           return target.tileModel.trigger("potentialmove");
         });
-        defaults = {
-          diagonal: false,
-          ignoreNPCs: false,
-          ignorePCs: false,
-          ignoreEmpty: false,
-          ignoreDifficult: false,
-          storePath: true,
-          ignoreDeltas: false,
-          range: 6
-        };
-        opts = _.extend(defaults, opts);
+        opts = _.extend(this.path_defaults, opts);
         checkQueue = [];
         movable = new mapper.Row;
         checkQueue.unshift(start);
@@ -489,7 +491,7 @@
           }
           target.tileModel.discovered = true;
           checkQueue.unshift(target);
-          return done.call(this, target);
+          return done.call(opts.handlerContext, target);
         };
         while (!(checkQueue.length <= 0)) {
           square = checkQueue.pop();

@@ -126,16 +126,17 @@
         if (!user) {
           return;
         }
+        battler.removeHighlighting();
+        handler = this.model.getHandler();
         opts = {
           ignoreNPCs: true,
           storePath: false,
           ignoreDifficult: true,
           ignoreDeltas: true,
-          range: this.model.get("range")
+          range: this.model.get("range"),
+          handlerContext: this.model
         };
         opts = _.extend(opts, this.model.getPathOptions());
-        battler.removeHighlighting();
-        handler = this.model.getHandler();
         battler.setAttacks(u = battler.virtualMovePossibilities(user.getCurrentSpace(), handler, opts));
         return battler.setState("choosingattacks");
       };

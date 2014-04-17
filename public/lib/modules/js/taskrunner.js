@@ -24,6 +24,9 @@
         });
       }
     };
+    globals.shared_events.on("newgame", function() {
+      return taskrunner.newGame();
+    });
     return taskrunner;
   });
 

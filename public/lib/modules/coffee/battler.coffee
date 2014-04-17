@@ -249,7 +249,25 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
         deactivate: ->
             @hide()
             @showing = false
-
+        path_defaults: 
+            # Compute diagonals as a distance-1 move?
+            diagonal: false
+            # Do not designate squares occupied by NPCs as un-enterable
+            ignoreNPCs: false
+            # Do not designate squares occupied by PCs as un-enterable
+            ignorePCs: false
+            # Only designate occupied squares as valid.
+            ignoreEmpty: false
+            # Should difficult terrain factor into distance?
+            ignoreDifficult: false
+            # Should the path be stored?
+            storePath: true
+            # Should the acceptable directions of a square
+            ignoreDeltas: false
+            # How long should we search for?
+            range: 6
+            # The context to call the handler in
+            handlerContext: @
         # Like move, but lightweight and with no transitions - simple arithmetic check
         # Because we're not updating marker, we can pass in a start object (x:,y:) to be virtualized from
         virtualMove: (dx, dy, start, opts) ->
@@ -268,25 +286,7 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
         # Still inefficient - keeps checking past max distance - todo
         virtualMovePossibilities: (start, done, opts) ->
             done       || (done = (target) -> target.tileModel.trigger("potentialmove"))
-            defaults = {
-                # Compute diagonals as a distance-1 move?
-                diagonal: false
-                # Do not designate squares occupied by NPCs as un-enterable
-                ignoreNPCs: false
-                # Do not designate squares occupied by PCs as un-enterable
-                ignorePCs: false
-                # Only designate occupied squares as valid.
-                ignoreEmpty: false
-                # Should difficult terrain factor into distance?
-                ignoreDifficult: false
-                # Should the path be stored?
-                storePath: true
-                # Should the acceptable directions of a square
-                ignoreDeltas: false
-                # How long should we search for
-                range: 6
-            }
-            opts = _.extend defaults, opts
+            opts = _.extend @path_defaults, opts
             checkQueue = []
             movable = new mapper.Row
             checkQueue.unshift(start)
@@ -310,7 +310,7 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
                 else target.tileModel.distance = distance + d
                 target.tileModel.discovered = true
                 checkQueue.unshift target
-                done.call(@, target)
+                done.call(opts.handlerContext, target)
             until checkQueue.length <= 0
                 square = checkQueue.pop()
                 tile = square.tileModel
