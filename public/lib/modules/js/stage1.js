@@ -42,7 +42,8 @@
               mapper.renderChunk(_bitmap[c.y][c.x], stage);
               board.addState("BATTLE").removeState("WAITING").removeState("TRAVEL");
               battler.activateGrid();
-              return board.setMapSize(_stageObj.width * globals.map.width, _stageObj.height * globals.map.height);
+              board.setMapSize(_stageObj.width * globals.map.width, _stageObj.height * globals.map.height);
+              return battler.start();
             }
           }
         }
@@ -74,7 +75,7 @@
           _bitmap[j][i].background_position = chunk.background_position;
         }
       }
-      return _events.trigger("doneloading");
+      return _initialize();
     });
     return {
       getBackground: function() {

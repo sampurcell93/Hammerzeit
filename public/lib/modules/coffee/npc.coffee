@@ -1,5 +1,4 @@
 define ["globals", "utilities", "board", "items", "powers", "mapper", "underscore", "backbone"], (globals, ut, board, items, powers, mapper) ->
-	_checkEntry = ut.tileEntryCheckers
 
 	_ts = globals.map.tileside
 	_events = globals.shared_events
@@ -27,14 +26,21 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 		currentspace: {}
 		active: false
 		defaults: ->
-			pow = powers.defaultPowers()
+			pow = powers.getDefaultPowers()
 			_.each pow.models, (power) => power.ownedBy = @
+			inventory = items.getDefaultInventory()
+			@listenToOnce globals.shared_events, "items_loaded", =>
+				@set("inventory", items.getDefaultInventory())
+			@listenToOnce globals.shared_events, "powers_loaded", =>
+				@set("powers", pow = powers.getDefaultPowers())
+				_.each pow.models, (power) => power.ownedBy = @
+
 			return {
 				name: "NPC"
-				inventory: items.Inventory()
+				inventory: inventory
 				powers: pow
 				init: 1
-				type: 'NPC'
+				type: 'npc'
 				class: 'peasant'
 				creatine: 10
 				max_creatine: 10
@@ -46,36 +52,39 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 				AC: 10
 				jmp: 2
 				atk: 3
+				regY: 10
 				# powers: 
 				current_chunk: { x: 0, y: 0 }
+				spriteimg: "images/sprites/hero.png"
+				frames: {
+					# The in place animation frames for the default NPC
+					down: [[0, 0, 55, 55, 0]
+							[55, 0, 55, 55, 0]
+							[110, 0, 55, 55, 0]
+							[165, 0, 55, 55, 0]]
+					left: [[0, 55, 55, 55, 0]
+						[55, 55, 55, 55, 0]
+						[110, 55, 55, 55, 0]
+						[165, 55, 55, 55, 0]]
+					right: [[0, 110, 55, 55, 0]
+						[55, 110, 55, 55, 0]
+						[110, 110, 55, 55, 0]
+						[165, 110, 55, 55, 0]]
+					up: [[0, 165, 55, 55, 0]
+						[55, 165, 55, 55, 0]
+						[110, 165, 55, 55, 0]
+						[165, 165, 55, 55, 0]]
+				}
 			}
 		type: 'npc'
 		move_callbacks: 
 			done: -> 
 			change: ->
-		frames: {
-			# The in place animation frames for the default NPC
-			down: [[0, 0, 55, 55, 0]
-					[55, 0, 55, 55, 0]
-					[110, 0, 55, 55, 0]
-					[165, 0, 55, 55, 0]]
-			left: [[0, 55, 55, 55, 0]
-				[55, 55, 55, 55, 0]
-				[110, 55, 55, 55, 0]
-				[165, 55, 55, 55, 0]]
-			right: [[0, 110, 55, 55, 0]
-				[55, 110, 55, 55, 0]
-				[110, 110, 55, 55, 0]
-				[165, 110, 55, 55, 0]]
-			up: [[0, 165, 55, 55, 0]
-				[55, 165, 55, 55, 0]
-				[110, 165, 55, 55, 0]
-				[165, 165, 55, 55, 0]]
-		}
-		initialize:  ->
+		initialize: ({frames, spriteimg} = {}) ->
 			_.bind @move_callbacks.done, @
 			_.bind @move_callbacks.change, @
-			@walkopts = _.extend @getPrivate("walkopts"), {images: ["images/sprites/hero.png"]}
+			@walkopts = _.extend @getPrivate("walkopts"), {images: [@get("spriteimg")]}
+			@frames = @get("frames")
 			@sheets = {
 				"-1,0" : new createjs.SpriteSheet(_.extend @walkopts, {frames: @frames.left})
 				"1,0": new createjs.SpriteSheet(_.extend @walkopts, {frames: @frames.right})
@@ -93,7 +102,7 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 			sheet.getAnimation("run").next = "run"
 			sprite = new createjs.Sprite(sheet, "run")
 			@marker = new createjs.Container()
-			@marker.regY = 10
+			@marker.regY =  @get("regY")
 			@marker.addChild sprite
 			@marker.icon = sprite
 			nameobj = new createjs.Text(@get("name"), "14px Arial", "#fff")
@@ -116,22 +125,6 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 		checkElevation: (target, start) -> 
 			start || start = @currentspace
 			!(Math.abs(start.elv - target.elv) > @get('jmp'))
-		# Pass in the target tile and the move deltas, and the NPC will use the current 
-		# active chunk to determine if the spot is enterable.
-		checkEnterable: (target, dx, dy, start, opts = {})->
-			try 
-				if !@checkElevation(target, start)
-					return false
-				if target.e?
-					if target.e is false or target.e is "f" and !opts.ignoreDeltas then return false
-					else if target.occupied is true and !opts.ignoreNPCs then return false
-					else if _.isString(target.e) and !opts.ignoreDeltas
-						return _checkEntry[target.e](dx, dy)
-					else true
-				else true
-			# If the indices do not exist, we're heading to a new chunk.
-			catch 
-				true
 		# Takes in a tile DisplayObject (bitmap) and calls a trigger function if it exists
 		# Triggers stored in the trigger module
 		checkTrigger: (target) ->
@@ -193,10 +186,10 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 			# if board.hasState("battle") then return false
 			if board.isPaused() then return false
 			marker = @marker
-			target = @getTargetTile dx, dy
+			target = mapper.getTargetTile dx, dy, @currentspace
 			if @moving is true then return false
 			sheet = @turn dx, dy
-			if !@checkEnterable(target, dx, dy) then return false
+			if !target.checkEnterable(dx, dy) then return false
 			if !@stage or !marker
 				throw new Error("There is no stage or marker assigned to this NPC!")
 			if !@canMoveOffChunk() then return false
@@ -206,7 +199,7 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 		moveInterval: (dx, dy, walkspeed) ->
 			@cursor()
 			@turn dx, dy
-			target = @getTargetTile dx, dy
+			target = mapper.getTargetTile dx, dy, @currentspace
 			count = 0
 			cbs = @move_callbacks
 			m_i = setInterval =>
@@ -298,104 +291,11 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 			flag = false
 			_.each @actions, (action) -> if action > 0 then flag = true
 			flag
-		# Given move deltas, retrieve the DisplayObject (bitmap) at that position in the current chunk
-		getTargetTile: (dx, dy, start) ->
-			chunk = mapper.getVisibleChunk()?.children
-			y = if start then start.y else @marker.y
-			x = if start then start.x else @marker.x
-			chunk[(y+(50*dy))/50]?.children[(x+(50*dx))/50] || {}
 		# Defend until next turn; burns a move action
 		defend: ->
 			@set("AC", @get("AC") + 2)
 			@takeMove()
-			console.log @get "AC"
 			@
-
-		# Like move, but lightweight and with no transitions - simple arithmetic check
-		# Because we're not updating marker, we can pass in a start object (x:,y:) to be virtualized from
-		virtualMove: (dx, dy, start, opts) ->
-			opts || opts = {}
-			if board.isPaused() then return false
-			target = @getTargetTile dx, dy, start
-			if _.isEmpty(target) 
-				return false
-			if target.tileModel.discovered 
-				return false
-			if !@checkEnterable(target, dx, dy, start, opts) 
-				return false
-			# If we can't end in the examined sqaure, don't enqueue it -
-			# rather, check where the square will take us if we step into it
-			# m = target.tileModel.m += extra
-			# if target.tileModel.get("end") is false 
-				# if dx != 0 then dx*=2 else if dy != 0 then dy *= 2
-				# target = @virtualMove(dx, dy, start, extra+1)
-				# if target then target.tileModel.distance = m else return false
-			target
-		# Runs through the currently visible tiles in a battle and determines which moves are possible
-		# Returns array of tiles. If true, silent prevents observation 
-		# Still inefficient - keeps checking past max distance - todo
-		virtualMovePossibilities: (start, done, opts) ->
-			start 	   || (start = @getTargetTile 0, 0)
-			done	   || (done = (target) -> target.tileModel.trigger("potentialmove"))
-			defaults = {
-				# Compute diagonals as a distance-1 move?
-				diagonal: false
-				# Do not designate squares occupied by NPCs as un-enterable
-				ignoreNPCs: false
-				# Do not designate squares occupied by PCs as un-enterable
-				ignorePCs: false
-				# Only designate occupied squares as valid.
-				ignoreEmpty: false
-				# Should difficult terrain factor into distance?
-				ignoreDifficult: false
-				# Should the path be stored?
-				storePath: true
-				# Should the acceptable directions of a square
-				ignoreDeltas: false
-				# How long should we search for
-				range: @get("spd")
-				
-			}
-			opts = _.extend defaults, opts
-			checkQueue = []
-			movable = new Row
-			checkQueue.unshift(start)
-			start.tileModel.discovered = true
-			start.tileModel.distance = 0
-			start.tileModel.pathFromStart.start = _.pick start, "x", "y"
-			# Enqueue a target node and store the directions it took to get there
-			enqueue = (dx, dy, previous, target) ->
-				if target is false then return
-				distance = previous.distance
-				unless opts.storePath is false
-					path = ut.deep_clone previous.pathFromStart.path
-					path.push {dx: dx, dy: dy}
-					pathFromStart = target.tileModel.pathFromStart
-					pathFromStart.path = path
-					pathFromStart.start = previous.pathFromStart.start
-				if !target then return
-				d = if target.m then target.m else 1
-				if opts.ignoreDifficult then d = 1
-				if distance + d > opts.range then return
-				else target.tileModel.distance = distance + d
-				target.tileModel.discovered = true
-				checkQueue.unshift target
-				done.call(@, target)
-			until checkQueue.length <= 0
-				square = checkQueue.pop()
-				tile = square.tileModel
-				movable.push tile
-				for i in [-1..1]
-					if i is 0 then continue
-					enqueue(0, i, square.tileModel, @virtualMove 0, i, square, opts)
-					enqueue(i, 0, square.tileModel, @virtualMove i, 0, square, opts)
-					if opts.diagonal is true
-						enqueue(i, i, square.tileModel, @virtualMove i, i, square, opts)
-						enqueue(-i, i, square.tileModel, @virtualMove -i, i, square, opts)
-
-			_.each movable.models, (tile) ->
-				tile.discovered = false
-			movable
 		# Default to not dead
 		dead: false
 		# Kill NPC
@@ -410,9 +310,10 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 			@dead
 		getPrivate: (id) ->
 			_p[id]
+		getCurrentSpace: -> @currentspace
 		# Given pixel x and y coordinates (ie 400, 300), set the current space object
 		setCurrentSpace: (target) ->
-			target || target = @getTargetTile 0, 0
+			target || target = mapper.getTargetTile(0,0,@currentspace)
 			# Would use @enterSquare, but throws unexpected errors: todo, debug
 			if target 
 				@currentspace = target
@@ -514,6 +415,8 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 			else if x <= 0 and y >= 0 then 3
 			else if x >= 0 and y <= 0 then 1
 			else 4
+		getX: -> @marker.x/_ts
+		getY: -> @marker.y/_ts
 		isActive: -> @active
 
 	# A basic collection of NPCs

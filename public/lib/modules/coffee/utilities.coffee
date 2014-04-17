@@ -180,6 +180,7 @@ define  ["jquery", "underscore"], ->
 			trb: (x,y) -> tr(x,y) or b(x,y)
 			# top or bottom
 			tb: (x,y) -> b(x,y) or t(x,y)
+			e: -> true
 		}
 		floorToOne: (val) ->
 			if val < 0 then -1 else if val > 0 then 1 else 0

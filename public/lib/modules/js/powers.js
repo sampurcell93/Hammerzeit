@@ -3,9 +3,15 @@
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
   define(["globals", "utilities", "board"], function(globals, utilities, board) {
-    var Power, PowerSet, get, getPower, _default, _powers, _ref, _ref1, _useFns;
+    var Power, PowerSet, get, getPower, _default, _pathopts, _powers, _ref, _ref1, _useFns;
     _powers = null;
-    _default = ["Strike", "Beguile", "Plead"];
+    _default = ["Strike", "Beguile", "Whirl"];
+    _pathopts = {
+      "range": {},
+      "burst": {
+        diagonal: true
+      }
+    };
     Power = (function(_super) {
       __extends(Power, _super);
 
@@ -15,15 +21,15 @@
       }
 
       Power.prototype.defaults = {
-        creatine: 3,
+        creatine: 0,
         power: 1,
-        range: 3,
-        type: "single",
+        range: 1,
         name: "Basic",
         uses: Infinity,
         damage: 1,
         modifier: 4,
-        action: 'standard'
+        action: 'standard',
+        spread: 'range'
       };
 
       Power.prototype.idAttribute = 'name';
@@ -31,6 +37,30 @@
       Power.prototype.use = function() {
         this.set("uses", this.get("uses") - 1);
         return this;
+      };
+
+      Power.prototype.initialize = function() {
+        _.bind(this.handlers.range, this);
+        return _.bind(this.handlers.burst, this);
+      };
+
+      Power.prototype.handlers = {
+        range: function(target) {
+          target.tileModel.boundPower = this;
+          return target.tileModel.trigger("rangeattack");
+        },
+        burst: function(target) {
+          target.tileModel.boundPower = this;
+          return target.tileModel.trigger("burstattack");
+        }
+      };
+
+      Power.prototype.getHandler = function() {
+        return this.handlers[this.get("spread")];
+      };
+
+      Power.prototype.getPathOptions = function() {
+        return _pathopts[this.get("spread")];
       };
 
       return Power;
@@ -55,36 +85,26 @@
     })(Backbone.Collection);
     _useFns = {
       "Strike": function(target, attacker) {
-        target.useCreatine(3);
-        return console.log("stole your creatine bro");
+        return target.useCreatine(3);
       }
     };
-    _powers = new PowerSet([
-      {
-        "name": "Strike",
-        "damage": 2,
-        "uses": 1,
-        "modifier": 4
-      }, {
-        "name": "Beguile",
-        "action": "move",
-        "uses": 3
-      }, {
-        "name": "Plead",
-        "action": "minor"
-      }
-    ]);
-    _.each(_powers.models, function(power) {
-      var use;
-      use = _useFns[power.get("name")];
-      if (use) {
-        return power.set("use", use);
+    _powers = new PowerSet;
+    _powers.fetch({
+      success: function() {
+        _.each(_powers.models, function(power) {
+          var use;
+          use = _useFns[power.get("name")];
+          if (use) {
+            return power.set("use", use);
+          }
+        });
+        return globals.shared_events.trigger("powers_loaded");
       }
     });
     getPower = function(name) {
       var power;
       power = _powers._byId[name];
-      if (typeof power === "object") {
+      if (_.isObject(power)) {
         return power.clone();
       } else {
         return null;
@@ -92,7 +112,7 @@
     };
     get = function(name) {
       var subset;
-      if (typeof name === "string") {
+      if (_.isString(name)) {
         return getPower(name);
       } else if ($.isArray(name)) {
         subset = new PowerSet;
@@ -110,7 +130,7 @@
       getClassDefaults: function(c) {}
     });
     return window.powers = {
-      defaultPowers: function(c) {
+      getDefaultPowers: function(c) {
         var d;
         return d = get(_default);
       },

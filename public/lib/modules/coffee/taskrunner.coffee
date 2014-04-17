@@ -9,8 +9,6 @@ define ["globals", "utilities", "battler", "board", "player", "controls", "mappe
 			# Stage not to be confused with "level": Rename todo
 			require ["lib/modules/js/stage" + module], (level) ->
 				board.removeState("LOADING")
-				level.events.on "doneloading", ->
-					level.initialize()
 				PC.on "change:current_chunk", () ->
 					ut.c "CHUNK CHANGE REGISTERED IN TASKRUNNER"
 					newchunk = PC.get "current_chunk"

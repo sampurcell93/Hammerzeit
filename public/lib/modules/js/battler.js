@@ -2,13 +2,12 @@
   var __hasProp = {}.hasOwnProperty,
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
-  define(["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player", "backbone", "underscore", "jquery"], function(board, globals, ut, mapper, NPC, mapcreator, player) {
+  define(["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player", "cast"], function(board, globals, ut, mapper, NPC, mapcreator, player, cast) {
     var Battle, Enemy, GridOverlay, GridSquare, InitiativeQueue, NPCArray, PCs, Player, Timer, getActive, map, stage, states, _active_chars, _activebattle, _activemap, _b, _grid, _ref, _ref1, _ref2, _ref3, _shared, _sm, _timer, _ts;
     PCs = player.PCs;
     Player = player.model;
     NPCArray = NPC.NPCArray;
     Enemy = NPC.Enemy;
-    NPC = NPC.NPC;
     stage = board.getStage();
     map = globals.map;
     _sm = 20;
@@ -37,8 +36,7 @@
             return this.next();
           },
           "die": function(model) {
-            console.log("" + (model.get('name')) + " died (in InitiativeQueue listener)");
-            _this.remove(model);
+            alert("" + (model.get('name')) + " died!");
             return _activebattle.checkEndOfBattle();
           }
         });
@@ -54,7 +52,7 @@
             m = new player.model(attrs, options);
             break;
           case 'npc':
-            m = new NPC(attrs, options);
+            m = new NPC.NPC(attrs, options);
             break;
           case 'enemy':
             m = new Enemy(attrs, options);
@@ -84,6 +82,9 @@
         var active_player, num;
         num = this.current_index = ++this.current_index % this.length;
         active_player = this.getActive();
+        while (active_player.isDead()) {
+          active_player = this.getActive();
+        }
         _activebattle.clearAllHighlights();
         if (init !== false) {
           setTimeout(function() {
@@ -217,10 +218,7 @@
         }
         o = _.extend(this.defaults, o);
         for (i = _i = 0, _ref2 = o.numenemies; 0 <= _ref2 ? _i < _ref2 : _i > _ref2; i = 0 <= _ref2 ? ++_i : --_i) {
-          console.log("in loop");
-          this.get("NPCs").add(n = new Enemy({
-            level: o.avglevel
-          }));
+          this.get("NPCs").add(n = new Enemy);
           this.get("InitQueue").add(n);
           n.addToMap();
           globals.shared_events.trigger("bindmenu", n);
@@ -250,7 +248,7 @@
           return this;
         }
         _.each(this.potential_moves.models, function(tile) {
-          return tile.trigger("removemove");
+          return tile.removePotentialMovePath();
         });
         return this;
       };
@@ -397,9 +395,7 @@
       GridOverlay.prototype.modifyAllTiles = function() {};
 
       GridOverlay.prototype.render = function() {
-        GridOverlay.__super__.render.apply(this, arguments);
-        console.log("rendering");
-        return console.log(this.model);
+        return GridOverlay.__super__.render.apply(this, arguments);
       };
 
       GridOverlay.prototype.toggle = function() {
@@ -422,6 +418,101 @@
         return this.showing = false;
       };
 
+      GridOverlay.prototype.virtualMove = function(dx, dy, start, opts) {
+        var target;
+        opts || (opts = {});
+        if (board.isPaused()) {
+          return false;
+        }
+        target = mapper.getTargetTile(dx, dy, start);
+        if (_.isEmpty(target)) {
+          return false;
+        }
+        if (target.tileModel.discovered) {
+          return false;
+        }
+        if (!target.tileModel.checkEnterable(dx, dy, start, opts)) {
+          return false;
+        }
+        return target;
+      };
+
+      GridOverlay.prototype.virtualMovePossibilities = function(start, done, opts) {
+        var checkQueue, defaults, enqueue, i, movable, square, tile, _i;
+        done || (done = function(target) {
+          return target.tileModel.trigger("potentialmove");
+        });
+        defaults = {
+          diagonal: false,
+          ignoreNPCs: false,
+          ignorePCs: false,
+          ignoreEmpty: false,
+          ignoreDifficult: false,
+          storePath: true,
+          ignoreDeltas: false,
+          range: 6
+        };
+        opts = _.extend(defaults, opts);
+        checkQueue = [];
+        movable = new mapper.Row;
+        checkQueue.unshift(start);
+        start.tileModel.discovered = true;
+        start.tileModel.distance = 0;
+        start.tileModel.pathFromStart.start = _.pick(start, "x", "y");
+        enqueue = function(dx, dy, previous, target) {
+          var d, distance, path, pathFromStart;
+          if (target === false) {
+            return;
+          }
+          distance = previous.distance;
+          if (opts.storePath !== false) {
+            path = ut.deep_clone(previous.pathFromStart.path);
+            path.push({
+              dx: dx,
+              dy: dy
+            });
+            pathFromStart = target.tileModel.pathFromStart;
+            pathFromStart.path = path;
+            pathFromStart.start = previous.pathFromStart.start;
+          }
+          if (!target) {
+            return;
+          }
+          d = target.m ? target.m : 1;
+          if (opts.ignoreDifficult) {
+            d = 1;
+          }
+          if (distance + d > opts.range) {
+            return;
+          } else {
+            target.tileModel.distance = distance + d;
+          }
+          target.tileModel.discovered = true;
+          checkQueue.unshift(target);
+          return done.call(this, target);
+        };
+        while (!(checkQueue.length <= 0)) {
+          square = checkQueue.pop();
+          tile = square.tileModel;
+          movable.push(tile);
+          for (i = _i = -1; _i <= 1; i = ++_i) {
+            if (i === 0) {
+              continue;
+            }
+            enqueue(0, i, square.tileModel, this.virtualMove(0, i, square, opts));
+            enqueue(i, 0, square.tileModel, this.virtualMove(i, 0, square, opts));
+            if (opts.diagonal === true) {
+              enqueue(i, i, square.tileModel, this.virtualMove(i, i, square, opts));
+              enqueue(-i, i, square.tileModel, this.virtualMove(-i, i, square, opts));
+            }
+          }
+        }
+        _.each(movable.models, function(tile) {
+          return tile.discovered = false;
+        });
+        return movable;
+      };
+
       return GridOverlay;
 
     })(mapcreator.Overlay);
@@ -440,8 +531,11 @@
       GridSquare.prototype.colors = {
         selected_move: "green",
         potential_move: "#ea0000",
-        general: 'blue'
+        general: 'blue',
+        burst: 'orange'
       };
+
+      GridSquare.prototype.pulsing = true;
 
       GridSquare.prototype.initialize = function() {
         this.listenTo(this.model, {
@@ -455,23 +549,47 @@
             return this.unbindAttackFns();
           },
           generalhighlight: this.highlight,
-          attackrange: this.attackrange
+          rangeattack: this.attackrange,
+          burstattack: this.burstattack
+        });
+        this.listenTo(this.model.collection.chunk, {
+          pulse: this.pulse,
+          stopPulsing: this.stopPulsing
         });
         return this.setUpHitArea();
+      };
+
+      GridSquare.prototype.stopPulsing = function() {
+        this.pulsing = false;
+        this.model.bitmap.hitArea.alpha = .3;
+        return this;
+      };
+
+      GridSquare.prototype.pulse = function() {
+        var area, direction;
+        direction = 1;
+        this.pulsing = true;
+        area = this.model.bitmap.hitArea;
+        return this;
       };
 
       GridSquare.prototype.setUpHitArea = function() {
         var area, bitmap;
         bitmap = this.model.bitmap;
         area = bitmap.hitArea;
+        area.drawn = false;
         area.x = bitmap.x;
         area.y = bitmap.y;
+        area.alpha = .16;
         return this;
       };
 
       GridSquare.prototype.render = function() {
         this.model.square = this;
         this.$el.html(_.template(this.template, this.model.toJSON()));
+        if (this.model.get("e") === "f") {
+          this.$el.addClass("nogrid");
+        }
         return this;
       };
 
@@ -481,24 +599,24 @@
 
       GridSquare.prototype.move_fns = {
         clickHandler: function(e, data) {
-          var active, moveInterval, path,
+          var active_player, moveInterval, path,
             _this = this;
-          active = getActive();
+          active_player = getActive();
           path = this.model.pathFromStart.path;
           _timer.stop();
           moveInterval = function() {
             var deltas;
             if (_.isEmpty(path)) {
-              _this.stopListening(active, "donemoving");
+              _this.stopListening(active_player, "donemoving");
               _activebattle.clearPotentialMoves();
-              return active.takeMove();
+              return active_player.takeMove();
             } else {
               deltas = path.shift();
-              return active.moveInterval(deltas.dx, deltas.dy);
+              return active_player.moveInterval(deltas.dx, deltas.dy);
             }
           };
           moveInterval();
-          return this.listenTo(active, "donemoving", function() {
+          return this.listenTo(active_player, "donemoving", function() {
             return setTimeout(moveInterval, 100);
           });
         },
@@ -518,10 +636,22 @@
         clickHandler: function(e, data) {
           var attacker, power, subject;
           power = this.model.boundPower;
+          console.log(this.model, data, this);
           attacker = power.ownedBy;
-          subject = this.model.bitmap.occupiedBy;
+          if (data.type === "burst") {
+            subject = [];
+            _.each(_activebattle.attack_zone.models, function(square) {
+              var occupant;
+              occupant = square.getOccupant();
+              if (square.isOccupied() && !_.isEqual(occupant, attacker)) {
+                return subject.push(occupant);
+              }
+            });
+          } else {
+            subject = this.model.getOccupant();
+          }
           if (subject == null) {
-            return "Trying to attack an empty square";
+            return false;
           } else {
             return this.handleAttack(attacker, subject, power);
           }
@@ -542,19 +672,42 @@
         }
       };
 
-      GridSquare.prototype.handleAttack = function(attacker, subject, power) {
-        var attrs, use;
+      GridSquare.prototype.handleAttack = function(attacker, subject, power, opts) {
+        var attrs, targets, use,
+          _this = this;
+        if (opts == null) {
+          opts = {
+            take_action: true
+          };
+        }
+        console.log(arguments);
+        debugger;
         attrs = power.toJSON();
         if (!attacker.can(attrs.action)) {
           return this;
         }
         use = attrs.use;
+        if (_.isArray(subject)) {
+          targets = subject.length;
+          _.each(subject, function(subj, i) {
+            var take_action;
+            take_action = i < targets - 1 ? false : true;
+            return _this.handleAttack(attacker, subj, power, {
+              take_action: take_action
+            });
+          });
+          return this;
+        }
         if (_.isFunction(use)) {
           use.call(power, subject, attacker);
         }
         subject.takeDamage(attrs.damage + ut.roll(attrs.modifier));
+        console.log("attacking " + (subject.get('name')));
+        debugger;
         attacker.useCreatine(attrs.creatine);
-        attacker.takeAction(attrs.action);
+        if (opts.take_action !== false) {
+          attacker.takeAction(attrs.action);
+        }
         power.use();
         _activebattle.clearAttackZone();
         return this;
@@ -575,25 +728,26 @@
         });
       };
 
-      GridSquare.prototype.bindAttackFns = function() {
+      GridSquare.prototype.bindAttackFns = function(type) {
         var a, area;
         area = this.model.bitmap.hitArea;
         a = this.attack_fns;
         area.on("click", a.clickHandler, this, false, {
-          area: area
+          area: area,
+          type: type
         });
         area.on("mouseover", a.mouseoverHandler, this, false, {
-          area: area
+          area: area,
+          type: type
         });
         return area.on("mouseout", a.mouseoutHandler, this, false, {
-          area: area
+          area: area,
+          type: type
         });
       };
 
       GridSquare.prototype.highlight = function() {
         var area, bitmap, g;
-        console.log("highlighting");
-        console.log(arguments);
         bitmap = this.model.bitmap;
         area = bitmap.hitArea;
         return g = area.graphics;
@@ -619,16 +773,15 @@
       };
 
       GridSquare.prototype.removehighlighting = function() {
-        var bitmaphit;
-        bitmaphit = this.model.bitmap.hitArea;
+        var area;
+        area = this.model.bitmap.hitArea;
         this.unbindHitFns();
-        bitmaphit.drawn = false;
-        return bitmaphit.alpha = 0;
+        area.drawn = false;
+        return area.alpha = 0;
       };
 
       GridSquare.prototype.attackrange = function() {
         var area;
-        console.log("attack range at" + this.model.x, this.model.y);
         area = this.model.bitmap.hitArea;
         this.drawHitAreaSquare(this.colors.general);
         area.alpha = 0.3;
@@ -636,6 +789,16 @@
         this.bindAttackFns();
         stage.addChildAt(area, 0);
         return this;
+      };
+
+      GridSquare.prototype.burstattack = function() {
+        var area;
+        area = this.model.bitmap.hitArea;
+        this.drawHitAreaSquare(this.colors.burst);
+        area.alpha = 0.3;
+        area.drawn = true;
+        this.bindAttackFns("burst");
+        return stage.addChildAt(area, 0);
       };
 
       GridSquare.prototype.events = function() {
@@ -765,6 +928,12 @@
       },
       removeHighlighting: function() {
         return _activebattle.clearAllHighlights();
+      },
+      startPulsing: function() {
+        return _grid.model.trigger("pulse");
+      },
+      virtualMovePossibilities: function() {
+        return _grid.virtualMovePossibilities.apply(_grid, arguments);
       }
     };
     window.t = function() {

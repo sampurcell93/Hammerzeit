@@ -2,8 +2,8 @@
   var __hasProp = {}.hasOwnProperty,
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
-  define(["powers", "globals", "utilities", "dialog", "battler", "board", "underscore", "backbone", "jquery-ui"], function(powers, globals, ut, dialog, battler, board) {
-    var $wrapper, AttributeList, AttributeViewer, InventoryList, Menu, Meter, PowerList, PowerListItem, closeAll, toggleMenu, _activemenu, _menus, _potential_moves, _ref, _ref1, _ref2, _ref3, _ref4, _ref5;
+  define(["powers", "globals", "utilities", "dialog", "battler", "board", "jquery-ui"], function(powers, globals, ut, dialog, battler, board) {
+    var $wrapper, CharacterStateDisplay, InventoryList, Menu, Meter, PowerList, PowerListItem, StatList, closeAll, toggleMenu, _activemenu, _menus, _potential_moves, _ref, _ref1, _ref2, _ref3, _ref4, _ref5;
     board.focus();
     _menus = [];
     $wrapper = $(".wrapper");
@@ -67,7 +67,7 @@
       PowerListItem.prototype.template = $("#power-item").html();
 
       PowerListItem.prototype.initialize = function() {
-        _.bindAll(this, "rangeHandler", "chooseTargets");
+        _.bindAll(this, "chooseTargets");
         this.listenTo(this.model, {
           "change:uses": function(model, uses) {
             return this.renderUses(uses);
@@ -110,7 +110,6 @@
       };
 
       PowerListItem.prototype.renderDisabled = function() {
-        console.log("check disabilit");
         if (!(this.model.ownedBy.can(this.model.get("action")))) {
           return this.disable();
         } else {
@@ -118,13 +117,8 @@
         }
       };
 
-      PowerListItem.prototype.rangeHandler = function(target) {
-        target.tileModel.boundPower = this.model;
-        return target.tileModel.trigger("attackrange");
-      };
-
       PowerListItem.prototype.chooseTargets = function() {
-        var opts, u, user;
+        var handler, opts, u, user;
         if (this.isDisabled()) {
           return this;
         }
@@ -139,8 +133,10 @@
           ignoreDeltas: true,
           range: this.model.get("range")
         };
+        opts = _.extend(opts, this.model.getPathOptions());
         battler.removeHighlighting();
-        battler.setAttacks(u = user.virtualMovePossibilities(null, this.rangeHandler, opts));
+        handler = this.model.getHandler();
+        battler.setAttacks(u = battler.virtualMovePossibilities(user.getCurrentSpace(), handler, opts));
         return battler.setState("choosingattacks");
       };
 
@@ -160,12 +156,13 @@
         return _ref2;
       }
 
-      Meter.prototype.initialize = function(attrs) {
-        var attr, link, max,
+      Meter.prototype.initialize = function(_arg) {
+        var attr, el, link, max, model,
           _this = this;
-        link = this.link = attrs.el.attr("linker");
-        attr = attrs.model.get(link);
-        max = attrs.model.get("max_" + link);
+        model = _arg.model, el = _arg.el;
+        link = this.link = el.attr("linker");
+        attr = model.get(link);
+        max = model.get("max_" + link) || attr;
         this.setMin(0);
         this.setMax(max);
         this.setOptimum(max);
@@ -173,8 +170,7 @@
         this.setLow(max - (6 * max) / 7);
         this.setDisplay();
         this.$el.attr("value", attr);
-        this.listenTo(this.model, "change:" + link, function(model, m) {
-          console.log("changing " + link);
+        this.listenTo(this.model, "change:" + link, function(obj, m) {
           _this.set(m);
           return _this.setDisplay();
         });
@@ -249,36 +245,36 @@
       return Meter;
 
     })(Backbone.View);
-    AttributeList = (function(_super) {
-      __extends(AttributeList, _super);
+    StatList = (function(_super) {
+      __extends(StatList, _super);
 
-      function AttributeList() {
-        _ref3 = AttributeList.__super__.constructor.apply(this, arguments);
+      function StatList() {
+        _ref3 = StatList.__super__.constructor.apply(this, arguments);
         return _ref3;
       }
 
-      AttributeList.prototype.tagName = 'ul';
+      StatList.prototype.tagName = 'ul';
 
-      AttributeList.prototype.className = 'attribute-list';
+      StatList.prototype.className = 'attribute-list';
 
-      AttributeList.prototype.template = "<li><span class='key'><%= key %>:</span> <%= val %></li>";
+      StatList.prototype.template = "<li><span class='key'><%= key %>:</span> <%= val %></li>";
 
-      AttributeList.prototype.objTemplate = "<li><span class='key'><%= key %>:</span>";
+      StatList.prototype.objTemplate = "<li><span class='key'><%= key %>:</span> Some stuff</li>";
 
-      AttributeList.prototype.render = function() {
+      StatList.prototype.render = function() {
         var keys, objects,
           _this = this;
         this.$el.empty();
         objects = [];
         keys = Object.keys(this.model).sort();
         _.each(keys, function(key) {
-          var obj, val;
+          var val;
           val = _this.model[key];
           key = key.capitalize();
           if (_.isObject(val)) {
-            obj = {};
-            obj[key] = val;
-            return objects.push(obj);
+            return _this.$el.append(_.template(_this.objTemplate, {
+              key: key
+            }));
           } else {
             if (_.isString(val)) {
               val = val.capitalize();
@@ -292,28 +288,28 @@
         return this;
       };
 
-      return AttributeList;
+      return StatList;
 
     })(Backbone.View);
-    AttributeViewer = (function(_super) {
-      __extends(AttributeViewer, _super);
+    CharacterStateDisplay = (function(_super) {
+      __extends(CharacterStateDisplay, _super);
 
-      function AttributeViewer() {
-        _ref4 = AttributeViewer.__super__.constructor.apply(this, arguments);
+      function CharacterStateDisplay() {
+        _ref4 = CharacterStateDisplay.__super__.constructor.apply(this, arguments);
         return _ref4;
       }
 
-      AttributeViewer.prototype.tagName = 'div';
+      CharacterStateDisplay.prototype.tagName = 'div';
 
-      AttributeViewer.prototype.className = 'attribute-container';
+      CharacterStateDisplay.prototype.className = 'attribute-container';
 
-      AttributeViewer.prototype.template = $("#attribute-container").html();
+      CharacterStateDisplay.prototype.template = $("#attribute-container").html();
 
-      AttributeViewer.prototype.initialize = function(attrs) {
+      CharacterStateDisplay.prototype.initialize = function(attrs) {
         var c, cleanModel, h,
           _this = this;
-        cleanModel = _.omit(this.model.toJSON(), "creatine", "HP", "max_HP", "max_creatine", "current_chunk");
-        this.attrlist = new AttributeList({
+        cleanModel = _.omit(this.model.toJSON(), "creatine", "HP", "max_HP", "max_creatine", "current_chunk", "regY", "spriteimg", "frames");
+        this.attrlist = new StatList({
           model: cleanModel
         });
         this.render();
@@ -332,21 +328,21 @@
         return this;
       };
 
-      AttributeViewer.prototype.render = function() {
+      CharacterStateDisplay.prototype.render = function() {
         this.$el.html(_.template(this.template, _.extend(this.model.toJSON(), {
           actions: this.model.actions
         })));
         return this.$(".full-attributes").html(this.attrlist.render().el);
       };
 
-      AttributeViewer.prototype.hide = function() {
+      CharacterStateDisplay.prototype.hide = function() {
         this.visible = false;
         this.$el.slideUp("fast");
         this.hideFullView();
         return this;
       };
 
-      AttributeViewer.prototype.show = function() {
+      CharacterStateDisplay.prototype.show = function() {
         this.visible = true;
         if (this.model.isActive() === false) {
           this.$el.addClass("bottom");
@@ -357,30 +353,29 @@
         return this;
       };
 
-      AttributeViewer.prototype.updateActions = function(actions) {
+      CharacterStateDisplay.prototype.updateActions = function(actions) {
         var _this = this;
         actions = _.pick(this.model.actions, "move", "minor", "standard");
         return _.each(actions, function(val, action) {
-          console.log("updating " + action + " with " + val);
           return _this.$("." + action).text(val);
         });
       };
 
-      AttributeViewer.prototype.showFullView = function() {
+      CharacterStateDisplay.prototype.showFullView = function() {
         this.fullViewOpen = true;
         this.$(".js-toggle-full").text("Less");
         this.$(".full-attributes").slideDown("fast");
         return this;
       };
 
-      AttributeViewer.prototype.hideFullView = function() {
+      CharacterStateDisplay.prototype.hideFullView = function() {
         this.fullViewOpen = false;
         this.$(".js-toggle-full").text("More");
         this.$(".full-attributes").slideUp("fast");
         return this;
       };
 
-      AttributeViewer.prototype.toggleFullView = function(e) {
+      CharacterStateDisplay.prototype.toggleFullView = function(e) {
         if (this.fullViewOpen === true) {
           this.hideFullView();
         } else {
@@ -389,11 +384,11 @@
         return this;
       };
 
-      AttributeViewer.prototype.events = {
+      CharacterStateDisplay.prototype.events = {
         "click .js-toggle-full": "toggleFullView"
       };
 
-      return AttributeViewer;
+      return CharacterStateDisplay;
 
     })(Backbone.View);
     Menu = (function(_super) {
@@ -448,7 +443,7 @@
 
       Menu.prototype.setupMeters = function() {
         var container;
-        container = this.container = new AttributeViewer({
+        container = this.container = new CharacterStateDisplay({
           model: this.model
         });
         container.$el.appendTo($wrapper);
@@ -541,7 +536,9 @@
         "click .js-virtual-move": function() {
           console.log("specific click");
           battler.removeHighlighting();
-          _potential_moves = this.model.virtualMovePossibilities();
+          _potential_moves = battler.virtualMovePossibilities(this.model.getCurrentSpace(), null, {
+            range: this.model.get("spd")
+          });
           battler.setPotentialMoves(_potential_moves);
           return battler.setState("choosingmoves");
         },

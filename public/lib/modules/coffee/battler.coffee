@@ -1,10 +1,9 @@
-define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player", "backbone", "underscore", "jquery"], (board, globals, ut, mapper, NPC, mapcreator, player) ->
+define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player", "cast"], (board, globals, ut, mapper, NPC, mapcreator, player, cast) ->
 
     PCs = player.PCs
     Player = player.model
     NPCArray = NPC.NPCArray
     Enemy = NPC.Enemy
-    NPC = NPC.NPC
     stage = board.getStage()
     map = globals.map
     # Standard modifier (d20)
@@ -25,15 +24,14 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
                 "turndone": ->
                     board.mainCursor().hide()
                     @next()
-                "die": (model) => 
-                    console.log "#{model.get('name')} died (in InitiativeQueue listener)"
-                    @remove model
+                "die": (model) -> 
+                    alert "#{model.get('name')} died!"
                     _activebattle.checkEndOfBattle()
             _.each models, (character) => character.trigger("add", character, @, {})
         model: (attrs, options) ->
             switch attrs.type
               when 'player' then m = new player.model attrs, options
-              when 'npc' then m = new NPC attrs, options
+              when 'npc' then m = new NPC.NPC attrs, options
               when 'enemy' then m = new Enemy attrs, options
             # Deflects against multiple collections
             m.queue = @
@@ -51,6 +49,9 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
         next: (init) -> 
             num = @current_index = ++@current_index % @length
             active_player = @getActive()
+            # Look for live player
+            while active_player.isDead()
+                active_player = @getActive()
             _activebattle.clearAllHighlights()
             unless init is false
                 setTimeout -> 
@@ -65,6 +66,8 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
 
 
 
+    # Handler for battle state functions. Respnsible for battle state (a subset of board state)
+    # 
     class Battle extends Backbone.Model
         states: []
         defaults: 
@@ -127,8 +130,7 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
         randomize: (o={}) ->
             o = _.extend @defaults, o
             for i in [0...o.numenemies]
-                console.log "in loop"
-                @get("NPCs").add(n = new Enemy level: o.avglevel)
+                @get("NPCs").add(n = new Enemy)
                 @get("InitQueue").add n
                 n.addToMap()
                 globals.shared_events.trigger "bindmenu", n
@@ -147,7 +149,7 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
         clearPotentialMoves: ->
             if !@potential_moves? then return @
             _.each @potential_moves.models, (tile) ->
-                tile.trigger "removemove"
+                tile.removePotentialMovePath()
             @
         clearAttackZone: ->
             if !@attack_zone? then return @
@@ -236,8 +238,6 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
         modifyAllTiles: ->
         render: -> 
             super
-            console.log "rendering"
-            console.log @model
         toggle: ->
             if @showing is false then @activate()
             else @deactivate()
@@ -250,6 +250,84 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
             @hide()
             @showing = false
 
+        # Like move, but lightweight and with no transitions - simple arithmetic check
+        # Because we're not updating marker, we can pass in a start object (x:,y:) to be virtualized from
+        virtualMove: (dx, dy, start, opts) ->
+            opts || opts = {}
+            if board.isPaused() then return false
+            target = mapper.getTargetTile dx, dy, start
+            if _.isEmpty(target) 
+                return false
+            if target.tileModel.discovered 
+                return false
+            if !target.tileModel.checkEnterable(dx, dy, start, opts) 
+                return false
+            target
+        # Runs through the currently visible tiles in a battle and determines which moves are possible
+        # Returns array of tiles. If true, silent prevents observation 
+        # Still inefficient - keeps checking past max distance - todo
+        virtualMovePossibilities: (start, done, opts) ->
+            done       || (done = (target) -> target.tileModel.trigger("potentialmove"))
+            defaults = {
+                # Compute diagonals as a distance-1 move?
+                diagonal: false
+                # Do not designate squares occupied by NPCs as un-enterable
+                ignoreNPCs: false
+                # Do not designate squares occupied by PCs as un-enterable
+                ignorePCs: false
+                # Only designate occupied squares as valid.
+                ignoreEmpty: false
+                # Should difficult terrain factor into distance?
+                ignoreDifficult: false
+                # Should the path be stored?
+                storePath: true
+                # Should the acceptable directions of a square
+                ignoreDeltas: false
+                # How long should we search for
+                range: 6
+            }
+            opts = _.extend defaults, opts
+            checkQueue = []
+            movable = new mapper.Row
+            checkQueue.unshift(start)
+            start.tileModel.discovered = true
+            start.tileModel.distance = 0
+            start.tileModel.pathFromStart.start = _.pick start, "x", "y"
+            # Enqueue a target node and store the directions it took to get there
+            enqueue = (dx, dy, previous, target) ->
+                if target is false then return
+                distance = previous.distance
+                unless opts.storePath is false
+                    path = ut.deep_clone previous.pathFromStart.path
+                    path.push {dx: dx, dy: dy}
+                    pathFromStart = target.tileModel.pathFromStart
+                    pathFromStart.path = path
+                    pathFromStart.start = previous.pathFromStart.start
+                if !target then return
+                d = if target.m then target.m else 1
+                if opts.ignoreDifficult then d = 1
+                if distance + d > opts.range then return
+                else target.tileModel.distance = distance + d
+                target.tileModel.discovered = true
+                checkQueue.unshift target
+                done.call(@, target)
+            until checkQueue.length <= 0
+                square = checkQueue.pop()
+                tile = square.tileModel
+                movable.push tile
+                for i in [-1..1]
+                    if i is 0 then continue
+                    enqueue(0, i, square.tileModel, @virtualMove 0, i, square, opts)
+                    enqueue(i, 0, square.tileModel, @virtualMove i, 0, square, opts)
+                    if opts.diagonal is true
+                        enqueue(i, i, square.tileModel, @virtualMove i, i, square, opts)
+                        enqueue(-i, i, square.tileModel, @virtualMove -i, i, square, opts)
+            # Remove the original square from the results
+            # movable.shift()
+            _.each movable.models, (tile) ->
+                tile.discovered = false
+            movable
+
     class GridSquare extends Backbone.View
         tagName: 'li'
         template: "&nbsp;"
@@ -257,7 +335,9 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
             selected_move: "green"
             potential_move: "#ea0000"
             general: 'blue'
+            burst: 'orange'
         }
+        pulsing: true
         initialize: ->
             @listenTo @model,
                 potentialmove: @potentialmoves
@@ -268,42 +348,62 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
                     @removehighlighting()
                     @unbindAttackFns()
                 generalhighlight: @highlight
-                attackrange: @attackrange
+                rangeattack: @attackrange
+                burstattack: @burstattack
+            @listenTo @model.collection.chunk, 
+                pulse: @pulse
+                stopPulsing: @stopPulsing
             @setUpHitArea()
+        stopPulsing: ->
+            @pulsing = false
+            @model.bitmap.hitArea.alpha = .3
+            @
+        pulse: ->
+            direction = 1
+            @pulsing = true
+            area = @model.bitmap.hitArea
+            # setInterval =>
+            #     unless @pulsing is false or area.drawn is false
+            #         area.alpha += .01 * direction
+            #         if area.alpha >= .4
+            #             direction = -1
+            #         else if area.alpha <= .16
+            #             direction = 1
+            # , 50
+            @
         setUpHitArea: ->
-            # o = Math.ceil(@model.get("elv") / 5)
-            # if o < -5 then o = -5 else if o > 5 then o = 5
             bitmap = @model.bitmap
-            # bitmap.x += o
-            # bitmap.y += o
             area = bitmap.hitArea
+            area.drawn = false
             area.x = bitmap.x 
             area.y = bitmap.y
+            area.alpha = .16
             @
         render: ->
             @model.square = @
             @$el.html(_.template @template, @model.toJSON())
+            if @model.get("e") is "f" then @$el.addClass("nogrid")
             @
         drawHitAreaSquare: (color) ->
             @model.bitmap.hitArea.graphics.clear().beginFill(color).drawRect(0, 0, _ts, _ts).endFill();
          move_fns:
             # handler for click event on 
             clickHandler: (e, data) -> 
-                active = getActive()
+                active_player = getActive()
                 path = @model.pathFromStart.path
                 # Stop the timer while moving - player not punished for animation
                 _timer.stop()
                 moveInterval = =>
                     if _.isEmpty(path)
-                        @stopListening active, "donemoving"
+                        @stopListening active_player, "donemoving"
                         _activebattle.clearPotentialMoves()
                         # _activebattle.potential_moves = active.virtualMovePossibilities()
-                        active.takeMove()
+                        active_player.takeMove()
                     else
                         deltas = path.shift()
-                        active.moveInterval(deltas.dx,deltas.dy)
+                        active_player.moveInterval(deltas.dx,deltas.dy)
                 do moveInterval
-                @listenTo active, "donemoving", -> setTimeout moveInterval, 100
+                @listenTo active_player, "donemoving", -> setTimeout moveInterval, 100
             mouseoverHandler: (e, data) ->
                 board.mainCursor().show().move @model.bitmap
                 @drawHitAreaSquare @colors.selected_move
@@ -315,9 +415,16 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
         attack_fns: 
             clickHandler: (e, data) -> 
                 power = @model.boundPower
+                console.log @model, data, @
                 attacker = power.ownedBy
-                subject = @model.bitmap.occupiedBy
-                if !subject? then return "Trying to attack an empty square"
+                if data.type is "burst"
+                    subject = []
+                    _.each _activebattle.attack_zone.models, (square) ->
+                        occupant = square.getOccupant()
+                        if square.isOccupied() and !_.isEqual(occupant,attacker)
+                            subject.push(occupant) 
+                else subject = @model.getOccupant()
+                if !subject? then return false
                 else @handleAttack(attacker, subject, power)
 
             mouseoverHandler: (e, data) ->
@@ -333,15 +440,25 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
         # Accepts an attacker NPC object (or subclass), 
         # NPC subject of the attack, and the power being used
         # Calls the power's use function and performing the default actions
-        handleAttack: (attacker, subject, power) ->
+        handleAttack: (attacker, subject, power, opts={take_action: true}) ->
+            console.log arguments
+            debugger
             attrs = power.toJSON()
             if !attacker.can(attrs.action) then return @
             use = attrs.use
+            if _.isArray subject
+                targets = subject.length
+                _.each subject, (subj, i) =>
+                    take_action = if i < targets-1 then false else true
+                    @handleAttack attacker, subj, power, {take_action: take_action}
+                return @
             if _.isFunction(use) then use.call(power, subject, attacker)
             subject.takeDamage(attrs.damage + ut.roll(attrs.modifier))
+            console.log "attacking #{subject.get('name')}"
+            debugger 
             # Some powers cost magic 
             attacker.useCreatine(attrs.creatine)
-            attacker.takeAction(attrs.action)
+            attacker.takeAction(attrs.action) unless opts.take_action is false
             power.use()
             _activebattle.clearAttackZone()
             @
@@ -351,15 +468,13 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
             area.on "click" , m.clickHandler, @, false, area: area
             area.on "mouseover", m.mouseoverHandler, @, false, area: area
             area.on "mouseout", m.mouseoutHandler, @, false, area: area
-        bindAttackFns: ->
+        bindAttackFns: (type) ->
             area = @model.bitmap.hitArea
             a = @attack_fns
-            area.on "click" , a.clickHandler, @, false, area: area
-            area.on "mouseover", a.mouseoverHandler, @, false, area: area
-            area.on "mouseout", a.mouseoutHandler, @, false, area: area
+            area.on "click" , a.clickHandler, @, false, area: area, type: type
+            area.on "mouseover", a.mouseoverHandler, @, false, area: area, type: type
+            area.on "mouseout", a.mouseoutHandler, @, false, area: area, type: type
         highlight: ->
-            console.log "highlighting"
-            console.log arguments
             bitmap = @model.bitmap
             area = bitmap.hitArea
             g = area.graphics
@@ -380,13 +495,12 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
             @model.bitmap.hitArea.removeAllEventListeners()
         removehighlighting: -> 
             # @haspotentialmoves = false
-            bitmaphit = @model.bitmap.hitArea
+            area = @model.bitmap.hitArea
             @unbindHitFns()
-            bitmaphit.drawn = false
-            bitmaphit.alpha = 0
+            area.drawn = false
+            area.alpha = 0
             # stage.removeChild bitmaphit
         attackrange: ->
-            console.log "attack range at" + @model.x, @model.y 
             area = @model.bitmap.hitArea
             @drawHitAreaSquare @colors.general
             area.alpha = 0.3
@@ -394,6 +508,13 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
             @bindAttackFns()
             stage.addChildAt(area, 0)
             @
+        burstattack: ->
+            area = @model.bitmap.hitArea
+            @drawHitAreaSquare @colors.burst
+            area.alpha = 0.3
+            area.drawn = true
+            @bindAttackFns "burst"
+            stage.addChildAt(area, 0)
         events: ->
             "click": -> console.log "hitarea"
             mouseover: (e) ->
@@ -483,6 +604,9 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
             _activebattle.clearPotentialMoves()
         removeHighlighting: ->
             _activebattle.clearAllHighlights()
+        startPulsing: ->
+            _grid.model.trigger("pulse")
+        virtualMovePossibilities: -> _grid.virtualMovePossibilities.apply(_grid, arguments)
     }   
 
 

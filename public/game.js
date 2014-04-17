@@ -22,7 +22,8 @@
       'battler': 'lib/modules/js/battler',
       'menus': 'lib/modules/js/menus',
       'items': 'lib/modules/js/items',
-      'powers': 'lib/modules/js/powers'
+      'powers': 'lib/modules/js/powers',
+      'cast': 'lib/modules/js/monsters'
     }
   });
 

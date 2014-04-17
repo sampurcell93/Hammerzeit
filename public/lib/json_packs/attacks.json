@@ -1,5 +1,5 @@
 [
-    {"name": "Strike", "damage": 2, "uses": 0},
-    {"name": "Beguile", "action": "move", "uses": 3},
-    {"name": "Plead", "action": "move"}
+    {"name": "Strike"},
+    {"name": "Arrow", "range": 10, "uses": 5},
+    {"name": "Whirl", "spread": "burst"}
 ]

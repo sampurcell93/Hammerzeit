@@ -52,13 +52,7 @@ define ["utilities", "npc", "board", "globals", "mapper", "items", "powers", "ba
 			globals.shared_events.trigger "openmenu"
 		defaults: ->
 			defaults = super
-			Item = items.Item
 			inventory = defaults.inventory
-			inventory.add Item name: 'Wooden Sword'
-			inventory.add Item name: "Tattered Cloak"
-			inventory.add Item name: "Bread"
-			inventory.add Item name: "Worn Boots"
-			inventory.at(2).set("equipped", true)
 			_.each inventory.models, (item) => item.set("belongsTo", @)
 			inventory.sort()
 			return _.extend defaults, {
@@ -74,9 +68,9 @@ define ["utilities", "npc", "board", "globals", "mapper", "items", "powers", "ba
 
 	PCs = new NPC.NPCArray
 	PCs.add new player null, main: true
-	PCs.add new player init: 4, name: 'Fighter'
-	PCs.add new player init: 2, name: 'Mage'
-	PCs.add new player init: 3, name: 'Cleric'
+	# PCs.add new player init: 4, name: 'Fighter'
+	# PCs.add new player init: 2, name: 'Mage'
+	# PCs.add new player init: 3, name: 'Cleric'
 
 	return {
 		model: player

@@ -3,7 +3,7 @@
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
   define(["globals", "utilities", "underscore", "backbone"], function(globals, ut) {
-    var Inventory, InventoryList, Item, ItemView, getItem, _items, _ref, _ref1, _ref2, _ref3, _usefns, _wearfns;
+    var Inventory, InventoryList, Item, ItemView, get, getItem, _items, _ref, _ref1, _ref2, _ref3, _usefns, _wearfns;
     _usefns = {
       "Tattered Cloak": function(t, l) {}
     };
@@ -119,7 +119,9 @@
     _items = new Inventory;
     _items.url = "lib/json_packs/items.json";
     _items.fetch({
-      success: function(coll, resp) {},
+      success: function(coll, resp) {
+        return globals.shared_events.trigger("items_loaded");
+      },
       error: function(coll, resp) {
         return console.error(resp);
       },
@@ -128,10 +130,22 @@
     getItem = function(name) {
       var item;
       item = _items._byId[name];
-      if (typeof item === "object") {
+      if (_.isObject(item)) {
         return item.clone();
       } else {
         return null;
+      }
+    };
+    get = function(name) {
+      var inventory;
+      if (typeof name === "string") {
+        return getItem(name);
+      } else if ($.isArray(name)) {
+        inventory = new Inventory;
+        _.each(name, function(id) {
+          return inventory.add(getItem(id));
+        });
+        return inventory;
       }
     };
     return window.items = {
@@ -148,16 +162,11 @@
         return new ItemView(construction);
       },
       get: function(name) {
-        var inventory;
-        if (typeof name === "string") {
-          return getItem(name);
-        } else if ($.isArray(name)) {
-          inventory = new Inventory;
-          _.each(name, function(id) {
-            return inventory.add(getItem(id));
-          });
-          return inventory;
-        }
+        return get(name);
+      },
+      getDefaultInventory: function() {
+        var d;
+        return d = get(["Tattered Cloak"]);
       }
     };
   });

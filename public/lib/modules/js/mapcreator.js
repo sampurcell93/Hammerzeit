@@ -158,7 +158,7 @@
           this.model.set("elv", parseInt(modal.find(".js-add-elevation").val()));
         }
         ut.destroyModal();
-        this.model.trigger("expose");
+        this.model.expose();
         this.unselect();
         if (proceed !== false) {
           next = getNextTile(this.model.x, this.model.y);
@@ -269,6 +269,7 @@
         _.each(precursor_chunk, function(row, i) {
           var rowCollection;
           rowCollection = new Row;
+          rowCollection.chunk = chunk;
           _.each(row, function(tile, j) {
             var m;
             rowCollection.add(m = tile.tileModel);

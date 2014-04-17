@@ -61,6 +61,7 @@ define ["battler", "mapcreator", "utilities", "board", "dialog", "globals", "tas
 						board.addState("BATTLE").removeState("WAITING").removeState("TRAVEL")
 						battler.activateGrid()
 						board.setMapSize(_stageObj.width*globals.map.width, _stageObj.height*globals.map.height)
+						battler.start()
 						# PC.marker.y = 500
 						# PC.marker.x = 0
 						# PC.setCurrentSpace()
@@ -86,7 +87,7 @@ define ["battler", "mapcreator", "utilities", "board", "dialog", "globals", "tas
 							tile.trigger = _triggers[tile.trigger]
 			_bitmap[j][i] = mapper.loadChunk(chunk, j, i)
 			_bitmap[j][i].background_position = chunk.background_position
-		_events.trigger "doneloading"
+		_initialize()
 			# mapcreator.loadChunk map[j][i].tiles
 
 

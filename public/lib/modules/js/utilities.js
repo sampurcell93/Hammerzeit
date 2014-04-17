@@ -239,6 +239,9 @@
         },
         tb: function(x, y) {
           return b(x, y) || t(x, y);
+        },
+        e: function() {
+          return true;
         }
       },
       floorToOne: function(val) {

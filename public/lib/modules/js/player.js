@@ -92,24 +92,10 @@
       };
 
       player.prototype.defaults = function() {
-        var Item, defaults, inventory,
+        var defaults, inventory,
           _this = this;
         defaults = player.__super__.defaults.apply(this, arguments);
-        Item = items.Item;
         inventory = defaults.inventory;
-        inventory.add(Item({
-          name: 'Wooden Sword'
-        }));
-        inventory.add(Item({
-          name: "Tattered Cloak"
-        }));
-        inventory.add(Item({
-          name: "Bread"
-        }));
-        inventory.add(Item({
-          name: "Worn Boots"
-        }));
-        inventory.at(2).set("equipped", true);
         _.each(inventory.models, function(item) {
           return item.set("belongsTo", _this);
         });
@@ -135,18 +121,6 @@
     PCs = new NPC.NPCArray;
     PCs.add(new player(null, {
       main: true
-    }));
-    PCs.add(new player({
-      init: 4,
-      name: 'Fighter'
-    }));
-    PCs.add(new player({
-      init: 2,
-      name: 'Mage'
-    }));
-    PCs.add(new player({
-      init: 3,
-      name: 'Cleric'
     }));
     return {
       model: player,

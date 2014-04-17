@@ -1,4 +1,4 @@
-define ["powers", "globals", "utilities", "dialog", "battler","board", "underscore", "backbone", "jquery-ui"], (powers, globals, ut, dialog, battler, board) ->
+define ["powers", "globals", "utilities", "dialog", "battler","board", "jquery-ui"], (powers, globals, ut, dialog, battler, board) ->
 
     board.focus()
 
@@ -33,13 +33,12 @@ define ["powers", "globals", "utilities", "dialog", "battler","board", "undersco
             power = new PowerListItem model: power
             @$el.append(power.render().el)
 
-
     class PowerListItem extends Backbone.View
         tagName: 'li'
         className: 'power-item'
         template: $("#power-item").html()
         initialize: ->
-            _.bindAll @, "rangeHandler", "chooseTargets"
+            _.bindAll @, "chooseTargets"
             @listenTo @model,
                 "change:uses": (model, uses) -> @renderUses uses
             @listenTo @model.ownedBy.actions, "change", @renderDisabled
@@ -62,30 +61,33 @@ define ["powers", "globals", "utilities", "dialog", "battler","board", "undersco
             if uses <= 0 then @disable() else @enable()
             @
         renderDisabled: ->
-            console.log "check disabilit"
             if !(@model.ownedBy.can(@model.get("action"))) then @disable()
             else @enable()
-        rangeHandler: (target)->
-            target.tileModel.boundPower = @model
-            target.tileModel.trigger "attackrange"
         chooseTargets: ->
             if @isDisabled() then return @
             user = @model.ownedBy
             if !user then return 
             opts = {ignoreNPCs: true, storePath: false, ignoreDifficult: true, ignoreDeltas: true, range: @model.get("range")}
+            opts = _.extend opts, @model.getPathOptions()
             battler.removeHighlighting()
-            battler.setAttacks u = user.virtualMovePossibilities(null, @rangeHandler, opts)
+            handler = @model.getHandler()
+            battler.setAttacks u = battler.virtualMovePossibilities(user.getCurrentSpace(), handler, opts)
             battler.setState("choosingattacks")
         events: 
             "click": "chooseTargets"
 
+
     _potential_moves = null
 
+    # A simple meter api for interacting with the HTML5 meter.
+    # Pass in an "el" parameter to bind the view, and a model.
     class Meter extends Backbone.View
-        initialize: (attrs) ->
-            link = @link = attrs.el.attr("linker")
-            attr = attrs.model.get(link)
-            max  = attrs.model.get("max_#{link}")
+        # The "linker" attribute of the el determines the property to be 
+        # represented in the meter. 
+        initialize: ({model, el}) ->
+            link = @link = el.attr("linker")
+            attr = model.get(link)
+            max  = model.get("max_#{link}") || attr
             @setMin 0
             @setMax max
             @setOptimum max
@@ -93,8 +95,7 @@ define ["powers", "globals", "utilities", "dialog", "battler","board", "undersco
             @setLow max - (6*max)/7
             @setDisplay()
             @$el.attr("value", attr)
-            @listenTo @model, "change:#{link}", (model, m) => 
-                console.log "changing #{link}"
+            @listenTo @model, "change:#{link}", (obj, m) => 
                 @set m
                 @setDisplay()
             @render()
@@ -125,12 +126,13 @@ define ["powers", "globals", "utilities", "dialog", "battler","board", "undersco
         events: 
             click: -> console.log @model
 
-
-    class AttributeList extends Backbone.View
+    # A list view for character stats, like Strength, Level, Race, etc. 
+    # Handles object and nested objecte rendering, too.
+    class StatList extends Backbone.View
         tagName: 'ul'
         className: 'attribute-list'
         template: "<li><span class='key'><%= key %>:</span> <%= val %></li>"
-        objTemplate: "<li><span class='key'><%= key %>:</span>"
+        objTemplate: "<li><span class='key'><%= key %>:</span> Some stuff</li>"
         render: ->
             @$el.empty()
             objects = []
@@ -139,22 +141,22 @@ define ["powers", "globals", "utilities", "dialog", "battler","board", "undersco
                 val = @model[key]
                 key = key.capitalize()
                 if _.isObject(val)
-                    obj = {}
-                    obj[key] = val
-                    objects.push(obj)
+                    @$el.append(_.template(@objTemplate, key: key))
+                    # @$el.append new StatList({model: val.models})
                 else
                     if _.isString(val) then val = val.capitalize()
                     @$el.append(_.template(@template, {val: val, key: key}))
             @
 
-
-    class AttributeViewer extends Backbone.View
+    # Displays all states on a character, including HP, creatine, actions remaining, 
+    # statistics, temporary effects, etc
+    class CharacterStateDisplay extends Backbone.View
         tagName: 'div'
         className: 'attribute-container'
         template: $("#attribute-container").html()
         initialize: (attrs) ->
-            cleanModel = _.omit @model.toJSON(), "creatine", "HP", "max_HP", "max_creatine", "current_chunk"
-            @attrlist = new AttributeList model: cleanModel
+            cleanModel = _.omit @model.toJSON(), "creatine", "HP", "max_HP", "max_creatine", "current_chunk", "regY", "spriteimg", "frames"
+            @attrlist = new StatList model: cleanModel
             @render()
             @meters = {}
             h = @meters.health = new Meter el: @$("meter.HP"), model: attrs.model
@@ -181,7 +183,6 @@ define ["powers", "globals", "utilities", "dialog", "battler","board", "undersco
         updateActions: (actions) ->
             actions = _.pick @model.actions, "move", "minor", "standard"
             _.each actions, (val, action) =>
-                console.log "updating #{action} with #{val}"
                 @$(".#{action}").text(val)
         showFullView: ->
             @fullViewOpen = true
@@ -202,9 +203,8 @@ define ["powers", "globals", "utilities", "dialog", "battler","board", "undersco
         events: 
             "click .js-toggle-full": "toggleFullView"
 
-
-
-    # Basic manu view
+    # Contains template for rendering a battle menu with action options
+    # Contains subclasses, including Meters and CharacterStateDisplay
     class Menu extends Backbone.View
         type: 'default'
         className: 'game-menu'
@@ -227,7 +227,7 @@ define ["powers", "globals", "utilities", "dialog", "battler","board", "undersco
             @showInventory()
             @updateActions @model.actions
         setupMeters: ->
-            container = @container = new AttributeViewer model: @model
+            container = @container = new CharacterStateDisplay model: @model
             container.$el.appendTo $wrapper
             @
         # When actions are used, re-render that portion of the view
@@ -282,7 +282,7 @@ define ["powers", "globals", "utilities", "dialog", "battler","board", "undersco
             "click .js-virtual-move": -> 
                 console.log "specific click"
                 battler.removeHighlighting()
-                _potential_moves = @model.virtualMovePossibilities()                
+                _potential_moves = battler.virtualMovePossibilities @model.getCurrentSpace(), null, {range: @model.get("spd")}
                 battler.setPotentialMoves _potential_moves
                 battler.setState("choosingmoves")
             "click .js-defend": ->

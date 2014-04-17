@@ -62,14 +62,23 @@ define ["globals", "utilities", "underscore", "backbone"], (globals, ut) ->
     _items.url = "lib/json_packs/items.json"
     _items.fetch 
         success: (coll, resp) -> 
+            globals.shared_events.trigger "items_loaded"
         error: (coll, resp) ->
             console.error resp
         parse: true
 
     getItem = (name) ->
         item = _items._byId[name]
-        if typeof item is "object" then item.clone()
+        if _.isObject(item) then item.clone()
         else null
+
+    get = (name) ->
+        if typeof name is "string" then return getItem name
+        else if $.isArray name 
+            inventory = new Inventory
+            _.each name, (id) ->
+                inventory.add getItem id
+            inventory
 
     return window.items = {
         Item: (construction) -> new Item(construction)
@@ -79,12 +88,7 @@ define ["globals", "utilities", "underscore", "backbone"], (globals, ut) ->
         # Pass in item name (also ID) and the Item model is returned
         # Can also pass in string array, and an inventory object will be returned
         get: (name) -> 
-            if typeof name is "string" then return getItem name
-            else if $.isArray name 
-                inventory = new Inventory
-                _.each name, (id) ->
-                    inventory.add getItem id
-                inventory
-
-
+            get name
+        getDefaultInventory: ->
+            d = get ["Tattered Cloak"]
     }

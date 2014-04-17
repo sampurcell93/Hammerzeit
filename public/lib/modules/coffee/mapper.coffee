@@ -8,6 +8,7 @@ define ["globals", "utilities", "board", "mapper", "underscore", "backbone", "ea
     stage = board.getStage()
     # 3d tiles have to be drawn after the players and npcs, because they overshadow them
     _3dtiles = null
+    _checkEntry = ut.tileEntryCheckers
 
     _cached_chunks = []
     for i in [0..3] then _cached_chunks[i] = []
@@ -24,10 +25,7 @@ define ["globals", "utilities", "board", "mapper", "underscore", "backbone", "ea
             end: true
             # Difficulty - how many moves does it take to get through? Do not use "d" as key here
             m: 1
-        initialize: (attrs) ->
-            @on 
-                "expose": @expose
-                "removemove": @removePotentialMoves
+        initialize: ->
             @pathFromStart =
                 start: 
                     x: 0
@@ -35,12 +33,23 @@ define ["globals", "utilities", "board", "mapper", "underscore", "backbone", "ea
                 path: []
         expose: ->
             setTile @attributes
-        removePotentialMoves: ->
-            while @pathFromStart.path.length
-                @pathFromStart.path.shift()
+        removePotentialMovePath: ->
+            @pathFromStart.path = []
+            @trigger "removemove"
             @
         isOccupied: -> @bitmap.occupied is true
         getOccupant: -> @bitmap.occupiedBy
+        # Pass in the target tile and the move deltas, and the NPC will use the current 
+        # active chunk to determine if the spot is enterable.
+        checkEnterable: (dx, dy, start, opts = {}) ->
+            e = @get "e"
+            console.log e
+            if e is false or e is "f" and !opts.ignoreDeltas then return false
+            else if @isOccupied() and !opts.ignoreNPCs then return false
+            else if e is "" then return true
+            else if _.isString(e) and !opts.ignoreDeltas
+                return _checkEntry[e](dx, dy)
+            else true
 
     class Row extends Backbone.Collection
         model: Tile
@@ -50,6 +59,7 @@ define ["globals", "utilities", "board", "mapper", "underscore", "backbone", "ea
             rows = []
             for i in [0...globals.map.tileheight]
                 rows[i] = row = new Row
+                row.chunk = @
                 for j in [0...globals.map.tilewidth] 
                     row.add tile = new Tile({t: 'e'})
                     tile.x = j
@@ -148,7 +158,7 @@ define ["globals", "utilities", "board", "mapper", "underscore", "backbone", "ea
                 tile.hitArea = createBitEventRegister(tile, tile.x, tile.y)
                 if tile.t isnt "e" and tile.t isnt "p"
                     _3dtiles.addChild tile
-                else container.addChild tile
+                container.addChild tile
         stage.terrain = bitmap
         stage.addChild container
         container
@@ -182,6 +192,10 @@ define ["globals", "utilities", "board", "mapper", "underscore", "backbone", "ea
             _activechunk
         setTile: (tile) ->
             setTile tile
+                # Given move deltas, retrieve the DisplayObject (bitmap) at that position in the current chunk
+        getTargetTile: (dx, dy, start) ->
+            chunk = _activechunk.children
+            chunk[(start.y+(50*dy))/50]?.children[(start.x+(50*dx))/50] || {}
         Tile: Tile
         Row: Row
         Chunk: Chunk

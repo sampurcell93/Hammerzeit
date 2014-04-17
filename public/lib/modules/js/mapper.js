@@ -3,7 +3,7 @@
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
   define(["globals", "utilities", "board", "mapper", "underscore", "backbone", "easel", "jquery"], function(globals, ut, board, mapper) {
-    var Chunk, Row, Tile, bindModel, clearChunk, createBitEventRegister, getFromShorthand, i, loadChunk, modifyBackground, renderChunk, setDefaultTileAttrs, setTile, stage, tileheight, tiles, tileurl, tilewidth, _3dtiles, _activebitmap, _activechunk, _backbone, _cached_chunks, _i, _ref, _ref1, _ref2;
+    var Chunk, Row, Tile, bindModel, clearChunk, createBitEventRegister, getFromShorthand, i, loadChunk, modifyBackground, renderChunk, setDefaultTileAttrs, setTile, stage, tileheight, tiles, tileurl, tilewidth, _3dtiles, _activebitmap, _activechunk, _backbone, _cached_chunks, _checkEntry, _i, _ref, _ref1, _ref2;
     tileurl = 'images/tiles/<%=name%>.<%=typeof filetype !== "undefined" ? filetype : "jpg" %>';
     tilewidth = tileheight = 50;
     tiles = null;
@@ -12,6 +12,7 @@
     _backbone = null;
     stage = board.getStage();
     _3dtiles = null;
+    _checkEntry = ut.tileEntryCheckers;
     _cached_chunks = [];
     for (i = _i = 0; _i <= 3; i = ++_i) {
       _cached_chunks[i] = [];
@@ -32,11 +33,7 @@
         m: 1
       };
 
-      Tile.prototype.initialize = function(attrs) {
-        this.on({
-          "expose": this.expose,
-          "removemove": this.removePotentialMoves
-        });
+      Tile.prototype.initialize = function() {
         return this.pathFromStart = {
           start: {
             x: 0,
@@ -50,10 +47,9 @@
         return setTile(this.attributes);
       };
 
-      Tile.prototype.removePotentialMoves = function() {
-        while (this.pathFromStart.path.length) {
-          this.pathFromStart.path.shift();
-        }
+      Tile.prototype.removePotentialMovePath = function() {
+        this.pathFromStart.path = [];
+        this.trigger("removemove");
         return this;
       };
 
@@ -63,6 +59,26 @@
 
       Tile.prototype.getOccupant = function() {
         return this.bitmap.occupiedBy;
+      };
+
+      Tile.prototype.checkEnterable = function(dx, dy, start, opts) {
+        var e;
+        if (opts == null) {
+          opts = {};
+        }
+        e = this.get("e");
+        console.log(e);
+        if (e === false || e === "f" && !opts.ignoreDeltas) {
+          return false;
+        } else if (this.isOccupied() && !opts.ignoreNPCs) {
+          return false;
+        } else if (e === "") {
+          return true;
+        } else if (_.isString(e) && !opts.ignoreDeltas) {
+          return _checkEntry[e](dx, dy);
+        } else {
+          return true;
+        }
       };
 
       return Tile;
@@ -94,6 +110,7 @@
         rows = [];
         for (i = _j = 0, _ref3 = globals.map.tileheight; 0 <= _ref3 ? _j < _ref3 : _j > _ref3; i = 0 <= _ref3 ? ++_j : --_j) {
           rows[i] = row = new Row;
+          row.chunk = this;
           for (j = _k = 0, _ref4 = globals.map.tilewidth; 0 <= _ref4 ? _k < _ref4 : _k > _ref4; j = 0 <= _ref4 ? ++_k : --_k) {
             row.add(tile = new Tile({
               t: 'e'
@@ -215,10 +232,9 @@
           tile.y = tileheight * vertindex;
           tile.hitArea = createBitEventRegister(tile, tile.x, tile.y);
           if (tile.t !== "e" && tile.t !== "p") {
-            return _3dtiles.addChild(tile);
-          } else {
-            return container.addChild(tile);
+            _3dtiles.addChild(tile);
           }
+          return container.addChild(tile);
         }
       });
       stage.terrain = bitmap;
@@ -256,6 +272,11 @@
       },
       setTile: function(tile) {
         return setTile(tile);
+      },
+      getTargetTile: function(dx, dy, start) {
+        var chunk, _ref3;
+        chunk = _activechunk.children;
+        return ((_ref3 = chunk[(start.y + (50 * dy)) / 50]) != null ? _ref3.children[(start.x + (50 * dx)) / 50] : void 0) || {};
       },
       Tile: Tile,
       Row: Row,

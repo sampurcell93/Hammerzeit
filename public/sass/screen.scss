@@ -192,12 +192,15 @@ ol {
         height: 50px;
         display: inline-block;
         text-align: center;
-        outline: 1px solid #333;
         white-space: nowrap;
         font-size: 1.2em;
         font-family: sans-serif;
         text-transform: uppercase;
         position: relative;
+
+        &.nogrid {
+            outline: 1px solid rgba(0,0,0,.035);
+        }
 
         &:hover {
             color: #aaa;
@@ -223,7 +226,7 @@ ol {
 .battle-grid-overlay {
     pointer-events: none;
     li {
-        outline: 1px solid rgba(0,0,0,.2); 
+        outline: 1px solid rgba(0,0,0,.1); 
 
         &.potentialmove {
             outline: none;
@@ -467,6 +470,7 @@ textarea {
     ul.actions-remaining {
         color: #aaa;
         width: 100%;
+        padding: 0 5px;
 
         li {
             display: inline-block;
@@ -479,7 +483,7 @@ textarea {
             }
             &:last-of-type {
                 text-align: right;
-                width: 30%;
+                width: 35%;
             }
         }
     }

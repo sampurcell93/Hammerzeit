@@ -104,7 +104,7 @@ define ["globals", "utilities", "mapper", "backbone", "jquery", "jquery-ui", "un
             if modal.find(".js-add-elevation").inputChanged() 
                 @model.set "elv", parseInt(modal.find(".js-add-elevation").val())
             ut.destroyModal()
-            @model.trigger "expose"
+            @model.expose()
             @unselect()
             unless proceed is false
                 next = getNextTile(@model.x,@model.y)
@@ -175,6 +175,7 @@ define ["globals", "utilities", "mapper", "backbone", "jquery", "jquery-ui", "un
             # Deep copy
             _.each precursor_chunk, (row, i) ->
                 rowCollection = new Row
+                rowCollection.chunk = chunk
                 _.each row, (tile, j) ->
                     rowCollection.add m = tile.tileModel
                     m.x = j

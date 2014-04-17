@@ -10,9 +10,6 @@
         board.addState("LOADING");
         return require(["lib/modules/js/stage" + module], function(level) {
           board.removeState("LOADING");
-          level.events.on("doneloading", function() {
-            return level.initialize();
-          });
           return PC.on("change:current_chunk", function() {
             var full_chunk, newchunk;
             ut.c("CHUNK CHANGE REGISTERED IN TASKRUNNER");
