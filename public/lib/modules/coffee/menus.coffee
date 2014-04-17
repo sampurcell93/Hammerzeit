@@ -17,8 +17,33 @@ define ["powers", "globals", "utilities", "dialog", "battler","board", "jquery-u
         _activemenu = character.menu = new Menu model: character
         _menus.push _activemenu
 
+    # Inventory List View
+    class InventoryList extends Backbone.View
+        tagName: 'ul'
+        initialize: ->
+            _.bindAll @, "render", "addItem"
+            @
+        addItem: (item) ->
+            item = new ItemView model: item
+            item.render().$el.appendTo @$el
+        render: ->
+            @$el.empty()
+            _.each @collection.models, @addItem
+            @
 
-    InventoryList = items.InventoryList
+    class ItemView extends Backbone.View
+        tagName: 'li'
+        template: $("#inventory-item").html()
+        render: ->
+            @$el.html(_.template @template, @model.toJSON())
+            more = new StatList model: @model.toJSON()
+            @$el.append more.render().el
+            @
+        events: 
+            "click .js-show-more": (e) ->
+                @$(".attribute-list").slideToggle()
+                e.stopPropagation()
+                e.stopImmediatePropagation()
 
     class PowerList extends Backbone.View
         tagName: 'ul'
@@ -41,11 +66,13 @@ define ["powers", "globals", "utilities", "dialog", "battler","board", "jquery-u
             _.bindAll @, "chooseTargets"
             @listenTo @model,
                 "change:uses": (model, uses) -> @renderUses uses
-            @listenTo @model.ownedBy.actions, "change", @renderDisabled
+            @listenTo @model.ownedBy.actions, "change", @checkDisabled
         render: ->
-            @$el.html(_.template(@template, @model.toJSON()))
+            @$el.html(_.template(@template, _.extend(@model.toJSON(), rangedisplay: @model.getRangeDisplay())))
+            more = new StatList model: @model.toJSON()
+            @$el.append more.render().el
             @renderUses(@model.get("uses"))
-            @renderDisabled()
+            @checkDisabled()
             @
         disable: ->
             @disabled = true
@@ -57,10 +84,10 @@ define ["powers", "globals", "utilities", "dialog", "battler","board", "jquery-u
             @
         isDisabled: -> @disabled
         renderUses: (uses) ->
-            @$(".uses").text(uses)
+            @$(".uses").html(if isFinite(uses) then uses else "&infin;")
             if uses <= 0 then @disable() else @enable()
             @
-        renderDisabled: ->
+        checkDisabled: ->
             if !(@model.ownedBy.can(@model.get("action"))) then @disable()
             else @enable()
         chooseTargets: ->
@@ -75,6 +102,13 @@ define ["powers", "globals", "utilities", "dialog", "battler","board", "jquery-u
             battler.setState("choosingattacks")
         events: 
             "click": "chooseTargets"
+            "click .attribute-list": (e) ->
+                e.stopPropagation()
+                e.stopImmediatePropagation()
+            "click .js-show-more": (e) ->
+                @$(".attribute-list").slideToggle()
+                e.stopPropagation()
+                e.stopImmediatePropagation()
 
 
     _potential_moves = null
@@ -126,7 +160,7 @@ define ["powers", "globals", "utilities", "dialog", "battler","board", "jquery-u
         events: 
             click: -> console.log @model
 
-    # A list view for character stats, like Strength, Level, Race, etc. 
+    # A list view for character stats, like Strength, Level, Race, etc. Or any key val object really
     # Handles object and nested objecte rendering, too.
     class StatList extends Backbone.View
         tagName: 'ul'
@@ -239,7 +273,7 @@ define ["powers", "globals", "utilities", "dialog", "battler","board", "jquery-u
                 if !model.can(needed)
                     $t.addClass("disabled")
         showInventory: ->
-            list = InventoryList collection: @model.get "inventory"
+            list = new InventoryList collection: @model.get "inventory"
             @$(".inventory-list").html(list.render().el)
             @
         showPowers: ->
@@ -253,7 +287,6 @@ define ["powers", "globals", "utilities", "dialog", "battler","board", "jquery-u
         selectNext: ->
             @selectThis @$el.children(".selected").next()
         selectPrev: ->
-            console.log "prev"
             @selectThis @$el.children(".selected").prev()
         events:
             "click": ->
@@ -261,7 +294,6 @@ define ["powers", "globals", "utilities", "dialog", "battler","board", "jquery-u
             "click .js-close-menu": ->
                 toggleMenu @type
             "click .js-show-inventory": (e) ->
-                @showInventory()
                 e.stopPropagation()
             "click li": (e) ->
                 $t = $(e.currentTarget)
@@ -280,7 +312,6 @@ define ["powers", "globals", "utilities", "dialog", "battler","board", "jquery-u
                     when 27 then @close()
                     when 13 then @$el.children(".selected").trigger "click"
             "click .js-virtual-move": -> 
-                console.log "specific click"
                 battler.removeHighlighting()
                 _potential_moves = battler.virtualMovePossibilities @model.getCurrentSpace(), null, {range: @model.get("spd")}
                 battler.setPotentialMoves _potential_moves

@@ -353,6 +353,24 @@ textarea {
     }
 }
 
+.power-list, .inventory-list {
+    .attribute-list {
+        @extend .clearfix;
+        padding: 10px;
+        display: none;
+
+        li {
+            float: left;
+            width: 50%;
+            font-size: 1rem;
+            padding: 0;
+            text-indent: .4em;
+            text-align: left;
+            background: rgba(0,0,0,.4);
+        }
+    }
+}
+
 
 .login-box {
     position: absolute;

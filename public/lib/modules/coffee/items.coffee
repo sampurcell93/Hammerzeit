@@ -36,28 +36,6 @@ define ["globals", "utilities", "underscore", "backbone"], (globals, ut) ->
         comparator: (model) ->
             -model.get("equipped")
 
-    # Inventory List View
-    class InventoryList extends Backbone.View
-        tagName: 'ul'
-        initialize: ->
-            _.bindAll @, "render", "addItem"
-            @
-        addItem: (item) ->
-            item = new ItemView model: item
-            item.render().$el.appendTo @$el
-        render: ->
-            @$el.empty()
-            _.each @collection.models, @addItem
-            @
-
-    class ItemView extends Backbone.View
-        tagName: 'li'
-        template: $("#inventory-item").html()
-        render: ->
-            @$el.html(_.template @template, @model.toJSON())
-            @
-
-
     _items = new Inventory
     _items.url = "lib/json_packs/items.json"
     _items.fetch 
@@ -82,9 +60,9 @@ define ["globals", "utilities", "underscore", "backbone"], (globals, ut) ->
 
     return window.items = {
         Item: (construction) -> new Item(construction)
-        Inventory: (construction) -> new Inventory(construction)
-        InventoryList: (construction) -> new InventoryList(construction)
-        ItemView: (construction) -> new ItemView(construction)
+        # Inventory: (construction) -> new Inventory(construction)
+        # InventoryList: (construction) -> new InventoryList(construction)
+        # ItemView: (construction) -> new ItemView(construction)
         # Pass in item name (also ID) and the Item model is returned
         # Can also pass in string array, and an inventory object will be returned
         get: (name) -> 

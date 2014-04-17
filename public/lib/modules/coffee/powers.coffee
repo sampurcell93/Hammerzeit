@@ -1,6 +1,6 @@
 define ["globals", "utilities", "board"], (globals, utilities, board) ->
     _powers = null
-    _default = ["Strike", "Beguile","Whirl"]
+    _default = ["Strike", "Arrow","Whirl"]
 
     _pathopts = {
         "range": {}
@@ -33,12 +33,18 @@ define ["globals", "utilities", "board"], (globals, utilities, board) ->
                 target.tileModel.trigger "rangeattack"
             burst: (target) ->
                 target.tileModel.boundPower = @
-                target.tileModel.trigger "burstattack"
+                if target.tileModel.isOccupied()
+                    target.tileModel.trigger "burstattack"
         # Return the function which is performed on each square in the power's attack zone
         # This function is dependent on the spread of the attack
         getHandler: -> @handlers[@get "spread"]
         # Return the options to extend onto the default path construction options
         getPathOptions: -> _pathopts[@get "spread"]
+        getRangeDisplay: ->
+            if @get("spread") isnt "range"
+                @get("spread").charAt(0).toUpperCase() + @get("range")
+            else @get "range"
+
 
 
     class PowerSet extends Backbone.Collection

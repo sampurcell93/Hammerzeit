@@ -5,7 +5,7 @@
   define(["globals", "utilities", "board"], function(globals, utilities, board) {
     var Power, PowerSet, get, getPower, _default, _pathopts, _powers, _ref, _ref1, _useFns;
     _powers = null;
-    _default = ["Strike", "Beguile", "Whirl"];
+    _default = ["Strike", "Arrow", "Whirl"];
     _pathopts = {
       "range": {},
       "burst": {
@@ -51,7 +51,9 @@
         },
         burst: function(target) {
           target.tileModel.boundPower = this;
-          return target.tileModel.trigger("burstattack");
+          if (target.tileModel.isOccupied()) {
+            return target.tileModel.trigger("burstattack");
+          }
         }
       };
 
@@ -61,6 +63,14 @@
 
       Power.prototype.getPathOptions = function() {
         return _pathopts[this.get("spread")];
+      };
+
+      Power.prototype.getRangeDisplay = function() {
+        if (this.get("spread") !== "range") {
+          return this.get("spread").charAt(0).toUpperCase() + this.get("range");
+        } else {
+          return this.get("range");
+        }
       };
 
       return Power;

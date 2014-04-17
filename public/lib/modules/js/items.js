@@ -3,7 +3,7 @@
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
   define(["globals", "utilities", "underscore", "backbone"], function(globals, ut) {
-    var Inventory, InventoryList, Item, ItemView, get, getItem, _items, _ref, _ref1, _ref2, _ref3, _usefns, _wearfns;
+    var Inventory, Item, get, getItem, _items, _ref, _ref1, _usefns, _wearfns;
     _usefns = {
       "Tattered Cloak": function(t, l) {}
     };
@@ -65,57 +65,6 @@
       return Inventory;
 
     })(Backbone.Collection);
-    InventoryList = (function(_super) {
-      __extends(InventoryList, _super);
-
-      function InventoryList() {
-        _ref2 = InventoryList.__super__.constructor.apply(this, arguments);
-        return _ref2;
-      }
-
-      InventoryList.prototype.tagName = 'ul';
-
-      InventoryList.prototype.initialize = function() {
-        _.bindAll(this, "render", "addItem");
-        return this;
-      };
-
-      InventoryList.prototype.addItem = function(item) {
-        item = new ItemView({
-          model: item
-        });
-        return item.render().$el.appendTo(this.$el);
-      };
-
-      InventoryList.prototype.render = function() {
-        this.$el.empty();
-        _.each(this.collection.models, this.addItem);
-        return this;
-      };
-
-      return InventoryList;
-
-    })(Backbone.View);
-    ItemView = (function(_super) {
-      __extends(ItemView, _super);
-
-      function ItemView() {
-        _ref3 = ItemView.__super__.constructor.apply(this, arguments);
-        return _ref3;
-      }
-
-      ItemView.prototype.tagName = 'li';
-
-      ItemView.prototype.template = $("#inventory-item").html();
-
-      ItemView.prototype.render = function() {
-        this.$el.html(_.template(this.template, this.model.toJSON()));
-        return this;
-      };
-
-      return ItemView;
-
-    })(Backbone.View);
     _items = new Inventory;
     _items.url = "lib/json_packs/items.json";
     _items.fetch({
@@ -151,15 +100,6 @@
     return window.items = {
       Item: function(construction) {
         return new Item(construction);
-      },
-      Inventory: function(construction) {
-        return new Inventory(construction);
-      },
-      InventoryList: function(construction) {
-        return new InventoryList(construction);
-      },
-      ItemView: function(construction) {
-        return new ItemView(construction);
       },
       get: function(name) {
         return get(name);

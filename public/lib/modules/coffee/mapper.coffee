@@ -43,7 +43,6 @@ define ["globals", "utilities", "board", "mapper", "underscore", "backbone", "ea
         # active chunk to determine if the spot is enterable.
         checkEnterable: (dx, dy, start, opts = {}) ->
             e = @get "e"
-            console.log e
             if e is false or e is "f" and !opts.ignoreDeltas then return false
             else if @isOccupied() and !opts.ignoreNPCs then return false
             else if e is "" then return true

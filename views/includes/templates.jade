@@ -20,10 +20,15 @@ script#modify-tile(type='text/template')
         </label>
 
 script#inventory-item(type='text/template')
-        <%= name %> 
-        <% if (equipped) { %> 
-        span.js-item-equipped E 
-        <% } %>
+        <i class='js-show-more'>v</i>
+        <%= name %>
+        ul.info
+            <% if (equipped) { %> 
+            li.js-item-equipped E 
+            <% } else { %>
+            li.js-equip-item Equip
+            <% } %>
+            li.js-use-item Use
 
 script#mapcreate-item(type='text/template')
         <%= typeof e !== 'undefined' && e ? e : '&nbsp;' %>
@@ -34,10 +39,11 @@ script#character-view(type='text/template')
         | This is a character template
 
 script#power-item(type='text/template')
+        <i class='js-show-more'>v</i>
         <span class='name <%= uses <= 0 ? " disabled" : "" %>'> <%= name %> </span>
         ul.info
-                li(data-tooltip='Uses').uses <%= uses == Infinity ? "I" : uses %> 
-                li(data-tooltip='Range').range <%= range %>
+                li(data-tooltip='Uses').uses <%= isFinite(uses) ? uses : "&infin;" %> 
+                li(data-tooltip='Range').range <%= rangedisplay %>
                 <li data-tooltip='Action Type: <%= action %>' class='action'><%= action == "standard" ? "Std" : (action == "move" ? "Mov" : "Min") %></li>
 
 script#menu(type='text/template')
@@ -45,9 +51,9 @@ script#menu(type='text/template')
                 li(tabindex=2, actiontype="move").js-virtual-move.selected Move
                 li(tabindex=2).js-attack Attack
                   div.power-list.nested-menu
-                li(tabindex=2, actiontype="move").js-defend Defend
                 li(tabindex=2).js-show-inventory Inventory
                   div.inventory-list.nested-menu
+                li(tabindex=2, actiontype="move").js-defend Defend
                 li(tabindex=2).js-end-turn End Turn
                 li Phase: 
                   span.phase-number <%= phase %>

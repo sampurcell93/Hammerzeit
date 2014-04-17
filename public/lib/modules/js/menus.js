@@ -3,7 +3,7 @@
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
   define(["powers", "globals", "utilities", "dialog", "battler", "board", "jquery-ui"], function(powers, globals, ut, dialog, battler, board) {
-    var $wrapper, CharacterStateDisplay, InventoryList, Menu, Meter, PowerList, PowerListItem, StatList, closeAll, toggleMenu, _activemenu, _menus, _potential_moves, _ref, _ref1, _ref2, _ref3, _ref4, _ref5;
+    var $wrapper, CharacterStateDisplay, InventoryList, ItemView, Menu, Meter, PowerList, PowerListItem, StatList, closeAll, toggleMenu, _activemenu, _menus, _potential_moves, _ref, _ref1, _ref2, _ref3, _ref4, _ref5, _ref6, _ref7;
     board.focus();
     _menus = [];
     $wrapper = $(".wrapper");
@@ -20,13 +20,76 @@
       });
       return _menus.push(_activemenu);
     });
-    InventoryList = items.InventoryList;
+    InventoryList = (function(_super) {
+      __extends(InventoryList, _super);
+
+      function InventoryList() {
+        _ref = InventoryList.__super__.constructor.apply(this, arguments);
+        return _ref;
+      }
+
+      InventoryList.prototype.tagName = 'ul';
+
+      InventoryList.prototype.initialize = function() {
+        _.bindAll(this, "render", "addItem");
+        return this;
+      };
+
+      InventoryList.prototype.addItem = function(item) {
+        item = new ItemView({
+          model: item
+        });
+        return item.render().$el.appendTo(this.$el);
+      };
+
+      InventoryList.prototype.render = function() {
+        this.$el.empty();
+        _.each(this.collection.models, this.addItem);
+        return this;
+      };
+
+      return InventoryList;
+
+    })(Backbone.View);
+    ItemView = (function(_super) {
+      __extends(ItemView, _super);
+
+      function ItemView() {
+        _ref1 = ItemView.__super__.constructor.apply(this, arguments);
+        return _ref1;
+      }
+
+      ItemView.prototype.tagName = 'li';
+
+      ItemView.prototype.template = $("#inventory-item").html();
+
+      ItemView.prototype.render = function() {
+        var more;
+        this.$el.html(_.template(this.template, this.model.toJSON()));
+        more = new StatList({
+          model: this.model.toJSON()
+        });
+        this.$el.append(more.render().el);
+        return this;
+      };
+
+      ItemView.prototype.events = {
+        "click .js-show-more": function(e) {
+          this.$(".attribute-list").slideToggle();
+          e.stopPropagation();
+          return e.stopImmediatePropagation();
+        }
+      };
+
+      return ItemView;
+
+    })(Backbone.View);
     PowerList = (function(_super) {
       __extends(PowerList, _super);
 
       function PowerList() {
-        _ref = PowerList.__super__.constructor.apply(this, arguments);
-        return _ref;
+        _ref2 = PowerList.__super__.constructor.apply(this, arguments);
+        return _ref2;
       }
 
       PowerList.prototype.tagName = 'ul';
@@ -56,8 +119,8 @@
       __extends(PowerListItem, _super);
 
       function PowerListItem() {
-        _ref1 = PowerListItem.__super__.constructor.apply(this, arguments);
-        return _ref1;
+        _ref3 = PowerListItem.__super__.constructor.apply(this, arguments);
+        return _ref3;
       }
 
       PowerListItem.prototype.tagName = 'li';
@@ -73,13 +136,20 @@
             return this.renderUses(uses);
           }
         });
-        return this.listenTo(this.model.ownedBy.actions, "change", this.renderDisabled);
+        return this.listenTo(this.model.ownedBy.actions, "change", this.checkDisabled);
       };
 
       PowerListItem.prototype.render = function() {
-        this.$el.html(_.template(this.template, this.model.toJSON()));
+        var more;
+        this.$el.html(_.template(this.template, _.extend(this.model.toJSON(), {
+          rangedisplay: this.model.getRangeDisplay()
+        })));
+        more = new StatList({
+          model: this.model.toJSON()
+        });
+        this.$el.append(more.render().el);
         this.renderUses(this.model.get("uses"));
-        this.renderDisabled();
+        this.checkDisabled();
         return this;
       };
 
@@ -100,7 +170,7 @@
       };
 
       PowerListItem.prototype.renderUses = function(uses) {
-        this.$(".uses").text(uses);
+        this.$(".uses").html(isFinite(uses) ? uses : "&infin;");
         if (uses <= 0) {
           this.disable();
         } else {
@@ -109,7 +179,7 @@
         return this;
       };
 
-      PowerListItem.prototype.renderDisabled = function() {
+      PowerListItem.prototype.checkDisabled = function() {
         if (!(this.model.ownedBy.can(this.model.get("action")))) {
           return this.disable();
         } else {
@@ -142,7 +212,16 @@
       };
 
       PowerListItem.prototype.events = {
-        "click": "chooseTargets"
+        "click": "chooseTargets",
+        "click .attribute-list": function(e) {
+          e.stopPropagation();
+          return e.stopImmediatePropagation();
+        },
+        "click .js-show-more": function(e) {
+          this.$(".attribute-list").slideToggle();
+          e.stopPropagation();
+          return e.stopImmediatePropagation();
+        }
       };
 
       return PowerListItem;
@@ -153,8 +232,8 @@
       __extends(Meter, _super);
 
       function Meter() {
-        _ref2 = Meter.__super__.constructor.apply(this, arguments);
-        return _ref2;
+        _ref4 = Meter.__super__.constructor.apply(this, arguments);
+        return _ref4;
       }
 
       Meter.prototype.initialize = function(_arg) {
@@ -250,8 +329,8 @@
       __extends(StatList, _super);
 
       function StatList() {
-        _ref3 = StatList.__super__.constructor.apply(this, arguments);
-        return _ref3;
+        _ref5 = StatList.__super__.constructor.apply(this, arguments);
+        return _ref5;
       }
 
       StatList.prototype.tagName = 'ul';
@@ -296,8 +375,8 @@
       __extends(CharacterStateDisplay, _super);
 
       function CharacterStateDisplay() {
-        _ref4 = CharacterStateDisplay.__super__.constructor.apply(this, arguments);
-        return _ref4;
+        _ref6 = CharacterStateDisplay.__super__.constructor.apply(this, arguments);
+        return _ref6;
       }
 
       CharacterStateDisplay.prototype.tagName = 'div';
@@ -396,8 +475,8 @@
       __extends(Menu, _super);
 
       function Menu() {
-        _ref5 = Menu.__super__.constructor.apply(this, arguments);
-        return _ref5;
+        _ref7 = Menu.__super__.constructor.apply(this, arguments);
+        return _ref7;
       }
 
       Menu.prototype.type = 'default';
@@ -466,7 +545,7 @@
 
       Menu.prototype.showInventory = function() {
         var list;
-        list = InventoryList({
+        list = new InventoryList({
           collection: this.model.get("inventory")
         });
         this.$(".inventory-list").html(list.render().el);
@@ -492,7 +571,6 @@
       };
 
       Menu.prototype.selectPrev = function() {
-        console.log("prev");
         return this.selectThis(this.$el.children(".selected").prev());
       };
 
@@ -504,7 +582,6 @@
           return toggleMenu(this.type);
         },
         "click .js-show-inventory": function(e) {
-          this.showInventory();
           return e.stopPropagation();
         },
         "click li": function(e) {
@@ -535,7 +612,6 @@
           }
         },
         "click .js-virtual-move": function() {
-          console.log("specific click");
           battler.removeHighlighting();
           _potential_moves = battler.virtualMovePossibilities(this.model.getCurrentSpace(), null, {
             range: this.model.get("spd")
