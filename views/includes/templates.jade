@@ -27,15 +27,15 @@ script#modify-tile(type='text/template')
         </label>
 
 script#inventory-item(type='text/template')
-        <i class='js-show-more'>v</i>
+        <i class='js-show-more icon-caret-down'></i>
         <%= name %>
         ul.info
             <% if (equipped) { %> 
-            li.js-item-equipped E 
+            li.equipped E 
             <% } else { %>
-            li.js-equip-item Equip
+            li.js-equip Equip
             <% } %>
-            li.js-use-item Use
+            li.js-use Use
 
 script#mapcreate-item(type='text/template')
         <%= typeof e !== 'undefined' && e ? e : '&nbsp;' %>
@@ -46,7 +46,7 @@ script#character-view(type='text/template')
         | This is a character template
 
 script#power-item(type='text/template')
-        <i class='js-show-more'>v</i>
+        <i class='js-show-more icon-caret-down'></i>
         <span class='name <%= uses <= 0 ? " disabled" : "" %>'> <%= name %> </span>
         ul.info
                 li(data-tooltip='Uses').uses <%= isFinite(uses) ? uses : "&infin;" %> 
@@ -54,17 +54,22 @@ script#power-item(type='text/template')
                 <li data-tooltip='Action Type: <%= action %>' class='action'><%= action == "standard" ? "Std" : (action == "move" ? "Mov" : "Min") %></li>
 
 script#menu(type='text/template')
+        h2 <%= name %>
+            span.phase-number(data-tooltip='Phase number') <%= phase %>/3
         ul
-                li(tabindex=2, actiontype="move").js-virtual-move.selected Move
+                li(tabindex=2, actiontype="move").js-virtual-move.selected 
+                    i.icon-directions
+                    |Move
                 li(tabindex=2).js-attack Attack
-                  div.power-list.nested-menu
-                li(tabindex=2).js-show-inventory Inventory
-                  div.inventory-list.nested-menu
-                li(tabindex=2, actiontype="move").js-defend Defend
+                    div.power-list.nested-menu
+                li(tabindex=2).js-show-inventory 
+                    i.icon-lab
+                    |Inventory
+                    div.inventory-list.nested-menu
+                li(tabindex=2, actiontype="move").js-defend 
+                    i.icon-shield
+                    | Defend
                 li(tabindex=2).js-end-turn End Turn
-                li Phase: 
-                  span.phase-number <%= phase %>
-                  | /3
 
 script#attribute-container(type='text/template')
     .meterwrap
@@ -88,5 +93,5 @@ script#attribute-container(type='text/template')
 script#dispatch-menu-item(type='text/template')
     li
         <%= name %>
-        | Init: <%= i %>
         | <%= d ? "Dispatched" : "" %>
+        span.js-view-attrs View

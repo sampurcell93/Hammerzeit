@@ -182,6 +182,7 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
         begin: (type, opts) ->
             @removeTravelPC()
             @dispatcher.show().showDispatchMenu()
+            @grid.activate()
             if type is "random" then @randomize(opts)
             else @load type, opts
         load: (id) ->
@@ -711,6 +712,7 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
         confirmDispatch: ->
             dispatcher = _activebattle.dispatcher
             if dispatcher.canDispatch()
+                ut.destroyModal()
                 character = dispatcher.potential_dispatch 
                 if character 
                     discardDispatch()

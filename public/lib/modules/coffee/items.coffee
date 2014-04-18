@@ -15,6 +15,7 @@ define ["globals", "utilities", "underscore", "backbone"], (globals, ut) ->
             name: 'Unknown'
             # When the item is used, do this
             use: -> 
+                console.log @
             # When the item is worn, do this
             wear: ->
             weight: 1
@@ -23,6 +24,8 @@ define ["globals", "utilities", "underscore", "backbone"], (globals, ut) ->
             role: 1
             equipped: false
         idAttribute: 'name'
+        isEquipped: -> @get "equipped"
+
 
     # Simply a collection of items, regardless of context
     class Inventory extends Backbone.Collection
@@ -67,6 +70,10 @@ define ["globals", "utilities", "underscore", "backbone"], (globals, ut) ->
         # Can also pass in string array, and an inventory object will be returned
         get: (name) -> 
             get name
-        getDefaultInventory: ->
+        getDefaultInventory: (opts = {}) ->
             d = get ["Tattered Cloak"]
+            if opts.belongsTo and d
+                _.each d.models, (item) =>
+                    item.set("belongsTo", opts.belongsTo)
+            d
     }

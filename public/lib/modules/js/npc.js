@@ -40,7 +40,27 @@
 
       NPC.prototype.active = false;
 
+      NPC.prototype.dead = false;
+
       NPC.prototype.dispatched = false;
+
+      NPC.prototype.actions = _.extend({
+        standard: 1,
+        move: 2,
+        minor: 2,
+        change: function() {
+          return this.trigger("change", _.pick(this, "standard", "move", "minor"));
+        }
+      }, Backbone.Events);
+
+      NPC.prototype.turnPhase = 0;
+
+      NPC.prototype.type = 'npc';
+
+      NPC.prototype.move_callbacks = {
+        done: function() {},
+        change: function() {}
+      };
 
       NPC.prototype.defaults = function() {
         var inventory, pow,
@@ -51,7 +71,9 @@
         });
         inventory = items.getDefaultInventory();
         this.listenToOnce(globals.shared_events, "items_loaded", function() {
-          return _this.set("inventory", items.getDefaultInventory());
+          return _this.set("inventory", items.getDefaultInventory({
+            belongsTo: _this
+          }));
         });
         this.listenToOnce(globals.shared_events, "powers_loaded", function() {
           _this.set("powers", pow = powers.getDefaultPowers());
@@ -91,13 +113,6 @@
         };
       };
 
-      NPC.prototype.type = 'npc';
-
-      NPC.prototype.move_callbacks = {
-        done: function() {},
-        change: function() {}
-      };
-
       NPC.prototype.initialize = function(_arg) {
         var frames, spriteimg, _ref1,
           _this = this;
@@ -131,6 +146,19 @@
         return this.cursor();
       };
 
+      NPC.prototype.canOccupy = function(t) {
+        if (t.end === false) {
+          return false;
+        }
+        if (t.e === "f") {
+          return false;
+        }
+        if (t.occupied === true) {
+          return false;
+        }
+        return true;
+      };
+
       NPC.prototype.createMarker = function() {
         var nameobj, sheet, sprite;
         sheet = this.sheets["0,1"];
@@ -156,16 +184,8 @@
         return c;
       };
 
-      NPC.prototype.setChunk = function(y, x) {
-        var chunk;
-        chunk = this.get("current_chunk");
-        chunk.x = x;
-        chunk.y = y;
-        this.set("current_chunk", chunk, {
-          silent: true
-        });
-        this.trigger("change:current_chunk");
-        return this;
+      NPC.prototype.canMoveOffChunk = function(x, y) {
+        return !(board.hasState("battle")) && board.inBounds(x) && board.inBounds(y);
       };
 
       NPC.prototype.checkElevation = function(target, start) {
@@ -187,34 +207,23 @@
         }
       };
 
-      NPC.prototype.canMoveOffChunk = function(x, y) {
-        return !(board.hasState("battle")) && board.inBounds(x) && board.inBounds(y);
-      };
-
-      NPC.prototype.turn = function(dx, dy) {
-        var sheet, x, y;
-        x = ut.floorToOne(dx);
-        y = ut.floorToOne(dy);
-        if (x !== 0 && y !== 0) {
-          x = 0;
+      NPC.prototype.deltaToString = function(dx, dy) {
+        if (dx !== 0) {
+          return "x";
+        } else if (dy !== 0) {
+          return "y";
+        } else {
+          return "";
         }
-        sheet = this.sheets[x + "," + y];
-        if (!sheet) {
-          alert("FUCKED UP IN TURN");
-        }
-        return this.marker.icon.spriteSheet = sheet;
       };
 
-      NPC.prototype.leaveSquare = function() {
-        this.currentspace.occupied = false;
-        this.currentspace.occupiedBy = null;
-        return this;
+      NPC.prototype.equip = function(item) {
+        return item.set("equipped", true);
       };
 
-      NPC.prototype.setPos = function(x, y) {
-        this.marker.x = x;
-        this.marker.y = y;
-        return this;
+      NPC.prototype.obtain = function(item) {
+        item.set("belongsTo", this);
+        return item.set("equipped", false);
       };
 
       NPC.prototype.enterSquare = function(target, dx, dy) {
@@ -228,6 +237,39 @@
 
       NPC.prototype.getCurrentSpace = function() {
         return this.currentspace;
+      };
+
+      NPC.prototype.getQuadrant = function() {
+        var x, y;
+        x = this.marker.x - 3 * globals.map.c_width / 4;
+        y = this.marker.y - globals.map.c_height / 2;
+        if (x < 0 && y < 0) {
+          return 2;
+        } else if (x <= 0 && y >= 0) {
+          return 3;
+        } else if (x >= 0 && y <= 0) {
+          return 1;
+        } else {
+          return 4;
+        }
+      };
+
+      NPC.prototype.getX = function() {
+        return this.marker.x / _ts;
+      };
+
+      NPC.prototype.getY = function() {
+        return this.marker.y / _ts;
+      };
+
+      NPC.prototype.isPC = function() {
+        return false;
+      };
+
+      NPC.prototype.leaveSquare = function() {
+        this.currentspace.occupied = false;
+        this.currentspace.occupiedBy = null;
+        return this;
       };
 
       NPC.prototype.moveRight = function() {
@@ -244,40 +286,6 @@
 
       NPC.prototype.moveDown = function() {
         return this.move(0, 1);
-      };
-
-      NPC.prototype.reanimate = function(animation, speed, next) {
-        var sheet;
-        sheet = this.marker.icon.spriteSheet;
-        sheet.getAnimation(animation || "run").speed = speed;
-        return sheet.getAnimation(animation || "run").next = next;
-      };
-
-      NPC.prototype.roundToNearestTile = function(x, y, dx, dy) {
-        return {
-          x: Math.ceil(x / _ts) * _ts,
-          y: Math.ceil(y / _ts) * _ts
-        };
-      };
-
-      NPC.prototype.deltaToString = function(dx, dy) {
-        if (dx !== 0) {
-          return "x";
-        } else if (dy !== 0) {
-          return "y";
-        } else {
-          return "";
-        }
-      };
-
-      NPC.prototype.oppositeDir = function(dir) {
-        if (dir === "x") {
-          return "y";
-        } else if (dir === "y") {
-          return "x";
-        } else {
-          return "";
-        }
       };
 
       NPC.prototype.move = function(dx, dy, walkspeed) {
@@ -336,27 +344,82 @@
         return true;
       };
 
-      /* Battle functions!*/
+      NPC.prototype.oppositeDir = function(dir) {
+        if (dir === "x") {
+          return "y";
+        } else if (dir === "y") {
+          return "x";
+        } else {
+          return "";
+        }
+      };
 
+      NPC.prototype.reanimate = function(animation, speed, next) {
+        var sheet;
+        sheet = this.marker.icon.spriteSheet;
+        sheet.getAnimation(animation || "run").speed = speed;
+        return sheet.getAnimation(animation || "run").next = next;
+      };
 
-      NPC.prototype.resetActions = function() {
-        this.actions = _.extend(this.actions, {
-          standard: 1,
-          move: 2,
-          minor: 2
+      NPC.prototype.roundToNearestTile = function(x, y, dx, dy) {
+        return {
+          x: Math.ceil(x / _ts) * _ts,
+          y: Math.ceil(y / _ts) * _ts
+        };
+      };
+
+      NPC.prototype.setChunk = function(y, x) {
+        var chunk;
+        chunk = this.get("current_chunk");
+        chunk.x = x;
+        chunk.y = y;
+        this.set("current_chunk", chunk, {
+          silent: true
         });
-        this.actions.change();
+        this.trigger("change:current_chunk");
         return this;
       };
 
-      NPC.prototype.actions = _.extend({
-        standard: 1,
-        move: 2,
-        minor: 2,
-        change: function() {
-          return this.trigger("change", _.pick(this, "standard", "move", "minor"));
+      NPC.prototype.setPos = function(x, y) {
+        this.marker.x = x;
+        this.marker.y = y;
+        return this;
+      };
+
+      NPC.prototype.turn = function(dx, dy) {
+        var sheet, x, y;
+        x = ut.floorToOne(dx);
+        y = ut.floorToOne(dy);
+        if (x !== 0 && y !== 0) {
+          x = 0;
         }
-      }, Backbone.Events);
+        sheet = this.sheets[x + "," + y];
+        if (!sheet) {
+          alert("FUCKED UP IN TURN");
+        }
+        return this.marker.icon.spriteSheet = sheet;
+      };
+
+      /* Battle functions!*/
+
+
+      NPC.prototype.addToMap = function() {
+        var chunk, tile, x, y, _ref1, _ref2, _ref3;
+        chunk = (_ref1 = mapper.getVisibleChunk()) != null ? _ref1.children : void 0;
+        x = Math.abs(Math.ceil(Math.random() * globals.map.c_width / _ts - 1));
+        y = Math.abs(Math.ceil(Math.random() * globals.map.c_height / _ts - 1));
+        tile = (_ref2 = chunk[y]) != null ? _ref2.children[x] : void 0;
+        while (this.canOccupy(tile) === false) {
+          y++;
+          x++;
+          tile = (_ref3 = chunk[y = y % (globals.map.tileheight - 1)]) != null ? _ref3.children[x = x % (globals.map.tilewidth - 1)] : void 0;
+        }
+        this.enterSquare(tile);
+        this.marker.x = x * _ts;
+        this.marker.y = y * _ts;
+        board.addMarker(this);
+        return this;
+      };
 
       NPC.prototype.burnAction = function() {
         if (this.takeMove(true)) {
@@ -371,6 +434,103 @@
 
       NPC.prototype.can = function(type) {
         return this.actions[type.toLowerCase()] > 0;
+      };
+
+      NPC.prototype.canTakeAction = function() {
+        return this.can("minor") || this.can("move") || this.can("standard");
+      };
+
+      NPC.prototype.defend = function() {
+        this.set("AC", this.get("AC") + 2);
+        this.takeMove();
+        return this;
+      };
+
+      NPC.prototype.die = function() {
+        this.dead = true;
+        this.trigger("die", this, this.collection, {});
+        board.getStage().removeChild(this.marker);
+        return this.leaveSquare();
+      };
+
+      NPC.prototype.dispatch = function(dispatcher) {
+        this.dispatched = true;
+        this.setPos(dispatcher.getX(), dispatcher.getY());
+        this.enterSquare(dispatcher.currentspace, 0, 0);
+        this.trigger("dispatch");
+        return this;
+      };
+
+      NPC.prototype.endTurn = function() {
+        this.active = false;
+        this.turnPhase = 0;
+        this.trigger("turndone");
+        this.resetActions();
+        return this;
+      };
+
+      NPC.prototype.getPrivate = function(id) {
+        return _p[id];
+      };
+
+      NPC.prototype.highlightTile = function(color) {
+        var currenttile;
+        currenttile = this.currentspace;
+        if (!currenttile) {
+          return this;
+        }
+        currenttile.tileModel.trigger("generalhighlight", color);
+        return this;
+      };
+
+      NPC.prototype.indicateActive = function() {
+        _.each(this.activity_queue.models, function(character) {
+          return character.c.hide();
+        });
+        this.c.show().move(this.marker);
+        return this;
+      };
+
+      NPC.prototype.initTurn = function() {
+        this.indicateActive();
+        this.active = true;
+        globals.shared_events.trigger("closemenus");
+        this.menu.open();
+        return this.nextPhase();
+      };
+
+      NPC.prototype.isActive = function() {
+        return this.active;
+      };
+
+      NPC.prototype.isDead = function() {
+        return this.dead;
+      };
+
+      NPC.prototype.nextPhase = function() {
+        var t,
+          _this = this;
+        t = this.turnPhase;
+        if (t === 3) {
+          return this.endTurn();
+        }
+        battler.resetTimer().startTimer(this.i || this.get("init"), function() {
+          _this.burnAction();
+          console.log(_this.actions);
+          return _this.nextPhase();
+        });
+        this.trigger("beginphase", this.turnPhase);
+        return this.turnPhase++;
+      };
+
+      NPC.prototype.resetActions = function() {
+        this.actions = _.extend(this.actions, {
+          standard: 1,
+          move: 2,
+          minor: 2
+        });
+        this.actions.change();
+        return this;
       };
 
       NPC.prototype.takeStandard = function(burn) {
@@ -431,123 +591,6 @@
         return this;
       };
 
-      NPC.prototype.canTakeAction = function() {
-        var flag;
-        flag = false;
-        _.each(this.actions, function(action) {
-          if (action > 0) {
-            return flag = true;
-          }
-        });
-        return flag;
-      };
-
-      NPC.prototype.defend = function() {
-        this.set("AC", this.get("AC") + 2);
-        this.takeMove();
-        return this;
-      };
-
-      NPC.prototype.dead = false;
-
-      NPC.prototype.die = function() {
-        this.dead = true;
-        this.trigger("die", this, this.collection, {});
-        board.getStage().removeChild(this.marker);
-        return this.leaveSquare();
-      };
-
-      NPC.prototype.isDead = function() {
-        return this.dead;
-      };
-
-      NPC.prototype.getPrivate = function(id) {
-        return _p[id];
-      };
-
-      NPC.prototype.canOccupy = function(t) {
-        if (t.end === false) {
-          return false;
-        }
-        if (t.e === "f") {
-          return false;
-        }
-        if (t.occupied === true) {
-          return false;
-        }
-        return true;
-      };
-
-      NPC.prototype.addToMap = function() {
-        var chunk, tile, x, y, _ref1, _ref2, _ref3;
-        chunk = (_ref1 = mapper.getVisibleChunk()) != null ? _ref1.children : void 0;
-        x = Math.abs(Math.ceil(Math.random() * globals.map.c_width / _ts - 1));
-        y = Math.abs(Math.ceil(Math.random() * globals.map.c_height / _ts - 1));
-        tile = (_ref2 = chunk[y]) != null ? _ref2.children[x] : void 0;
-        while (this.canOccupy(tile) === false) {
-          y++;
-          x++;
-          tile = (_ref3 = chunk[y = y % (globals.map.tileheight - 1)]) != null ? _ref3.children[x = x % (globals.map.tilewidth - 1)] : void 0;
-        }
-        this.enterSquare(tile);
-        this.marker.x = x * _ts;
-        this.marker.y = y * _ts;
-        board.addMarker(this);
-        return this;
-      };
-
-      NPC.prototype.highlightTile = function(color) {
-        var currenttile;
-        currenttile = this.currentspace;
-        if (!currenttile) {
-          return this;
-        }
-        currenttile.tileModel.trigger("generalhighlight", color);
-        return this;
-      };
-
-      NPC.prototype.turnPhase = 0;
-
-      NPC.prototype.endTurn = function() {
-        this.active = false;
-        this.turnPhase = 0;
-        this.trigger("turndone");
-        this.resetActions();
-        return this;
-      };
-
-      NPC.prototype.indicateActive = function() {
-        _.each(this.activity_queue.models, function(character) {
-          return character.c.hide();
-        });
-        this.c.show().move(this.marker);
-        return this;
-      };
-
-      NPC.prototype.initTurn = function() {
-        this.indicateActive();
-        this.active = true;
-        globals.shared_events.trigger("closemenus");
-        this.menu.open();
-        return this.nextPhase();
-      };
-
-      NPC.prototype.nextPhase = function() {
-        var t,
-          _this = this;
-        t = this.turnPhase;
-        if (t === 3) {
-          return this.endTurn();
-        }
-        battler.resetTimer().startTimer(this.i || this.get("init"), function() {
-          _this.burnAction();
-          console.log(_this.actions);
-          return _this.nextPhase();
-        });
-        this.trigger("beginphase", this.turnPhase);
-        return this.turnPhase++;
-      };
-
       NPC.prototype.takeDamage = function(damage) {
         var d_i,
           _this = this;
@@ -581,45 +624,6 @@
           return false;
         }
         this.set("creatine", current - creatine);
-        return this;
-      };
-
-      NPC.prototype.getQuadrant = function() {
-        var x, y;
-        x = this.marker.x - 3 * globals.map.c_width / 4;
-        y = this.marker.y - globals.map.c_height / 2;
-        if (x < 0 && y < 0) {
-          return 2;
-        } else if (x <= 0 && y >= 0) {
-          return 3;
-        } else if (x >= 0 && y <= 0) {
-          return 1;
-        } else {
-          return 4;
-        }
-      };
-
-      NPC.prototype.getX = function() {
-        return this.marker.x / _ts;
-      };
-
-      NPC.prototype.getY = function() {
-        return this.marker.y / _ts;
-      };
-
-      NPC.prototype.isActive = function() {
-        return this.active;
-      };
-
-      NPC.prototype.isPC = function() {
-        return false;
-      };
-
-      NPC.prototype.dispatch = function(dispatcher) {
-        this.dispatched = true;
-        this.setPos(dispatcher.getX(), dispatcher.getY());
-        this.enterSquare(dispatcher.currentspace, 0, 0);
-        this.trigger("dispatch");
         return this;
       };
 

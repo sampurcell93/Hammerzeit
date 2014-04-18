@@ -23,7 +23,9 @@
       Item.prototype.defaults = function() {
         return {
           name: 'Unknown',
-          use: function() {},
+          use: function() {
+            return console.log(this);
+          },
           wear: function() {},
           weight: 1,
           belongsTo: null,
@@ -34,6 +36,10 @@
       };
 
       Item.prototype.idAttribute = 'name';
+
+      Item.prototype.isEquipped = function() {
+        return this.get("equipped");
+      };
 
       return Item;
 
@@ -104,9 +110,19 @@
       get: function(name) {
         return get(name);
       },
-      getDefaultInventory: function() {
-        var d;
-        return d = get(["Tattered Cloak"]);
+      getDefaultInventory: function(opts) {
+        var d,
+          _this = this;
+        if (opts == null) {
+          opts = {};
+        }
+        d = get(["Tattered Cloak"]);
+        if (opts.belongsTo && d) {
+          _.each(d.models, function(item) {
+            return item.set("belongsTo", opts.belongsTo);
+          });
+        }
+        return d;
       }
     };
   });

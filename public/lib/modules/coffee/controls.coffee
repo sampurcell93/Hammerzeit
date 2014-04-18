@@ -68,7 +68,6 @@ define ["utilities", "globals", "dialog", "npc", "mapper", "mapcreator", "battle
 				else 
 					console.log "you can't go now: a player character is NOT active. The active player is "
 					console.log battler.getActive()
-
 			CUTSCENE: (key) ->
 			TRAVEL: (key) -> 
 				switch key

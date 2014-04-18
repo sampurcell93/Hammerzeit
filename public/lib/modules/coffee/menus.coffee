@@ -43,6 +43,11 @@ define ["powers", "globals", "utilities", "dialog", "battler", "board", "jquery-
             "mouseover": -> battler.potentialDispatch @model
             "mouseleave": -> battler.discardDispatch()
             "click": -> battler.confirmDispatch()
+            "click .js-view-attrs": (e) ->
+                display = new CharacterStateDisplay model: @model
+                ut.launchModal display.$el.show()
+                e.stopPropagation()
+                e.stopImmediatePropagation()
 
 
     class DispatchMenu extends Backbone.View
@@ -89,6 +94,10 @@ define ["powers", "globals", "utilities", "dialog", "battler", "board", "jquery-
                 @$(".attribute-list").slideToggle()
                 e.stopPropagation()
                 e.stopImmediatePropagation()
+            "click .js-equip": ->
+                console.log @model
+            "click .js-use": ->
+
 
     class PowerList extends Backbone.View
         tagName: 'ul'
@@ -154,7 +163,6 @@ define ["powers", "globals", "utilities", "dialog", "battler", "board", "jquery-
                 @$(".attribute-list").slideToggle()
                 e.stopPropagation()
                 e.stopImmediatePropagation()
-
 
     _potential_moves = null
 
@@ -285,7 +293,6 @@ define ["powers", "globals", "utilities", "dialog", "battler", "board", "jquery-
     # Contains template for rendering a battle menu with action options
     # Contains subclasses, including Meters and CharacterStateDisplay
     class Menu extends Backbone.View
-        type: 'default'
         className: 'game-menu'
         template: $("#menu").html()
         type: 'battle'

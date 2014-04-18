@@ -75,6 +75,15 @@
         },
         "click": function() {
           return battler.confirmDispatch();
+        },
+        "click .js-view-attrs": function(e) {
+          var display;
+          display = new CharacterStateDisplay({
+            model: this.model
+          });
+          ut.launchModal(display.$el.show());
+          e.stopPropagation();
+          return e.stopImmediatePropagation();
         }
       };
 
@@ -182,7 +191,11 @@
           this.$(".attribute-list").slideToggle();
           e.stopPropagation();
           return e.stopImmediatePropagation();
-        }
+        },
+        "click .js-equip": function() {
+          return console.log(this.model);
+        },
+        "click .js-use": function() {}
       };
 
       return ItemView;
@@ -582,8 +595,6 @@
         _ref9 = Menu.__super__.constructor.apply(this, arguments);
         return _ref9;
       }
-
-      Menu.prototype.type = 'default';
 
       Menu.prototype.className = 'game-menu';
 

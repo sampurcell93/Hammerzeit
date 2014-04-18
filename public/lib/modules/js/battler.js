@@ -297,6 +297,7 @@
       Battle.prototype.begin = function(type, opts) {
         this.removeTravelPC();
         this.dispatcher.show().showDispatchMenu();
+        this.grid.activate();
         if (type === "random") {
           return this.randomize(opts);
         } else {
@@ -1128,6 +1129,7 @@
         var character, dispatcher, queue;
         dispatcher = _activebattle.dispatcher;
         if (dispatcher.canDispatch()) {
+          ut.destroyModal();
           character = dispatcher.potential_dispatch;
           if (character) {
             discardDispatch();

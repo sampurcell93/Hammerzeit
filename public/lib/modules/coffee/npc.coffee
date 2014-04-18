@@ -25,13 +25,28 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 	class NPC extends Backbone.Model
 		currentspace: {}
 		active: false
+		dead: false
 		dispatched: false
+		# Default action values. Can be reset with initTurn or augmented with items
+		actions: _.extend {
+				standard: 1
+				move: 2
+				minor: 2
+				change: -> 
+					@trigger "change", _.pick @, "standard", "move", "minor"
+			}, Backbone.Events
+		# What phase of the user's turn are they at? Max 3
+		turnPhase: 0
+		type: 'npc'
+		move_callbacks: 
+			done: -> 
+			change: ->
 		defaults: ->
 			pow = powers.getDefaultPowers()
 			_.each pow.models, (power) => power.ownedBy = @
 			inventory = items.getDefaultInventory()
 			@listenToOnce globals.shared_events, "items_loaded", =>
-				@set("inventory", items.getDefaultInventory())
+				@set("inventory", items.getDefaultInventory({belongsTo: @}))
 			@listenToOnce globals.shared_events, "powers_loaded", =>
 				@set("powers", pow = powers.getDefaultPowers())
 				_.each pow.models, (power) => power.ownedBy = @
@@ -76,10 +91,6 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 						[165, 165, 55, 55, 0]]
 				}
 			}
-		type: 'npc'
-		move_callbacks: 
-			done: -> 
-			change: ->
 		initialize: ({frames, spriteimg} = {}) ->
 			_.bind @move_callbacks.done, @
 			_.bind @move_callbacks.change, @
@@ -96,6 +107,12 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 			@createMarker()
 			@on "add", (model, coll) => if coll.type is "InitiativeQueue" then @activity_queue = coll
 			@cursor()
+		# Checks if a given target can be occupied. Does not account for entrance vectors, only current state.
+		canOccupy: (t) ->
+			if t.end is false then return false
+			if t.e is "f" then return false
+			if t.occupied is true then return false
+			true
 		createMarker: ->
 			sheet = @sheets["0,1"]
 			sheet.getAnimation("run").speed = .13
@@ -112,14 +129,8 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 			@c = c
 			c.hide().move @marker
 			c
-		# Note the argument order - reflects 2D array notation
-		setChunk: (y,x) ->
-			chunk = @get "current_chunk"
-			chunk.x = x
-			chunk.y = y
-			@set "current_chunk", chunk, {silent: true}
-			@trigger "change:current_chunk"
-			@
+		canMoveOffChunk: (x, y) -> 
+			!(board.hasState("battle")) and board.inBounds(x) and board.inBounds(y)
 		# Pass in the tile the NPC will move to - if the diff in elevations exceeds the jump
 		# score of the NPC, it is unenterable.
 		checkElevation: (target, start) -> 
@@ -135,29 +146,14 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 					target.trigger = null unless result is false
 				, 0
 			else null
-
-		canMoveOffChunk: (x, y) -> 
-			!(board.hasState("battle")) and board.inBounds(x) and board.inBounds(y)
-
-		# Set the sprite sheet to the direction given by the x,y coords. 
-		turn: (dx,dy) ->
-			x = ut.floorToOne(dx)
-			y = ut.floorToOne(dy)
-			if x isnt 0 and y isnt 0 then x = 0
-			sheet = @sheets[x+","+y]
-			if !sheet then alert("FUCKED UP IN TURN")
-			@marker.icon.spriteSheet = sheet
-		# The square that the NPC was previously in should be cleared when left
-		# Should be called in conjunction with "entersquare"
-		leaveSquare: ->
-			@currentspace.occupied = false
-			@currentspace.occupiedBy = null
-			@
-		# Expects pixel multiples, IE 500, 700
-		setPos: (x,y) ->
-			@marker.x = x
-			@marker.y = y
-			@
+		# Accepts delta params and returns a string for direction. so (1,0) would return "x"
+		deltaToString: (dx, dy) ->	
+			if dx isnt 0 then "x" else if dy isnt 0 then "y" else ""
+		equip: (item) ->
+			item.set("equipped", true)
+		obtain: (item) ->
+			item.set("belongsTo", @)
+			item.set("equipped", false)
 		# Pass in a tile DisplayObject, and link it to this NPC
 		enterSquare: (target, dx, dy) ->
 			target || target = mapper.getTargetTile(0,0,@marker)
@@ -166,26 +162,29 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 			if target.end is false or target.end is "false" and (dx isnt 0 and dy isnt 0)
 				@move(dx, dy, 0);
 		getCurrentSpace: -> @currentspace
+		# Returns the cartesian quadrant of the screen the NPC occupies so that the menu
+		# Can make sure not to open over them
+		getQuadrant: ->
+			x = @marker.x - 3*globals.map.c_width/4
+			y = @marker.y - globals.map.c_height/2
+			if x < 0 and y < 0 then 2
+			else if x <= 0 and y >= 0 then 3
+			else if x >= 0 and y <= 0 then 1
+			else 4
+		getX: -> @marker.x/_ts
+		getY: -> @marker.y/_ts
+		isPC: -> false
+		# The square that the NPC was previously in should be cleared when left
+		# Should be called in conjunction with "entersquare"
+		leaveSquare: ->
+			@currentspace.occupied = false
+			@currentspace.occupiedBy = null
+			@
 		# Wrapper functions for basic moves
 		moveRight: -> @move 1, 0
 		moveLeft: -> @move -1, 0
 		moveUp: -> @move 0, -1
 		moveDown: -> @move 0, 1
-		# Reset an animation's properties
-		reanimate: (animation, speed, next) ->
-			sheet = @marker.icon.spriteSheet
-			sheet.getAnimation(animation || "run").speed = speed
-			sheet.getAnimation(animation || "run").next = next
-		# Takes in a half position (say x= 476, y= 450) and rounds to the nearest 50 (up or down deps on dx,dy)
-		# Returns x,y obj
-		roundToNearestTile: (x, y, dx, dy) ->
-			{x: (Math.ceil(x/_ts)*_ts), y: (Math.ceil(y/_ts)*_ts) }
-		# Accepts delta params and returns a string for direction. so (1,0) would return "x"
-		deltaToString: (dx, dy) ->	
-			if dx isnt 0 then "x" else if dy isnt 0 then "y" else ""
-		# Takes in a dir string and returns the opposite
-		oppositeDir: (dir) ->
-			if dir is "x" then "y" else if dir is "y" then "x" else ""
 		# expects x and inverse-y deltas, IE move(0, 1) would be a downward move by 1 "square"
 		# Returns false if the move will not work, or returns the new coords if it does.
 		move: (dx, dy, walkspeed) ->
@@ -228,7 +227,132 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 			, walkspeed || _p.walkspeed
 			true
 
+		# Takes in a dir string and returns the opposite
+		oppositeDir: (dir) ->
+			if dir is "x" then "y" else if dir is "y" then "x" else ""
+		# Reset an animation's properties
+		reanimate: (animation, speed, next) ->
+			sheet = @marker.icon.spriteSheet
+			sheet.getAnimation(animation || "run").speed = speed
+			sheet.getAnimation(animation || "run").next = next
+		# Takes in a half position (say x= 476, y= 450) and rounds to the nearest 50 (up or down deps on dx,dy)
+		# Returns x,y obj
+		roundToNearestTile: (x, y, dx, dy) ->
+			{x: (Math.ceil(x/_ts)*_ts), y: (Math.ceil(y/_ts)*_ts) }
+		# Note the argument order - reflects 2D array notation
+		setChunk: (y,x) ->
+			chunk = @get "current_chunk"
+			chunk.x = x
+			chunk.y = y
+			@set "current_chunk", chunk, {silent: true}
+			@trigger "change:current_chunk"
+			@
+		# Expects pixel multiples, IE 500, 700
+		setPos: (x,y) ->
+			@marker.x = x
+			@marker.y = y
+			@
+		# Set the sprite sheet to the direction given by the x,y coords. 
+		turn: (dx,dy) ->
+			x = ut.floorToOne(dx)
+			y = ut.floorToOne(dy)
+			if x isnt 0 and y isnt 0 then x = 0
+			sheet = @sheets[x+","+y]
+			if !sheet then alert("FUCKED UP IN TURN")
+			@marker.icon.spriteSheet = sheet
+		##################################################
 		### Battle functions! ###
+		##################################################
+		# Adds the NPC's marker to the current map at a random valid square
+		# Only a temp function for testing
+		addToMap: () ->
+			chunk = mapper.getVisibleChunk()?.children
+			x = Math.abs Math.ceil(Math.random()*globals.map.c_width/_ts - 1)
+			y = Math.abs Math.ceil(Math.random()*globals.map.c_height/_ts - 1)
+			tile = chunk[y]?.children[x] 
+			while @canOccupy(tile) is false
+				y++
+				x++
+				tile = chunk[y = y % (globals.map.tileheight-1)]?.children[x = x % (globals.map.tilewidth-1)]
+			@enterSquare tile
+			@marker.x = x*_ts
+			@marker.y = y*_ts
+			board.addMarker @
+			@
+		# If a user doens't move before the timer runs out, they must burn an action
+		# Tries move first, then standard, then minor
+		burnAction: ->
+			if @takeMove(true) then true
+			else if @takeStandard(true) then true
+			else if @takeMinor(true) then true
+			false
+		# accepts a string "move, minor, standard" and returns true if the NPC has actions left for that type
+		can: (type)-> @actions[type.toLowerCase()] > 0 
+		# Can the user take any more actions?
+		canTakeAction: -> @can("minor") or @can("move") or @can("standard")
+		# Defend until next turn; burns a move action
+		defend: ->
+			@set("AC", @get("AC") + 2)
+			@takeMove()
+			@
+		# Kill NPC
+		die: ->
+			@dead = true
+			@trigger "die", @, @collection, {}
+			# alert "You killed #{@get('name')}"
+			board.getStage().removeChild @marker
+			@leaveSquare()
+		# Place the NPC on the dispatcher and let listeners know what to do
+		dispatch: (dispatcher) ->
+			@dispatched = true
+			@setPos(dispatcher.getX(),dispatcher.getY())
+			@enterSquare dispatcher.currentspace, 0, 0
+			@trigger "dispatch"
+			@
+		# Resets the NPC's phase counter and alerts all listeners that the turn is done
+		endTurn: ->
+			@active = false
+			@turnPhase = 0
+			@trigger "turndone"
+			@resetActions()
+			@
+		getPrivate: (id) ->
+			_p[id]
+		# Pass in a color to highlight the current space of the NPC
+		highlightTile: (color) ->
+			currenttile =  @currentspace
+			if !currenttile then return @
+			currenttile.tileModel.trigger("generalhighlight", color)
+			@
+		# Hide every other NPC's personal cursor and show this one
+		indicateActive: ->
+			_.each @activity_queue.models, (character) -> 
+				character.c.hide()
+			@c.show().move @marker
+			@
+		# Begin the NPC's turn by indicating it as the selected,
+		# and starting the first phase
+		initTurn: ->
+			@indicateActive()
+			@active = true
+			globals.shared_events.trigger "closemenus"
+			@menu.open()
+			@nextPhase()
+		isActive: -> @active
+		isDead: -> @dead
+		# Increments the phase counter and sets the game timer according to the 
+		# NPC's initiative roll
+		nextPhase: ->
+			t = @turnPhase
+			if t is 3 
+				return @endTurn()
+			battler.resetTimer().startTimer @i || @get("init"), => 
+				@burnAction()
+				console.log @actions
+				# @takeMove(
+				@nextPhase()
+			@trigger "beginphase", @turnPhase
+			@turnPhase++
 		# Reset turn actions. Can take one standard, one move, one major OR
 		# one standard, two minor OR
 		# Two moves one minor
@@ -240,23 +364,6 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 			}
 			@actions.change()
 			@
-		# Default action values. Can be reset with initTurn or augmented with items
-		actions: _.extend {
-				standard: 1
-				move: 2
-				minor: 2
-				change: -> 
-					@trigger "change", _.pick @, "standard", "move", "minor"
-			}, Backbone.Events
-		# If a user doens't move before the timer runs out, they must burn an action
-		# Tries move first, then standard, then minor
-		burnAction: ->
-			if @takeMove(true) then true
-			else if @takeStandard(true) then true
-			else if @takeMinor(true) then true
-			false
-		# accepts a string "move, minor, standard" and returns true if the NPC has actions left for that type
-		can: (type)-> @actions[type.toLowerCase()] > 0 
 		# Take a standard action and adjust the other actions.
 		takeStandard: (burn) ->
 			actions = @actions
@@ -292,94 +399,6 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 			if actions.indexOf(type) isnt -1
 				@["take" + type.capitalize()]()
 			@
-		# Can the user take any more actions?
-		canTakeAction: ->
-			flag = false
-			_.each @actions, (action) -> if action > 0 then flag = true
-			flag
-		# Defend until next turn; burns a move action
-		defend: ->
-			@set("AC", @get("AC") + 2)
-			@takeMove()
-			@
-		# Default to not dead
-		dead: false
-		# Kill NPC
-		die: ->
-			@dead = true
-			@trigger "die", @, @collection, {}
-			# alert "You killed #{@get('name')}"
-			board.getStage().removeChild @marker
-			@leaveSquare()
-		# Is the NPC dead?
-		isDead: ->
-			@dead
-		getPrivate: (id) ->
-			_p[id]
-		# Checks if a given target can be occupied. Does not account for entrance vectors, only current state.
-		canOccupy: (t) ->
-			if t.end is false then return false
-			if t.e is "f" then return false
-			if t.occupied is true then return false
-			true
-		# Adds the NPC's marker to the current map at a random valid square
-		# Bug - sometimes t
-		addToMap: () ->
-			chunk = mapper.getVisibleChunk()?.children
-			x = Math.abs Math.ceil(Math.random()*globals.map.c_width/_ts - 1)
-			y = Math.abs Math.ceil(Math.random()*globals.map.c_height/_ts - 1)
-			tile = chunk[y]?.children[x] 
-			while @canOccupy(tile) is false
-				y++
-				x++
-				tile = chunk[y = y % (globals.map.tileheight-1)]?.children[x = x % (globals.map.tilewidth-1)]
-			@enterSquare tile
-			@marker.x = x*_ts
-			@marker.y = y*_ts
-			board.addMarker @
-			@
-		# Pass in a color to highlight the current space of the NPC
-		highlightTile: (color) ->
-			currenttile =  @currentspace
-			if !currenttile then return @
-			currenttile.tileModel.trigger("generalhighlight", color)
-			@
-		# What phase of the user's turn are they at? Max 3
-		turnPhase: 0
-		# Resets the NPC's phase counter and alerts all listeners that the turn is done
-		endTurn: ->
-			@active = false
-			@turnPhase = 0
-			@trigger "turndone"
-			@resetActions()
-			@
-		# Hide every other NPC's personal cursor and show this one
-		indicateActive: ->
-			_.each @activity_queue.models, (character) -> 
-				character.c.hide()
-			@c.show().move @marker
-			@
-		# Begin the NPC's turn by indicating it as the selected,
-		# and starting the first phase
-		initTurn: ->
-			@indicateActive()
-			@active = true
-			globals.shared_events.trigger "closemenus"
-			@menu.open()
-			@nextPhase()
-		# Increments the phase counter and sets the game timer according to the 
-		# NPC's initiative roll
-		nextPhase: ->
-			t = @turnPhase
-			if t is 3 
-				return @endTurn()
-			battler.resetTimer().startTimer @i || @get("init"), => 
-				@burnAction()
-				console.log @actions
-				# @takeMove(
-				@nextPhase()
-			@trigger "beginphase", @turnPhase
-			@turnPhase++
 		# Takes an integer damage value, subtracts it, and renders it to the canvas
 		takeDamage: (damage) ->
 			if @isDead() then return @
@@ -399,25 +418,6 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 			current = @get "creatine"
 			if current - creatine < 0 then return false
 			@set("creatine", current-creatine)
-			@
-		# Returns the cartesian quadrant of the screen the NPC occupies so that the menu
-		# Can make sure not to open over them
-		getQuadrant: ->
-			x = @marker.x - 3*globals.map.c_width/4
-			y = @marker.y - globals.map.c_height/2
-			if x < 0 and y < 0 then 2
-			else if x <= 0 and y >= 0 then 3
-			else if x >= 0 and y <= 0 then 1
-			else 4
-		getX: -> @marker.x/_ts
-		getY: -> @marker.y/_ts
-		isActive: -> @active
-		isPC: -> false
-		dispatch: (dispatcher) ->
-			@dispatched = true
-			@setPos(dispatcher.getX(),dispatcher.getY())
-			@enterSquare dispatcher.currentspace, 0, 0
-			@trigger "dispatch"
 			@
 
 	# A basic collection of NPCs

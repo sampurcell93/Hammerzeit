@@ -35,9 +35,11 @@ $boardwidth: 1000px;
 body, html { height: 100%; }
 
 body {
+
 	background: #1F182D;
     overflow: hidden;
-    font-family: 'Myriad Pro', sans-serif;
+    font-family: 'Myriad Pro Light',"Ubuntu", sans-serif;
+    font-weight: 300;
 	
 	&:after {
 		content: '';
@@ -51,7 +53,7 @@ body {
 	}
 
 	&.active-modal::after  {
-		display: block;
+		// display: block;
 	}
 }
 
@@ -62,16 +64,16 @@ h2 {
 
 .modal {
     display: block;
-    width: $boardwidth;
+    width: $boardwidth/2;
     max-width: 100%;
     position: fixed;
     left: 50%;
     z-index: 10000;
-    margin-left: -500px;
-    top: 3%;
+    margin-left: -250px;
+    top: 65px;
     max-height: 94%;
     overflow: auto;
-    background: #f9f9f9;
+    background: rgba(0,0,0,.7);
     padding:  0 20px 10px;
     @include box-shadow(0px 0px 7px #111);
     @include border-radius(4px);
@@ -81,7 +83,26 @@ h2 {
         top: 14px;
         right: 30px;
         cursor: pointer;
+        color: #f9f9f9;
+        z-index: 999;
     }
+
+    .attribute-container {
+        @include box-shadow(none);
+        border: none;
+        position: relative;
+        top: 10px;
+        left: 0px;
+        background: none;
+        width: 100%;
+
+        meter::-webkit-meter-optimum-value, meter::-webkit-meter-suboptimum-value, meter::-webkit-meter-bar {
+            background-size: 310px 20px;
+        }
+
+    }
+
+    .js-toggle-full { display: none; }
 }
 
 canvas {
@@ -264,6 +285,22 @@ textarea {
     h2 {
         color: #aaa;
         text-indent: 1em;
+        font-size: 1.3em;
+        text-align: center;
+        border-bottom: 1px solid #777;
+        padding-bottom: 6px;
+    }
+
+    .phase-number {
+        @include border-radius(3px);
+        position: absolute;
+        top: 6px;
+        right: 10px;
+        background: rgba(0,0,0,.4);
+        text-align: center;
+        width: 38px;
+        padding: 4px;
+        text-indent: 0;
     }
 
     &[quadrant='1'] { 
@@ -287,6 +324,14 @@ textarea {
         cursor: pointer;
         position: relative;
         outline: none;
+
+        > i {
+            position: absolute;
+            left: 10px;
+            line-height: 2em;
+            color: #aaa;
+            text-indent: 0;
+        }
 
         &:first-of-type {
             @include border-radius(3px 3px 0 0);
@@ -317,7 +362,7 @@ textarea {
 
         > li {
             text-align: left;
-            text-indent: 1.2em;
+            text-indent: 1.35em;
             width: 300px;
         }
 
