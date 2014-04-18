@@ -31,7 +31,6 @@ define ['globals', 'utilities', 'jquery', 'underscore', 'easel'], (globals, ut) 
 
     class Cursor 
         # The cursor sprite doesn't begin exactly at 0
-        offset: -7
         visible: false
         constructor: ->
             spritesheet = {
@@ -62,6 +61,7 @@ define ['globals', 'utilities', 'jquery', 'underscore', 'easel'], (globals, ut) 
             @marker = new createjs.Sprite(sheet, "bounce")
             @marker.x = 0 
             @marker.y = @offset
+            @marker.regY = 7
             @
         show: ->
             @visible = true
@@ -76,10 +76,10 @@ define ['globals', 'utilities', 'jquery', 'underscore', 'easel'], (globals, ut) 
         # If a displayobject is passed, the cursor will be set to one square ABOVE it (as an indicator) and the second arg will be an offset
         move: (x, y, d) ->
             if _.isObject(x)
-                y = x.y - _ts + @offset
+                y = x.y - _ts
                 x = x.x
             @marker.x = x
-            @marker.y = y + @offset
+            @marker.y = y
             if d
                 debugger
             @

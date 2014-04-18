@@ -27,8 +27,6 @@
     scenecount = 0;
     scenelen = 6;
     Cursor = (function() {
-      Cursor.prototype.offset = -7;
-
       Cursor.prototype.visible = false;
 
       function Cursor() {
@@ -47,6 +45,7 @@
         this.marker = new createjs.Sprite(sheet, "bounce");
         this.marker.x = 0;
         this.marker.y = this.offset;
+        this.marker.regY = 7;
         this;
       }
 
@@ -68,11 +67,11 @@
 
       Cursor.prototype.move = function(x, y, d) {
         if (_.isObject(x)) {
-          y = x.y - _ts + this.offset;
+          y = x.y - _ts;
           x = x.x;
         }
         this.marker.x = x;
-        this.marker.y = y + this.offset;
+        this.marker.y = y;
         if (d) {
           debugger;
         }

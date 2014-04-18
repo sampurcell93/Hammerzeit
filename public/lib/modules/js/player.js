@@ -20,6 +20,10 @@
         return _.bindAll(this, "contextualize", "insideChunkBounds", "move", "defaults");
       };
 
+      player.prototype.isPC = function() {
+        return true;
+      };
+
       player.prototype.contextualize = function(x, y) {
         if (x < 0) {
           x += globals.map.width;
@@ -87,7 +91,6 @@
 
       player.prototype.initTurn = function() {
         player.__super__.initTurn.apply(this, arguments);
-        console.log("and it's a PC!");
         return globals.shared_events.trigger("openmenu");
       };
 
@@ -115,12 +118,33 @@
         });
       };
 
+      player.prototype.dispatch = function() {
+        globals.shared_events.trigger("bindmenu", this);
+        return player.__super__.dispatch.apply(this, arguments);
+      };
+
       return player;
 
     })(NPC.NPC);
     PCs = new NPC.NPCArray;
     PCs.add(new player(null, {
-      main: true
+      main: true,
+      spd: 5
+    }));
+    PCs.add(new player({
+      init: 4,
+      name: 'Fighter',
+      spd: 6
+    }));
+    PCs.add(new player({
+      init: 2,
+      name: 'Mage',
+      spd: 3
+    }));
+    PCs.add(new player({
+      init: 3,
+      name: 'Cleric',
+      spd: 4
     }));
     return {
       model: player,

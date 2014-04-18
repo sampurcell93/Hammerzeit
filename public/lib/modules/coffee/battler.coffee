@@ -1,5 +1,8 @@
 define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player", "cast"], (board, globals, ut, mapper, NPC, mapcreator, player, cast) ->
 
+    window.t = ->
+        getQueue().next()
+
     PCs = player.PCs
     Player = player.model
     NPCArray = NPC.NPCArray
@@ -10,8 +13,64 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
     _sm = 20
     _ts = globals.map.tileside
     states = ['choosingmoves', 'choosingattacks', 'menuopen']
+    battle_events = _.extend {}, Backbone.Events
 
-    # Simple circular queue
+    # To begin each battle, players are dispatched from a central point. 
+    # This class contains the controls for that central point
+    class Dispatcher
+        visible: false
+        constructor: (x = 100, y = 500) ->
+            spritesheet = {
+                framerate: 100
+                animations: 
+                    pulse: [0,7]
+                frames: [
+                    [0,0,50,57],
+                    [50,0,50,57],
+                    [100,0,50,57],
+                    [150,0,50,57],
+                    [150,0,50,57],
+                    [100,0,50,57],
+                    [50,0,50,57],
+                    [0,0,50,57]
+                ]
+            }
+            base = new createjs.SpriteSheet(_.extend spritesheet, {images: ["images/tiles/dispatchbase.png"]})
+            base.getAnimation("pulse").speed = .25
+            base.getAnimation("pulse").next = "pulse"
+            @marker = new createjs.Container()
+            @marker.addChild base = new createjs.Sprite(base, "pulse")
+            base.y = 20
+            @marker.x = x
+            @marker.y = y
+            target = mapper.getTargetTile 0, 0, {x:x,y:y}
+            target.tileModel.set("npc", false)
+            @currentspace = target
+            @marker.regY = 7
+            @bindEvents()
+            @
+        showDispatchMenu: ->
+            battle_events.trigger "showDispatchMenu", player.PCs
+            @
+        bindEvents: ->
+            @marker.on "click", @showDispatchMenu, false, @
+            @
+        show: ->
+            @visible = true
+            stage.addChild @marker
+            @
+        hide: ->
+            @visible = false
+            stage.removeChild @marker
+            @
+        addChild: (marker) -> @marker.addChild marker
+        removeChild: (id) -> @marker.removeChild id
+        getX: -> @marker.x
+        getY: -> @marker.y
+        # If there is a PC already on the pad, cannot dispatch
+        canDispatch: -> !@currentspace.tileModel.isOccupied()
+
+    # Simple circular queue. Handes the battle progression
     class InitiativeQueue extends NPCArray
         current_index: 0
         type: 'InitiativeQueue'
@@ -33,16 +92,19 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
               when 'player' then m = new player.model attrs, options
               when 'npc' then m = new NPC.NPC attrs, options
               when 'enemy' then m = new Enemy attrs, options
-            # Deflects against multiple collections
             m.queue = @
             m
-        # comparator: (model) -> model.i = model.get("init") + Math.ceil(Math.random()*_sm)
-        comparator: (model) -> -model.get("type") is "PC"
+        comparator: (model) -> 
+            if model.i then return model.i
+            else 
+                model.i = model.get("init") + Math.ceil(Math.random()*_sm)
+            model.i
+        # comparator: (model) -> -model.get("type") is "PC"
         # returns the pc or npc at the top of the queue
         getActive: (opts) -> 
             opts = _.extend {player: false}, opts
             active = @at @current_index
-            if opts.player is true and active instanceof player.model is false then return null
+            if opts.player is true and active.isPC() is false then return null
             else return active
         # Advance the queue and start the new character's turn by default. 
         # Pass in false to prevent this.
@@ -52,43 +114,46 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
             # Look for live player
             while active_player.isDead()
                 active_player = @getActive()
+            console.log active_player.get("name")
             _activebattle.clearAllHighlights()
-            unless init is false
-                setTimeout -> 
-                    active_player.initTurn()
-                , @turnDelay
-
+            if active_player.isPC() and @PCs.anyDispatched() is false
+                events.trigger "showDispatchMenu"
+            else
+                unless init is false
+                    setTimeout -> 
+                        active_player.initTurn()
+                    , @turnDelay
             num
         # Shifts the queue back by one!
         prev: -> 
             @current_index--
             if @current_index < 0 then @current_index = @length - 1
 
-
-
     # Handler for battle state functions. Respnsible for battle state (a subset of board state)
-    # 
     class Battle extends Backbone.Model
         states: []
-        defaults: 
-            NPCs: new NPCArray
-            InitQueue: new InitiativeQueue(PCs.models)
-            avglevel: PCs.getAverageLevel()
-            numenemies: 5#Math.ceil(Math.random() * PCs.length * 2 + 1)
-            enemyBounds: {
-                min_x: 0
-                max_x: map.c_width
-                min_y: 0
-                max_y: map.c_height
+        defaults: ->
+            InitQueue = new InitiativeQueue()
+            InitQueue.PCs = PCs
+            return {
+                NPCs: new NPCArray
+                InitQueue: InitQueue
+                avglevel: PCs.getAverageLevel()
+                numenemies: 5#Math.ceil(Math.random() * PCs.length * 2 + 1)
+                enemyBounds: {
+                    min_x: 0
+                    max_x: map.c_width
+                    min_y: 0
+                    max_y: map.c_height
+                }
             }
         initialize: ->
+            @dispatcher = new Dispatcher(PC.marker.x, PC.marker.y)
             @listenTo @get("NPCs"), 
                 die: @checkStillLiving
             @on 
                 "choosingmoves"  : -> @clearAttackZone()
                 "choosingattacks": -> @clearPotentialMoves()
-
-
         addState: (newstate) ->
             if @hasState(newstate) is false
                 @states.push newstate
@@ -111,26 +176,25 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
                     if character.dead is false then flag = false
                 return flag
             false
-        addPCs: ->
-            _.each PCs.models, (pc, i) ->
-                # unless i is 0
-                pc.addToMap()
-                globals.shared_events.trigger "bindmenu", pc
-                board.addMarker pc
-        begin: (type, opts)->
-            @addPCs()
+        removeTravelPC: -> 
+            stage.removeChild player.PC.marker
+            player.PC.leaveSquare()
+            player.PC.setPos 0, 0
+        begin: (type, opts) ->
+            @removeTravelPC()
+            @dispatcher.show().showDispatchMenu()
             if type is "random" then @randomize(opts)
             else @load type, opts
-
         load: (id) ->
             @url = @id || globals.battle_dir + id
             @fetch success: (battle) ->
                 console.log battle
         # A function for creating a random battle, within parameters (or NOT?!!)
         randomize: (o={}) ->
-            o = _.extend @defaults, o
+            o = _.extend @defaults(), o
+            names = ["Steve", "John", "Ken", "Tom", "Bob", "Zeke", "Dan"]
             for i in [0...o.numenemies]
-                @get("NPCs").add(n = new Enemy)
+                @get("NPCs").add(n = new Enemy({name: names[i]}))
                 @get("InitQueue").add n
                 n.addToMap()
                 globals.shared_events.trigger "bindmenu", n
@@ -169,22 +233,20 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
             _.each initiative, (character) ->
                 if character instanceof Player then PCArr.push character
                 else NPCArr.push character
-            console.log NPCArr, PCArr
             if NPCArr.length is 0
                 alert "you won!"
             else if PCArr.length is 0 
                 alert "they won :/"
 
-
-
-    _activebattle = new Battle
+    _activebattle = null
     _active_chars = PCs
     _shared = globals.shared_events
     _shared.on "battle", ->
-        _activebattle.destructor().destroy()
+        if _activebattle then _activebattle.destructor().destroy()
         b = _activebattle = new Battle
         b.begin "random"
-        _grid.activate()
+        if _grid then _grid.remove()
+        _grid = new GridOverlay model: _activemap, child: GridSquare
     _activemap = null
     _ts = globals.map.tileside
 
@@ -236,8 +298,6 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
         el: ".battle-grid-overlay"
         showing: false
         modifyAllTiles: ->
-        render: -> 
-            super
         toggle: ->
             if @showing is false then @activate()
             else @deactivate()
@@ -249,25 +309,6 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
         deactivate: ->
             @hide()
             @showing = false
-        path_defaults: 
-            # Compute diagonals as a distance-1 move?
-            diagonal: false
-            # Do not designate squares occupied by NPCs as un-enterable
-            ignoreNPCs: false
-            # Do not designate squares occupied by PCs as un-enterable
-            ignorePCs: false
-            # Only designate occupied squares as valid.
-            ignoreEmpty: false
-            # Should difficult terrain factor into distance?
-            ignoreDifficult: false
-            # Should the path be stored?
-            storePath: true
-            # Should the acceptable directions of a square
-            ignoreDeltas: false
-            # How long should we search for?
-            range: 6
-            # The context to call the handler in
-            handlerContext: @
         # Like move, but lightweight and with no transitions - simple arithmetic check
         # Because we're not updating marker, we can pass in a start object (x:,y:) to be virtualized from
         virtualMove: (dx, dy, start, opts) ->
@@ -286,7 +327,27 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
         # Still inefficient - keeps checking past max distance - todo
         virtualMovePossibilities: (start, done, opts) ->
             done       || (done = (target) -> target.tileModel.trigger("potentialmove"))
-            opts = _.extend @path_defaults, opts
+            if start is "dispatch" then start = mapper.getTargetTile(0,0,_activebattle.dispatcher.marker)
+            path_defaults = 
+                # Compute diagonals as a distance-1 move?
+                diagonal: false
+                # Do not designate squares occupied by NPCs as un-enterable
+                ignoreNPCs: false
+                # Do not designate squares occupied by PCs as un-enterable
+                ignorePCs: false
+                # Only designate occupied squares as valid.
+                ignoreEmpty: false
+                # Should difficult terrain factor into distance?
+                ignoreDifficult: false
+                # Should the path be stored?
+                storePath: true
+                # Should the acceptable directions of a square
+                ignoreDeltas: false
+                # How long should we search for?
+                range: 6
+                # The context to call the handler in
+                handlerContext: @
+            opts = _.extend path_defaults, opts
             checkQueue = []
             movable = new mapper.Row
             checkQueue.unshift(start)
@@ -389,13 +450,16 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
          move_fns:
             # handler for click event on 
             clickHandler: (e, data) -> 
+                if @moving is true then return @
                 active_player = getActive()
                 path = @model.pathFromStart.path
                 # Stop the timer while moving - player not punished for animation
                 _timer.stop()
+                @moving = true
                 moveInterval = =>
                     if _.isEmpty(path)
                         @stopListening active_player, "donemoving"
+                        @moving = false
                         _activebattle.clearPotentialMoves()
                         # _activebattle.potential_moves = active.virtualMovePossibilities()
                         active_player.takeMove()
@@ -405,6 +469,7 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
                 do moveInterval
                 @listenTo active_player, "donemoving", -> setTimeout moveInterval, 100
             mouseoverHandler: (e, data) ->
+                console.log "mouse"
                 board.mainCursor().show().move @model.bitmap
                 @drawHitAreaSquare @colors.selected_move
                 @
@@ -441,8 +506,6 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
         # NPC subject of the attack, and the power being used
         # Calls the power's use function and performing the default actions
         handleAttack: (attacker, subject, power, opts={take_action: true}) ->
-            console.log arguments
-            debugger
             attrs = power.toJSON()
             if !attacker.can(attrs.action) then return @
             use = attrs.use
@@ -453,9 +516,8 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
                     @handleAttack attacker, subj, power, {take_action: take_action}
                 return @
             if _.isFunction(use) then use.call(power, subject, attacker)
+            # Baseline damage plus a role of the dice
             subject.takeDamage(attrs.damage + ut.roll(attrs.modifier))
-            console.log "attacking #{subject.get('name')}"
-            debugger 
             # Some powers cost magic 
             attacker.useCreatine(attrs.creatine)
             attacker.takeAction(attrs.action) unless opts.take_action is false
@@ -464,6 +526,7 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
             @
         bindMoveFns: ->
             area = @model.bitmap.hitArea
+            console.log "binding move functions"
             m = @move_fns
             area.on "click" , m.clickHandler, @, false, area: area
             area.on "mouseover", m.mouseoverHandler, @, false, area: area
@@ -481,6 +544,7 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
 
         # Pass in a stringto identify why a grid square should be highlighted
         potentialmoves: ->
+            console.log "just got triggered"
             # @haspotentialmoves = true
             area = @model.bitmap.hitArea
             @drawHitAreaSquare @colors.potential_move
@@ -527,26 +591,40 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
     getActive = (opts) ->
         _activebattle.get("InitQueue").getActive(opts)
 
+    virtualMovePossibilities = ->
+        _grid.virtualMovePossibilities.apply(_grid, arguments)
 
-    _b = window.battler = {
-        getActive: (opts) ->
-            getActive opts
+    setPotentialMoves = (squares) ->  _activebattle.potential_moves = squares
+
+    discardDispatch = ->
+        dispatcher = _activebattle.dispatcher
+        if dispatcher.canDispatch()
+            if dispatcher.potential_dispatch
+                dispatcher.marker.removeChildAt 1
+                dispatcher.potential_dispatch = null
+            _activebattle.clearAllHighlights()
+
+    getQueue = -> _activebattle.get("InitQueue")
+
+    window.battler = {
+        # Returns the currently active player
+        getActive: (opts) -> getActive opts
+        # Returns only players. Even dead ones.
+        getPlayers: -> player.PCs
+        getNPCs: -> _activebattle.get("NPCs")
+
         toggleGrid: ->
-            console.log "calling toggle grid from"
-            console.log arguments.callee.caller.name
             _activemap = mapcreator.getChunk()
             _grid.toggle()
         activateGrid: ->
-            console.log "calling toggle grid from"
-            console.log arguments.callee.caller.name
             _activemap = mapcreator.getChunk()
             _grid.activate()
         deactivateGrid: ->
             _grid.deactivate()
         getActiveMap: -> 
             _activemap
-        getQueue: ->
-            _activebattle.get("InitQueue")
+        # Gets all characters, dead or alive.
+        getQueue: -> getQueue()
         # Because of the game's combination of real time and RPG playing, we're using a timer! 
         # Will be an HTML5 progress element
         showTimer: ->
@@ -582,11 +660,13 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
             b.randomize()
         # Battle has substates of main board state
         setState: (state) ->
-            _activebattle.setState state.toUpperCase()
+            if _activebattle
+                _activebattle.setState state.toUpperCase()
             @
         # Adds a state to the array of states - string
         addState: (newstate) -> 
-            _activebattle.addState newstate.toUpperCase()
+            if _activebattle
+                _activebattle.addState newstate.toUpperCase()
             @
         # Give an string state to remove
         removeState: (removeme) ->
@@ -596,20 +676,43 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
         toggleState: (state) ->
             if _activebattle.hasState(state) then _activebattle.removeState state
             else _activebattle.addState state
-        setPotentialMoves: (squares) ->
-            _activebattle.potential_moves = squares
+        setPotentialMoves: (squares) -> setPotentialMoves squares
         setAttacks: (squares) ->
             _activebattle.attack_zone = squares
         clearPotentialMoves: ->
-            _activebattle.clearPotentialMoves()
+            if _activebattle
+                _activebattle.clearPotentialMoves()
         removeHighlighting: ->
-            _activebattle.clearAllHighlights()
+            if _activebattle
+                _activebattle.clearAllHighlights()
         startPulsing: ->
             _grid.model.trigger("pulse")
-        virtualMovePossibilities: -> _grid.virtualMovePossibilities.apply(_grid, arguments)
+        virtualMovePossibilities: -> virtualMovePossibilities.apply(@, arguments)
+        # Expects a NPC model, and places it softly on the dispatcher
+        potentialDispatch: (character) ->
+            dispatcher = _activebattle.dispatcher
+            if dispatcher.canDispatch()
+                dispatcher.marker.addChildAt character.marker, 1
+                dispatcher.potential_dispatch = character
+                setPotentialMoves virtualMovePossibilities "dispatch", null, {range: character.get("spd")}
+        discardDispatch: ->
+            discardDispatch()
+            @
+        # 
+        confirmDispatch: ->
+            dispatcher = _activebattle.dispatcher
+            if dispatcher.canDispatch()
+                character = dispatcher.potential_dispatch 
+                if character 
+                    discardDispatch()
+                    board.addMarker character
+                    queue = getQueue()
+                    queue.add character, {at: queue.current_index}
+                    character.dispatch(dispatcher)
+                    queue.prev()
+                    queue.next()
+
+            @
+
+        events: battle_events
     }   
-
-
-    window.t = ->
-      _activebattle.get("InitQueue").getActive().endTurn()
-    _b

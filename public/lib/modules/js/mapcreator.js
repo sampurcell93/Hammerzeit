@@ -45,8 +45,7 @@
 
       Overlay.prototype.initialize = function(opts) {
         this.child = opts.child;
-        _.bindAll(this, "render");
-        return this.render();
+        return _.bindAll(this, "render");
       };
 
       Overlay.prototype.render = function() {

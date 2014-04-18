@@ -39,13 +39,21 @@ define ["globals", "utilities", "board", "mapper", "underscore", "backbone", "ea
             @
         isOccupied: -> @bitmap.occupied is true
         getOccupant: -> @bitmap.occupiedBy
+        occupy: (obj) ->
+            @bitmap.occupied = true
+            @bitmap.occupiedBy = obj
+            @
         # Pass in the target tile and the move deltas, and the NPC will use the current 
         # active chunk to determine if the spot is enterable.
         checkEnterable: (dx, dy, start, opts = {}) ->
             e = @get "e"
+            if e is "f" 
+                console.log opts
             if e is false or e is "f" and !opts.ignoreDeltas then return false
             else if @isOccupied() and !opts.ignoreNPCs then return false
             else if e is "" then return true
+            # else if opts.character and !opts.character.isPC() and @get("npc") is false
+                # return false
             else if _.isString(e) and !opts.ignoreDeltas
                 return _checkEntry[e](dx, dy)
             else true
@@ -191,10 +199,10 @@ define ["globals", "utilities", "board", "mapper", "underscore", "backbone", "ea
             _activechunk
         setTile: (tile) ->
             setTile tile
-                # Given move deltas, retrieve the DisplayObject (bitmap) at that position in the current chunk
+        # Given move deltas, retrieve the DisplayObject (bitmap) at that position in the current chunk
         getTargetTile: (dx, dy, start) ->
-            chunk = _activechunk.children
-            chunk[(start.y+(50*dy))/50]?.children[(start.x+(50*dx))/50] || {}
+            if _activechunk
+                _activechunk.children[(start.y+(50*dy))/50]?.children[(start.x+(50*dx))/50] || {}
         Tile: Tile
         Row: Row
         Chunk: Chunk

@@ -58,13 +58,13 @@ define ["battler", "mapcreator", "utilities", "board", "dialog", "globals", "tas
 						c = PC.get("current_chunk")
 						board.addMarker PC
 						mapper.renderChunk _bitmap[c.y][c.x], stage
-						board.addState("BATTLE").removeState("WAITING").removeState("TRAVEL")
+						board.addState("TRAVEL").removeState("WAITING")
 						battler.activateGrid()
 						board.setMapSize(_stageObj.width*globals.map.width, _stageObj.height*globals.map.height)
-						battler.start()
-						# PC.marker.y = 500
-						# PC.marker.x = 0
-						# PC.setCurrentSpace()
+						# battler.start()
+						PC.marker.x = 250
+						PC.marker.y = 0
+						PC.enterSquare()
 
 			}
 		])

@@ -1,11 +1,13 @@
-define ["powers", "globals", "utilities", "dialog", "battler","board", "jquery-ui"], (powers, globals, ut, dialog, battler, board) ->
+define ["powers", "globals", "utilities", "dialog", "battler", "board", "jquery-ui"], (powers, globals, ut, dialog, battler, board) ->
 
     board.focus()
+    stage = board.getStage()
 
     _menus = []
     $wrapper = $(".wrapper")
 
-    _activemenu = battler.getActive().menu
+    _activemenu = null
+    _dispatchmenu = null
     # Close all menus
     globals.shared_events.on "closemenus", ->
         closeAll()
@@ -17,7 +19,50 @@ define ["powers", "globals", "utilities", "dialog", "battler","board", "jquery-u
         _activemenu = character.menu = new Menu model: character
         _menus.push _activemenu
 
-    # Inventory List View
+    battler.events.on "showDispatchMenu", (collection) ->
+        closeAll()
+        _dispatchmenu = new DispatchMenu collection: collection
+        console.log _dispatchmenu
+        _dispatchmenu.$el.appendTo $wrapper
+
+
+    class PlayerDispatch extends Backbone.View
+        template: $("#dispatch-menu-item").html()
+        tagName: 'li'
+        initialize: ->
+            @listenTo @model, "dispatch", @render
+        render: ->
+            character = @model
+            @$el.html _.template @template, _.extend(character.toJSON(), {d: character.dispatched, i: character.i})
+            if character.isDead() then @$el.addClass("dead")
+            else @$el.removeClass("dead")
+            if character.dispatched then @$el.addClass "disabled"
+            else @$el.removeClass("dead")
+            @
+        events: 
+            "mouseover": -> battler.potentialDispatch @model
+            "mouseleave": -> battler.discardDispatch()
+            "click": -> battler.confirmDispatch()
+
+
+    class DispatchMenu extends Backbone.View
+        tagName: 'ul'
+        className: 'game-menu visible'
+        initialize: -> @render()
+        render: ->
+            @$el.empty()
+            @collection.sort()
+            _.each @collection.models, (character) =>
+                player = new PlayerDispatch model: character
+                @$el.append player.render().el
+            @
+        show: ->
+            @$el.slideDown "fast"
+        hide: ->
+            @$el.slideUp "fast"
+        events: ->
+
+
     class InventoryList extends Backbone.View
         tagName: 'ul'
         initialize: ->
@@ -98,7 +143,7 @@ define ["powers", "globals", "utilities", "dialog", "battler","board", "jquery-u
             handler = @model.getHandler()
             opts = {ignoreNPCs: true, storePath: false, ignoreDifficult: true, ignoreDeltas: true, range: @model.get("range"), handlerContext: @model}
             opts = _.extend opts, @model.getPathOptions()
-            battler.setAttacks u = battler.virtualMovePossibilities(user.getCurrentSpace(), handler, opts)
+            battler.setAttacks battler.virtualMovePossibilities(user.getCurrentSpace(), handler, opts)
             battler.setState("choosingattacks")
         events: 
             "click": "chooseTargets"
@@ -358,6 +403,8 @@ define ["powers", "globals", "utilities", "dialog", "battler","board", "jquery-u
         board.toggleState("MENUOPEN")
 
     closeAll = ->
+        if _activemenu
+            _activemenu.close()
         _.each _menus, (menu) -> 
             menu.close()
         board.removeState "MENUOPEN"

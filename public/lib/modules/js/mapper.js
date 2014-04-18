@@ -61,12 +61,21 @@
         return this.bitmap.occupiedBy;
       };
 
+      Tile.prototype.occupy = function(obj) {
+        this.bitmap.occupied = true;
+        this.bitmap.occupiedBy = obj;
+        return this;
+      };
+
       Tile.prototype.checkEnterable = function(dx, dy, start, opts) {
         var e;
         if (opts == null) {
           opts = {};
         }
         e = this.get("e");
+        if (e === "f") {
+          console.log(opts);
+        }
         if (e === false || e === "f" && !opts.ignoreDeltas) {
           return false;
         } else if (this.isOccupied() && !opts.ignoreNPCs) {
@@ -273,9 +282,10 @@
         return setTile(tile);
       },
       getTargetTile: function(dx, dy, start) {
-        var chunk, _ref3;
-        chunk = _activechunk.children;
-        return ((_ref3 = chunk[(start.y + (50 * dy)) / 50]) != null ? _ref3.children[(start.x + (50 * dx)) / 50] : void 0) || {};
+        var _ref3;
+        if (_activechunk) {
+          return ((_ref3 = _activechunk.children[(start.y + (50 * dy)) / 50]) != null ? _ref3.children[(start.x + (50 * dx)) / 50] : void 0) || {};
+        }
       },
       Tile: Tile,
       Row: Row,

@@ -1,3 +1,10 @@
+script#new-game(type='text/template')
+    input(type='text', name='username', placeholder='Username')
+    input(type='password', name='password', placeholder='Password')
+    input(type='password', name='confirm-password', placeholder='Confirm password')
+    input(type='button', value='Start Game').js-start-game
+
+
 script#modify-tile(type='text/template')
         <h2>
         X: <%= x %>
@@ -77,3 +84,9 @@ script#attribute-container(type='text/template')
             span.js-toggle-full.button More
     div.full-attributes
         | These are suome full attributes
+
+script#dispatch-menu-item(type='text/template')
+    li
+        <%= name %>
+        | Init: <%= i %>
+        | <%= d ? "Dispatched" : "" %>

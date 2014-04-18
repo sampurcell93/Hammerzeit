@@ -25,6 +25,7 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 	class NPC extends Backbone.Model
 		currentspace: {}
 		active: false
+		dispatched: false
 		defaults: ->
 			pow = powers.getDefaultPowers()
 			_.each pow.models, (power) => power.ownedBy = @
@@ -52,8 +53,7 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 				AC: 10
 				jmp: 2
 				atk: 3
-				regY: 10
-				# powers: 
+				regY: 0
 				current_chunk: { x: 0, y: 0 }
 				spriteimg: "images/sprites/hero.png"
 				frames: {
@@ -153,13 +153,19 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 			@currentspace.occupied = false
 			@currentspace.occupiedBy = null
 			@
+		# Expects pixel multiples, IE 500, 700
+		setPos: (x,y) ->
+			@marker.x = x
+			@marker.y = y
+			@
 		# Pass in a tile DisplayObject, and link it to this NPC
 		enterSquare: (target, dx, dy) ->
+			target || target = mapper.getTargetTile(0,0,@marker)
+			target.tileModel.occupy @
 			@currentspace = target
-			target.occupied = true
-			target.occupiedBy = @
 			if target.end is false or target.end is "false" and (dx isnt 0 and dy isnt 0)
 				@move(dx, dy, 0);
+		getCurrentSpace: -> @currentspace
 		# Wrapper functions for basic moves
 		moveRight: -> @move 1, 0
 		moveLeft: -> @move -1, 0
@@ -189,10 +195,10 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 			target = mapper.getTargetTile dx, dy, @currentspace
 			if @moving is true then return false
 			sheet = @turn dx, dy
-			if !target.checkEnterable(dx, dy) then return false
+			if !target.tileModel.checkEnterable(dx, dy, null, {character: @}) then return false
 			if !@stage or !marker
 				throw new Error("There is no stage or marker assigned to this NPC!")
-			if !@canMoveOffChunk() then return false
+			# if !@canMoveOffChunk() then return false
 			@moving = true
 			@moveInterval dx, dy
 			true
@@ -310,16 +316,6 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 			@dead
 		getPrivate: (id) ->
 			_p[id]
-		getCurrentSpace: -> @currentspace
-		# Given pixel x and y coordinates (ie 400, 300), set the current space object
-		setCurrentSpace: (target) ->
-			target || target = mapper.getTargetTile(0,0,@currentspace)
-			# Would use @enterSquare, but throws unexpected errors: todo, debug
-			if target 
-				@currentspace = target
-				target.occupied = true
-				target.occupiedBy = @
-			target
 		# Checks if a given target can be occupied. Does not account for entrance vectors, only current state.
 		canOccupy: (t) ->
 			if t.end is false then return false
@@ -337,9 +333,7 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 				y++
 				x++
 				tile = chunk[y = y % (globals.map.tileheight-1)]?.children[x = x % (globals.map.tilewidth-1)]
-			@setCurrentSpace tile
 			@enterSquare tile
-			console.log "putting #{@get('name')} at #{tile.x},#{tile.y}"
 			@marker.x = x*_ts
 			@marker.y = y*_ts
 			board.addMarker @
@@ -418,6 +412,13 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 		getX: -> @marker.x/_ts
 		getY: -> @marker.y/_ts
 		isActive: -> @active
+		isPC: -> false
+		dispatch: (dispatcher) ->
+			@dispatched = true
+			@setPos(dispatcher.getX(),dispatcher.getY())
+			@enterSquare dispatcher.currentspace, 0, 0
+			@trigger "dispatch"
+			@
 
 	# A basic collection of NPCs
 	class CharacterArray extends Backbone.Collection
@@ -429,6 +430,11 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 				unless PC.isDead()
 					sum += PC.get "level"
 			Math.ceil sum/@length
+		comparator: (model) -> model.i
+		# Returns true if any PCs have been dispatched. Make faster todo
+		anyDispatched: -> (_.filter @models, (model) -> model.dispatched is true).length > 0
+
+
 
 	# Default view for an NPC - can be launched in a modal or put into any other context.
 	class CharacterPropertyView extends Backbone.View
@@ -441,7 +447,6 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 		type: 'enemy'
 		defaults: ->
 			defaults = super
-			console.log defaults
 			_.extend defaults, {type: 'enemy'}
 	# Bind all the private functions to the public object.... invisibly 0_0
 	# _.each move_fns, (fn) ->

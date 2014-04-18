@@ -1,10 +1,20 @@
-define ["globals", "utilities", "battler", "board", "player", "controls", "mapper", "mapcreator", "menus", "underscore"], (globals, ut, battler, board, player, controls, mapper, mapcreator, menus) ->
+define ["globals", "utilities", "battler", "board", "player", "controls", "mapper", "mapcreator", "menus"], (globals, ut, battler, board, player, controls, mapper, mapcreator, menus) ->
 	window.PC = player.PC
 
+	class SignUp extends Backbone.View
+		template: $("#new-game").html()
+		render: ->
+			@$el.html _.template @template
+			@
+		events: ->
+			"click": -> 
+				
 
 	taskrunner = {
 		newGame: () ->
 			@loadStage 1
+			# signup = new SignUp()
+			# ut.launchModal signup.render().el
 		loadStage: (module) ->
 			board.addState "LOADING"
 			# Stage not to be confused with "level": Rename todo

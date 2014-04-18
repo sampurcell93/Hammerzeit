@@ -40,6 +40,8 @@
 
       NPC.prototype.active = false;
 
+      NPC.prototype.dispatched = false;
+
       NPC.prototype.defaults = function() {
         var inventory, pow,
           _this = this;
@@ -74,7 +76,7 @@
           AC: 10,
           jmp: 2,
           atk: 3,
-          regY: 10,
+          regY: 0,
           current_chunk: {
             x: 0,
             y: 0
@@ -209,13 +211,23 @@
         return this;
       };
 
+      NPC.prototype.setPos = function(x, y) {
+        this.marker.x = x;
+        this.marker.y = y;
+        return this;
+      };
+
       NPC.prototype.enterSquare = function(target, dx, dy) {
+        target || (target = mapper.getTargetTile(0, 0, this.marker));
+        target.tileModel.occupy(this);
         this.currentspace = target;
-        target.occupied = true;
-        target.occupiedBy = this;
         if (target.end === false || target.end === "false" && (dx !== 0 && dy !== 0)) {
           return this.move(dx, dy, 0);
         }
+      };
+
+      NPC.prototype.getCurrentSpace = function() {
+        return this.currentspace;
       };
 
       NPC.prototype.moveRight = function() {
@@ -279,14 +291,13 @@
           return false;
         }
         sheet = this.turn(dx, dy);
-        if (!target.checkEnterable(dx, dy)) {
+        if (!target.tileModel.checkEnterable(dx, dy, null, {
+          character: this
+        })) {
           return false;
         }
         if (!this.stage || !marker) {
           throw new Error("There is no stage or marker assigned to this NPC!");
-        }
-        if (!this.canMoveOffChunk()) {
-          return false;
         }
         this.moving = true;
         this.moveInterval(dx, dy);
@@ -454,20 +465,6 @@
         return _p[id];
       };
 
-      NPC.prototype.getCurrentSpace = function() {
-        return this.currentspace;
-      };
-
-      NPC.prototype.setCurrentSpace = function(target) {
-        target || (target = mapper.getTargetTile(0, 0, this.currentspace));
-        if (target) {
-          this.currentspace = target;
-          target.occupied = true;
-          target.occupiedBy = this;
-        }
-        return target;
-      };
-
       NPC.prototype.canOccupy = function(t) {
         if (t.end === false) {
           return false;
@@ -492,9 +489,7 @@
           x++;
           tile = (_ref3 = chunk[y = y % (globals.map.tileheight - 1)]) != null ? _ref3.children[x = x % (globals.map.tilewidth - 1)] : void 0;
         }
-        this.setCurrentSpace(tile);
         this.enterSquare(tile);
-        console.log("putting " + (this.get('name')) + " at " + tile.x + "," + tile.y);
         this.marker.x = x * _ts;
         this.marker.y = y * _ts;
         board.addMarker(this);
@@ -616,6 +611,18 @@
         return this.active;
       };
 
+      NPC.prototype.isPC = function() {
+        return false;
+      };
+
+      NPC.prototype.dispatch = function(dispatcher) {
+        this.dispatched = true;
+        this.setPos(dispatcher.getX(), dispatcher.getY());
+        this.enterSquare(dispatcher.currentspace, 0, 0);
+        this.trigger("dispatch");
+        return this;
+      };
+
       return NPC;
 
     })(Backbone.Model);
@@ -641,6 +648,16 @@
           }
         });
         return Math.ceil(sum / this.length);
+      };
+
+      CharacterArray.prototype.comparator = function(model) {
+        return model.i;
+      };
+
+      CharacterArray.prototype.anyDispatched = function() {
+        return (_.filter(this.models, function(model) {
+          return model.dispatched === true;
+        })).length > 0;
       };
 
       return CharacterArray;
@@ -677,7 +694,6 @@
       Enemy.prototype.defaults = function() {
         var defaults;
         defaults = Enemy.__super__.defaults.apply(this, arguments);
-        console.log(defaults);
         return _.extend(defaults, {
           type: 'enemy'
         });

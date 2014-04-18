@@ -6,6 +6,7 @@ define ["utilities", "npc", "board", "globals", "mapper", "items", "powers", "ba
 		initialize: (attrs) ->
 			super
 			_.bindAll @, "contextualize", "insideChunkBounds", "move", "defaults"
+		isPC: -> true
 		# Expects x, y which normalizes negative values to board dimensions. So x=-50 beomes x=650
 		contextualize: (x, y) ->
 			if x < 0 then x += globals.map.width
@@ -48,7 +49,6 @@ define ["utilities", "npc", "board", "globals", "mapper", "items", "powers", "ba
 				# console.log "change :)"
 		initTurn: ->
 			super
-			console.log "and it's a PC!"
 			globals.shared_events.trigger "openmenu"
 		defaults: ->
 			defaults = super
@@ -65,12 +65,15 @@ define ["utilities", "npc", "board", "globals", "mapper", "items", "powers", "ba
 				jmp: 2
 				atk: 3
 			}
+		dispatch: ->
+			globals.shared_events.trigger "bindmenu", @
+			super
 
 	PCs = new NPC.NPCArray
-	PCs.add new player null, main: true
-	# PCs.add new player init: 4, name: 'Fighter'
-	# PCs.add new player init: 2, name: 'Mage'
-	# PCs.add new player init: 3, name: 'Cleric'
+	PCs.add new player null, main: true, spd: 5
+	PCs.add new player init: 4, name: 'Fighter', spd: 6
+	PCs.add new player init: 2, name: 'Mage', spd: 3
+	PCs.add new player init: 3, name: 'Cleric', spd: 4
 
 	return {
 		model: player

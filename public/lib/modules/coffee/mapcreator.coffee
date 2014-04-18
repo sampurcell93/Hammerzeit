@@ -40,7 +40,6 @@ define ["globals", "utilities", "mapper", "backbone", "jquery", "jquery-ui", "un
         initialize: (opts) ->
             @child = opts.child
             _.bindAll @, "render"
-            @render()
         render: ->
             if !@model then return @
             @$el.empty()

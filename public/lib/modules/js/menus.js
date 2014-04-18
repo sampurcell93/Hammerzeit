@@ -3,11 +3,13 @@
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
   define(["powers", "globals", "utilities", "dialog", "battler", "board", "jquery-ui"], function(powers, globals, ut, dialog, battler, board) {
-    var $wrapper, CharacterStateDisplay, InventoryList, ItemView, Menu, Meter, PowerList, PowerListItem, StatList, closeAll, toggleMenu, _activemenu, _menus, _potential_moves, _ref, _ref1, _ref2, _ref3, _ref4, _ref5, _ref6, _ref7;
+    var $wrapper, CharacterStateDisplay, DispatchMenu, InventoryList, ItemView, Menu, Meter, PlayerDispatch, PowerList, PowerListItem, StatList, closeAll, stage, toggleMenu, _activemenu, _dispatchmenu, _menus, _potential_moves, _ref, _ref1, _ref2, _ref3, _ref4, _ref5, _ref6, _ref7, _ref8, _ref9;
     board.focus();
+    stage = board.getStage();
     _menus = [];
     $wrapper = $(".wrapper");
-    _activemenu = battler.getActive().menu;
+    _activemenu = null;
+    _dispatchmenu = null;
     globals.shared_events.on("closemenus", function() {
       return closeAll();
     });
@@ -20,12 +22,114 @@
       });
       return _menus.push(_activemenu);
     });
+    battler.events.on("showDispatchMenu", function(collection) {
+      closeAll();
+      _dispatchmenu = new DispatchMenu({
+        collection: collection
+      });
+      console.log(_dispatchmenu);
+      return _dispatchmenu.$el.appendTo($wrapper);
+    });
+    PlayerDispatch = (function(_super) {
+      __extends(PlayerDispatch, _super);
+
+      function PlayerDispatch() {
+        _ref = PlayerDispatch.__super__.constructor.apply(this, arguments);
+        return _ref;
+      }
+
+      PlayerDispatch.prototype.template = $("#dispatch-menu-item").html();
+
+      PlayerDispatch.prototype.tagName = 'li';
+
+      PlayerDispatch.prototype.initialize = function() {
+        return this.listenTo(this.model, "dispatch", this.render);
+      };
+
+      PlayerDispatch.prototype.render = function() {
+        var character;
+        character = this.model;
+        this.$el.html(_.template(this.template, _.extend(character.toJSON(), {
+          d: character.dispatched,
+          i: character.i
+        })));
+        if (character.isDead()) {
+          this.$el.addClass("dead");
+        } else {
+          this.$el.removeClass("dead");
+        }
+        if (character.dispatched) {
+          this.$el.addClass("disabled");
+        } else {
+          this.$el.removeClass("dead");
+        }
+        return this;
+      };
+
+      PlayerDispatch.prototype.events = {
+        "mouseover": function() {
+          return battler.potentialDispatch(this.model);
+        },
+        "mouseleave": function() {
+          return battler.discardDispatch();
+        },
+        "click": function() {
+          return battler.confirmDispatch();
+        }
+      };
+
+      return PlayerDispatch;
+
+    })(Backbone.View);
+    DispatchMenu = (function(_super) {
+      __extends(DispatchMenu, _super);
+
+      function DispatchMenu() {
+        _ref1 = DispatchMenu.__super__.constructor.apply(this, arguments);
+        return _ref1;
+      }
+
+      DispatchMenu.prototype.tagName = 'ul';
+
+      DispatchMenu.prototype.className = 'game-menu visible';
+
+      DispatchMenu.prototype.initialize = function() {
+        return this.render();
+      };
+
+      DispatchMenu.prototype.render = function() {
+        var _this = this;
+        this.$el.empty();
+        this.collection.sort();
+        _.each(this.collection.models, function(character) {
+          var player;
+          player = new PlayerDispatch({
+            model: character
+          });
+          return _this.$el.append(player.render().el);
+        });
+        return this;
+      };
+
+      DispatchMenu.prototype.show = function() {
+        return this.$el.slideDown("fast");
+      };
+
+      DispatchMenu.prototype.hide = function() {
+        return this.$el.slideUp("fast");
+      };
+
+      DispatchMenu.prototype.events = function() {};
+
+      return DispatchMenu;
+
+    })(Backbone.View);
     InventoryList = (function(_super) {
       __extends(InventoryList, _super);
 
       function InventoryList() {
-        _ref = InventoryList.__super__.constructor.apply(this, arguments);
-        return _ref;
+        _ref2 = InventoryList.__super__.constructor.apply(this, arguments);
+        return _ref2;
       }
 
       InventoryList.prototype.tagName = 'ul';
@@ -55,8 +159,8 @@
       __extends(ItemView, _super);
 
       function ItemView() {
-        _ref1 = ItemView.__super__.constructor.apply(this, arguments);
-        return _ref1;
+        _ref3 = ItemView.__super__.constructor.apply(this, arguments);
+        return _ref3;
       }
 
       ItemView.prototype.tagName = 'li';
@@ -88,8 +192,8 @@
       __extends(PowerList, _super);
 
       function PowerList() {
-        _ref2 = PowerList.__super__.constructor.apply(this, arguments);
-        return _ref2;
+        _ref4 = PowerList.__super__.constructor.apply(this, arguments);
+        return _ref4;
       }
 
       PowerList.prototype.tagName = 'ul';
@@ -119,8 +223,8 @@
       __extends(PowerListItem, _super);
 
       function PowerListItem() {
-        _ref3 = PowerListItem.__super__.constructor.apply(this, arguments);
-        return _ref3;
+        _ref5 = PowerListItem.__super__.constructor.apply(this, arguments);
+        return _ref5;
       }
 
       PowerListItem.prototype.tagName = 'li';
@@ -188,7 +292,7 @@
       };
 
       PowerListItem.prototype.chooseTargets = function() {
-        var handler, opts, u, user;
+        var handler, opts, user;
         if (this.isDisabled()) {
           return this;
         }
@@ -207,7 +311,7 @@
           handlerContext: this.model
         };
         opts = _.extend(opts, this.model.getPathOptions());
-        battler.setAttacks(u = battler.virtualMovePossibilities(user.getCurrentSpace(), handler, opts));
+        battler.setAttacks(battler.virtualMovePossibilities(user.getCurrentSpace(), handler, opts));
         return battler.setState("choosingattacks");
       };
 
@@ -232,8 +336,8 @@
       __extends(Meter, _super);
 
       function Meter() {
-        _ref4 = Meter.__super__.constructor.apply(this, arguments);
-        return _ref4;
+        _ref6 = Meter.__super__.constructor.apply(this, arguments);
+        return _ref6;
       }
 
       Meter.prototype.initialize = function(_arg) {
@@ -329,8 +433,8 @@
       __extends(StatList, _super);
 
       function StatList() {
-        _ref5 = StatList.__super__.constructor.apply(this, arguments);
-        return _ref5;
+        _ref7 = StatList.__super__.constructor.apply(this, arguments);
+        return _ref7;
       }
 
       StatList.prototype.tagName = 'ul';
@@ -375,8 +479,8 @@
       __extends(CharacterStateDisplay, _super);
 
       function CharacterStateDisplay() {
-        _ref6 = CharacterStateDisplay.__super__.constructor.apply(this, arguments);
-        return _ref6;
+        _ref8 = CharacterStateDisplay.__super__.constructor.apply(this, arguments);
+        return _ref8;
       }
 
       CharacterStateDisplay.prototype.tagName = 'div';
@@ -475,8 +579,8 @@
       __extends(Menu, _super);
 
       function Menu() {
-        _ref7 = Menu.__super__.constructor.apply(this, arguments);
-        return _ref7;
+        _ref9 = Menu.__super__.constructor.apply(this, arguments);
+        return _ref9;
       }
 
       Menu.prototype.type = 'default';
@@ -695,6 +799,9 @@
       return board.toggleState("MENUOPEN");
     };
     closeAll = function() {
+      if (_activemenu) {
+        _activemenu.close();
+      }
       _.each(_menus, function(menu) {
         return menu.close();
       });
