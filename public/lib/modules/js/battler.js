@@ -3,7 +3,7 @@
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
   define(["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player", "cast"], function(board, globals, ut, mapper, NPC, mapcreator, player, cast) {
-    var Battle, Dispatcher, Enemy, GridOverlay, GridSquare, InitiativeQueue, NPCArray, PCs, Player, Timer, battle_events, discardDispatch, getActive, getQueue, map, setPotentialMoves, stage, states, virtualMovePossibilities, _active_chars, _activebattle, _activemap, _grid, _ref, _ref1, _ref2, _ref3, _shared, _sm, _timer, _ts;
+    var Battle, Dispatcher, Enemy, GridOverlay, GridSquare, InitiativeQueue, NPCArray, PCs, Player, Timer, battle_events, discardDispatch, getActive, getQueue, map, setPotentialMoves, stage, states, virtualMovePossibilities, _active_chars, _activebattle, _activemap, _ref, _ref1, _ref2, _ref3, _shared, _sm, _timer, _ts;
     window.t = function() {
       return getQueue().next();
     };
@@ -178,7 +178,6 @@
         while (active_player.isDead()) {
           active_player = this.getActive();
         }
-        console.log(active_player.get("name"));
         _activebattle.clearAllHighlights();
         if (active_player.isPC() && this.PCs.anyDispatched() === false) {
           events.trigger("showDispatchMenu");
@@ -393,6 +392,26 @@
         }
       };
 
+      Battle.prototype.virtualMovePossibilities = function() {
+        return this.grid.virtualMovePossibilities.apply(this.grid, arguments);
+      };
+
+      Battle.prototype.pulseGrid = function() {
+        return this.grid.model.trigger("pulse");
+      };
+
+      Battle.prototype.activateGrid = function() {
+        return this.grid.activate();
+      };
+
+      Battle.prototype.deactivateGrid = function() {
+        return this.grid.deactivate();
+      };
+
+      Battle.prototype.toggleGrid = function() {
+        return this.grid.toggle();
+      };
+
       return Battle;
 
     })(Backbone.Model);
@@ -400,19 +419,18 @@
     _active_chars = PCs;
     _shared = globals.shared_events;
     _shared.on("battle", function() {
-      var b, _grid;
+      var grid;
       if (_activebattle) {
         _activebattle.destructor().destroy();
       }
-      b = _activebattle = new Battle;
-      b.begin("random");
-      if (_grid) {
-        _grid.remove();
-      }
-      return _grid = new GridOverlay({
+      _activebattle = new Battle();
+      grid = new GridOverlay({
         model: _activemap,
-        child: GridSquare
+        child: GridSquare,
+        battle: _activebattle
       });
+      _activebattle.grid = grid;
+      return _activebattle.begin("random");
     });
     _activemap = null;
     _ts = globals.map.tileside;
@@ -505,6 +523,10 @@
 
       GridOverlay.prototype.showing = false;
 
+      GridOverlay.prototype.initialize = function(_arg) {
+        this.battle = _arg.battle, this.child = _arg.child, this.model = _arg.model;
+      };
+
       GridOverlay.prototype.modifyAllTiles = function() {};
 
       GridOverlay.prototype.toggle = function() {
@@ -552,7 +574,7 @@
           return target.tileModel.trigger("potentialmove");
         });
         if (start === "dispatch") {
-          start = mapper.getTargetTile(0, 0, _activebattle.dispatcher.marker);
+          start = mapper.getTargetTile(0, 0, this.battle.dispatcher.marker);
         }
         path_defaults = {
           diagonal: false,
@@ -939,14 +961,11 @@
       return GridSquare;
 
     })(Backbone.View);
-    _grid = new GridOverlay({
-      child: GridSquare
-    });
     getActive = function(opts) {
       return _activebattle.get("InitQueue").getActive(opts);
     };
     virtualMovePossibilities = function() {
-      return _grid.virtualMovePossibilities.apply(_grid, arguments);
+      return _activebattle.virtualMovePossibilities.apply(_activebattle, arguments);
     };
     setPotentialMoves = function(squares) {
       return _activebattle.potential_moves = squares;
@@ -977,14 +996,20 @@
       },
       toggleGrid: function() {
         _activemap = mapcreator.getChunk();
-        return _grid.toggle();
+        if (_activebattle) {
+          return _activebattle.toggleGrid();
+        }
       },
       activateGrid: function() {
         _activemap = mapcreator.getChunk();
-        return _grid.activate();
+        if (_activebattle) {
+          return _activebattle.activateGrid();
+        }
       },
       deactivateGrid: function() {
-        return _grid.deactivate();
+        if (_activebattle) {
+          return _activebattle.deactivateGrid();
+        }
       },
       getActiveMap: function() {
         return _activemap;
@@ -1077,7 +1102,9 @@
         }
       },
       startPulsing: function() {
-        return _grid.model.trigger("pulse");
+        if (_activebattle) {
+          return _activebattle.pulseGrid();
+        }
       },
       virtualMovePossibilities: function() {
         return virtualMovePossibilities.apply(this, arguments);

@@ -114,7 +114,6 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
             # Look for live player
             while active_player.isDead()
                 active_player = @getActive()
-            console.log active_player.get("name")
             _activebattle.clearAllHighlights()
             if active_player.isPC() and @PCs.anyDispatched() is false
                 events.trigger "showDispatchMenu"
@@ -147,7 +146,7 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
                     max_y: map.c_height
                 }
             }
-        initialize: ->
+        initialize:  ->
             @dispatcher = new Dispatcher(PC.marker.x, PC.marker.y)
             @listenTo @get("NPCs"), 
                 die: @checkStillLiving
@@ -237,16 +236,23 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
                 alert "you won!"
             else if PCArr.length is 0 
                 alert "they won :/"
+        virtualMovePossibilities: ->
+            @grid.virtualMovePossibilities.apply(@grid, arguments)
+        pulseGrid: -> @grid.model.trigger "pulse"
+        activateGrid: -> @grid.activate()
+        deactivateGrid: -> @grid.deactivate()
+        toggleGrid: -> @grid.toggle()
+
 
     _activebattle = null
     _active_chars = PCs
     _shared = globals.shared_events
     _shared.on "battle", ->
         if _activebattle then _activebattle.destructor().destroy()
-        b = _activebattle = new Battle
-        b.begin "random"
-        if _grid then _grid.remove()
-        _grid = new GridOverlay model: _activemap, child: GridSquare
+        _activebattle = new Battle()
+        grid = new GridOverlay model: _activemap, child: GridSquare, battle: _activebattle
+        _activebattle.grid = grid
+        _activebattle.begin "random"
     _activemap = null
     _ts = globals.map.tileside
 
@@ -297,6 +303,7 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
         hide: -> @$el.fadeOut "fast"
         el: ".battle-grid-overlay"
         showing: false
+        initialize: ({@battle, @child, @model})->
         modifyAllTiles: ->
         toggle: ->
             if @showing is false then @activate()
@@ -327,7 +334,7 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
         # Still inefficient - keeps checking past max distance - todo
         virtualMovePossibilities: (start, done, opts) ->
             done       || (done = (target) -> target.tileModel.trigger("potentialmove"))
-            if start is "dispatch" then start = mapper.getTargetTile(0,0,_activebattle.dispatcher.marker)
+            if start is "dispatch" then start = mapper.getTargetTile(0,0, @battle.dispatcher.marker)
             path_defaults = 
                 # Compute diagonals as a distance-1 move?
                 diagonal: false
@@ -586,13 +593,11 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
             mouseout: ->
                 if @potentialmove then @$el.removeClass("selecting-move")
 
-    _grid = new GridOverlay child: GridSquare
-
     getActive = (opts) ->
         _activebattle.get("InitQueue").getActive(opts)
 
     virtualMovePossibilities = ->
-        _grid.virtualMovePossibilities.apply(_grid, arguments)
+        _activebattle.virtualMovePossibilities.apply(_activebattle, arguments)
 
     setPotentialMoves = (squares) ->  _activebattle.potential_moves = squares
 
@@ -615,12 +620,15 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
 
         toggleGrid: ->
             _activemap = mapcreator.getChunk()
-            _grid.toggle()
+            if _activebattle
+                _activebattle.toggleGrid()
         activateGrid: ->
             _activemap = mapcreator.getChunk()
-            _grid.activate()
+            if _activebattle
+                _activebattle.activateGrid()
         deactivateGrid: ->
-            _grid.deactivate()
+            if _activebattle
+                _activebattle.deactivateGrid()
         getActiveMap: -> 
             _activemap
         # Gets all characters, dead or alive.
@@ -686,7 +694,8 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
             if _activebattle
                 _activebattle.clearAllHighlights()
         startPulsing: ->
-            _grid.model.trigger("pulse")
+            if _activebattle
+                _activebattle.pulseGrid()
         virtualMovePossibilities: -> virtualMovePossibilities.apply(@, arguments)
         # Expects a NPC model, and places it softly on the dispatcher
         potentialDispatch: (character) ->
