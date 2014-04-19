@@ -44,7 +44,7 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 		defaults: ->
 			pow = powers.getDefaultPowers()
 			_.each pow.models, (power) => power.ownedBy = @
-			inventory = items.getDefaultInventory()
+			inventory = items.getDefaultInventory({belongsTo: @})
 			@listenToOnce globals.shared_events, "items_loaded", =>
 				@set("inventory", items.getDefaultInventory({belongsTo: @}))
 			@listenToOnce globals.shared_events, "powers_loaded", =>
@@ -102,6 +102,7 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 				"0,-1": new createjs.SpriteSheet(_.extend @walkopts, {frames: @frames.up})
 				"0,1" : new createjs.SpriteSheet(_.extend @walkopts, {frames: @frames.down})
 			}
+			@listenToStatusChanges()
 			# Powers load async, so when loaded we need to bind defaults to an unequipped NPC
 			# then stop listening
 			@createMarker()
@@ -113,6 +114,8 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 			if t.e is "f" then return false
 			if t.occupied is true then return false
 			true
+		clean: ->
+			_.omit @toJSON(), "creatine", "HP", "max_HP", "max_creatine", "current_chunk", "regY", "spriteimg", "frames"
 		createMarker: ->
 			sheet = @sheets["0,1"]
 			sheet.getAnimation("run").speed = .13
@@ -149,11 +152,27 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 		# Accepts delta params and returns a string for direction. so (1,0) would return "x"
 		deltaToString: (dx, dy) ->	
 			if dx isnt 0 then "x" else if dy isnt 0 then "y" else ""
+		drawStatusChange: (opts = {}) ->
+			defaults = {
+				font: "bold 18px Arial"
+				color: "#fff"
+				text: "!!"
+			}
+			opts = _.extend defaults, opts
+			status = new createjs.Text(opts.text, opts.font, opts.color)
+			staus = _.extend status, {shadow: globals.textshadow, y: 20 }
+			@marker.addChild status
+			d_i = setInterval =>
+				status.y -= 2
+				if status.y < 0 
+					clearInterval d_i
+					@marker.removeChild status
+			, 100
+			@
 		equip: (item) ->
-			item.set("equipped", true)
-		obtain: (item) ->
-			item.set("belongsTo", @)
-			item.set("equipped", false)
+			if item.isEquipped() is false
+				item.set("equipped", true)
+			@
 		# Pass in a tile DisplayObject, and link it to this NPC
 		enterSquare: (target, dx, dy) ->
 			target || target = mapper.getTargetTile(0,0,@marker)
@@ -161,6 +180,7 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 			@currentspace = target
 			if target.end is false or target.end is "false" and (dx isnt 0 and dy isnt 0)
 				@move(dx, dy, 0);
+			@
 		getCurrentSpace: -> @currentspace
 		# Returns the cartesian quadrant of the screen the NPC occupies so that the menu
 		# Can make sure not to open over them
@@ -180,6 +200,24 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 			@currentspace.occupied = false
 			@currentspace.occupiedBy = null
 			@
+		# Binds listeners to updates to status (AC, HP, creatine)
+		# and draws the corresponding figures on the board
+		listenToStatusChanges: ->
+			@on "change:HP": (m, hp) => 
+				@drawStatusChange (
+					{text: (@previous("HP") - hp) + "HP", color: "#ff0000"}
+				)
+			@on "change:creatine": (m, cr) => 
+				@drawStatusChange(
+					{text: (@previous("creatine") - cr) + "CR", color: "#8f47ed"}
+				)
+			@on "change:AC": (m, ac) => 
+				ac = Math.abs(@previous("AC") - ac)
+				mod = if ac < 0 then "-" else "+"
+				@drawStatusChange(
+					{text: mod + ac + "AC"}
+				)
+
 		# Wrapper functions for basic moves
 		moveRight: -> @move 1, 0
 		moveLeft: -> @move -1, 0
@@ -226,7 +264,9 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 				count++
 			, walkspeed || _p.walkspeed
 			true
-
+		obtain: (item) ->
+			item.set("belongsTo", @)
+			item.set("equipped", false)
 		# Takes in a dir string and returns the opposite
 		oppositeDir: (dir) ->
 			if dir is "x" then "y" else if dir is "y" then "x" else ""
@@ -260,6 +300,10 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 			sheet = @sheets[x+","+y]
 			if !sheet then alert("FUCKED UP IN TURN")
 			@marker.icon.spriteSheet = sheet
+		unequip: (item) ->
+			if item.isEquipped()
+				item.set("equipped", false)
+			@
 		##################################################
 		### Battle functions! ###
 		##################################################
@@ -404,15 +448,6 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 			if @isDead() then return @
 			@set("HP", @get("HP") - damage)
 			if @get("HP") <= 0 then @die()
-			damage = new createjs.Text(damage + " HP", "bold 18px Arial", "#ff0000")
-			damage = _.extend damage, {shadow: globals.textshadow, y: -10 }
-			@marker.addChild damage
-			d_i = setInterval =>
-				damage.y -= 2
-				if damage.y < -30 
-					clearInterval d_i
-					@marker.removeChild damage
-			, 100
 			@
 		useCreatine: (creatine) ->
 			current = @get "creatine"

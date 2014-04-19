@@ -14,6 +14,11 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
     _ts = globals.map.tileside
     states = ['choosingmoves', 'choosingattacks', 'menuopen']
     battle_events = _.extend {}, Backbone.Events
+    _activebattle = null
+    _active_chars = PCs
+    _shared = globals.shared_events
+    _activemap = null
+    _ts = globals.map.tileside
 
     # To begin each battle, players are dispatched from a central point. 
     # This class contains the controls for that central point
@@ -127,6 +132,48 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
         prev: -> 
             @current_index--
             if @current_index < 0 then @current_index = @length - 1
+
+    # Keeps track of timed events in the battle field
+    # When done, triggers a shared event so other modules know
+    class Timer
+        constructor: (@el, @number) -> 
+        interval: null
+        totaltime: 25000
+        stop: -> if @interval then clearInterval @interval
+        start: (extra, done) ->
+            value  = parseInt @el.attr("value")
+            extra || extra = 0
+            totaltime = @totaltime + extra*100
+            @el.attr("max", totaltime)
+            @interval = setInterval =>
+                value += 50
+                @el.attr("value", value)
+                # The position of the number
+                numpos = ((totaltime-value)/totaltime)*100-1
+                @number.text((Math.round((totaltime*.001 - value*.001)/.1)*.1).toFixed(1) + "s")
+                if numpos > 0
+                    @number.css("right", numpos + "%")
+                if value >= totaltime
+                    clearInterval @interval
+                    globals.shared_events.trigger "timerdone"
+                    if done? and _.isFunction(done) then done()
+            , 50
+        reset: -> 
+            @stop()
+            @el.attr("value", 0)
+        show: -> 
+            board.$canvas.addClass("nocorners")
+            @el.slideDown "fast"
+            @number.fadeIn "fast"
+        hide: -> 
+            board.$canvas.removeClass("nocorners")
+            @number.fadeOut "fast"
+            @el.slideUp "fast"
+        set: (time) ->
+            if time >= 0 and time <= @totaltime
+                @el.attr("value", time)
+ 
+    _timer = new Timer($("#turn-progress"),$("#turn-progress-number"))
 
     # Handler for battle state functions. Respnsible for battle state (a subset of board state)
     class Battle extends Backbone.Model
@@ -243,61 +290,6 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
         activateGrid: -> @grid.activate()
         deactivateGrid: -> @grid.deactivate()
         toggleGrid: -> @grid.toggle()
-
-
-    _activebattle = null
-    _active_chars = PCs
-    _shared = globals.shared_events
-    _shared.on "battle", ->
-        if _activebattle then _activebattle.destructor().destroy()
-        _activebattle = new Battle()
-        grid = new GridOverlay model: _activemap, child: GridSquare, battle: _activebattle
-        _activebattle.grid = grid
-        _activebattle.begin "random"
-    _activemap = null
-    _ts = globals.map.tileside
-
-    # Keeps track of timed events in the battle field
-    # When done, triggers a shared event so other modules know
-    class Timer
-        constructor: (@el, @number) -> 
-        interval: null
-        totaltime: 25000
-        stop: -> if @interval then clearInterval @interval
-        start: (extra, done) ->
-            value  = parseInt @el.attr("value")
-            extra || extra = 0
-            totaltime = @totaltime + extra*100
-            @el.attr("max", totaltime)
-            @interval = setInterval =>
-                value += 50
-                @el.attr("value", value)
-                # The position of the number
-                numpos = ((totaltime-value)/totaltime)*100-1
-                @number.text((Math.round((totaltime*.001 - value*.001)/.1)*.1).toFixed(1) + "s")
-                if numpos > 0
-                    @number.css("right", numpos + "%")
-                if value >= totaltime
-                    clearInterval @interval
-                    globals.shared_events.trigger "timerdone"
-                    if done? and _.isFunction(done) then done()
-            , 50
-        reset: -> 
-            @stop()
-            @el.attr("value", 0)
-        show: -> 
-            board.$canvas.addClass("nocorners")
-            @el.slideDown "fast"
-            @number.fadeIn "fast"
-        hide: -> 
-            board.$canvas.removeClass("nocorners")
-            @number.fadeOut "fast"
-            @el.slideUp "fast"
-        set: (time) ->
-            if time >= 0 and time <= @totaltime
-                @el.attr("value", time)
- 
-    _timer = new Timer($("#turn-progress"),$("#turn-progress-number"))
 
     class GridOverlay extends mapcreator.Overlay
         show: -> @$el.fadeIn  "fast"
@@ -523,15 +515,23 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
                     take_action = if i < targets-1 then false else true
                     @handleAttack attacker, subj, power, {take_action: take_action}
                 return @
-            if _.isFunction(use) then use.call(power, subject, attacker)
-            # Baseline damage plus a role of the dice
-            subject.takeDamage(attrs.damage + ut.roll(attrs.modifier))
+            if @resolveHit(attacker,subject,power)
+                # Baseline damage plus a role of the dice
+                power.use()
+                subject.takeDamage(attrs.damage + ut.roll(attrs.modifier))
+            else subject.drawStatusChange({text: 'MISS'})
             # Some powers cost magic 
             attacker.useCreatine(attrs.creatine)
             attacker.takeAction(attrs.action) unless opts.take_action is false
-            power.use()
             _activebattle.clearAttackZone()
             @
+        resolveHit: (attacker, subject, power) =>
+            mod = power.get("power") + attacker.get("atk")
+            mod += ut.roll(_sm)
+            console.log mod
+            if mod >= subject.get(power.get("defense"))
+                return true
+            else false
         bindMoveFns: ->
             area = @model.bitmap.hitArea
             console.log "binding move functions"
@@ -612,6 +612,14 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
 
     getQueue = -> _activebattle.get("InitQueue")
 
+    _shared.on "battle", ->
+        if _activebattle then _activebattle.destructor().destroy()
+        _activebattle = new Battle()
+        grid = new GridOverlay model: _activemap, child: GridSquare, battle: _activebattle
+        _activebattle.grid = grid
+        _activebattle.begin "random"
+
+    # Expose
     window.battler = {
         # Returns the currently active player
         getActive: (opts) -> getActive opts

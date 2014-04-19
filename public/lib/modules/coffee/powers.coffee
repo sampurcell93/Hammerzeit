@@ -14,14 +14,17 @@ define ["globals", "utilities", "board"], (globals, utilities, board) ->
             creatine: 0
             power: 1
             range: 1
-            name: "Basic"
+            name: 'Basic'
             uses: Infinity
             damage: 1
             modifier: 4
             action: 'standard'
             spread: 'range'
+            defense: 'AC'
         idAttribute: 'name'
         use: ->
+            use = @get "use"
+            if _.isFunction(use) then use.call(@, subject, attacker)
             @set("uses", @get("uses") - 1)
             @
         initialize: ->

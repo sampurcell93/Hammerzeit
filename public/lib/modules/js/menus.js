@@ -176,11 +176,31 @@
 
       ItemView.prototype.template = $("#inventory-item").html();
 
+      ItemView.prototype.initialize = function() {
+        var _this = this;
+        this.listenTo(this.model, {
+          "change:equipped": this.renderSmallView,
+          "remove destroy": function() {
+            _this.$el.addClass("disabled");
+            return setTimeout(function() {
+              return _this.$el.fadeOut("fast", function() {
+                return _this.remove();
+              });
+            }, 300);
+          }
+        });
+        return this;
+      };
+
+      ItemView.prototype.renderSmallView = function() {
+        return this.$el.html(_.template(this.template, this.model.toJSON()));
+      };
+
       ItemView.prototype.render = function() {
         var more;
-        this.$el.html(_.template(this.template, this.model.toJSON()));
+        this.renderSmallView();
         more = new StatList({
-          model: this.model.toJSON()
+          model: this.model
         });
         this.$el.append(more.render().el);
         return this;
@@ -193,9 +213,14 @@
           return e.stopImmediatePropagation();
         },
         "click .js-equip": function() {
-          return console.log(this.model);
+          return this.model.belongsTo().equip(this.model);
         },
-        "click .js-use": function() {}
+        "click .js-unequip": function() {
+          return this.model.belongsTo().unequip(this.model);
+        },
+        "click .js-use": function() {
+          return this.model.onUse.call(this.model, this.model.belongsTo());
+        }
       };
 
       return ItemView;
@@ -262,7 +287,7 @@
           rangedisplay: this.model.getRangeDisplay()
         })));
         more = new StatList({
-          model: this.model.toJSON()
+          model: this.model
         });
         this.$el.append(more.render().el);
         this.renderUses(this.model.get("uses"));
@@ -290,8 +315,6 @@
         this.$(".uses").html(isFinite(uses) ? uses : "&infin;");
         if (uses <= 0) {
           this.disable();
-        } else {
-          this.enable();
         }
         return this;
       };
@@ -458,12 +481,17 @@
 
       StatList.prototype.objTemplate = "<li><span class='key'><%= key %>:</span> Some stuff</li>";
 
+      StatList.prototype.initialize = function() {
+        return this.listenTo(this.model, "change", this.render);
+      };
+
       StatList.prototype.render = function() {
-        var keys, objects,
+        var keys, model, objects,
           _this = this;
         this.$el.empty();
         objects = [];
-        keys = Object.keys(this.model).sort();
+        model = this.model.clean ? this.model.clean() : this.model.toJSON();
+        keys = Object.keys(model).sort();
         _.each(keys, function(key) {
           var val;
           val = _this.model[key];
@@ -503,11 +531,10 @@
       CharacterStateDisplay.prototype.template = $("#attribute-container").html();
 
       CharacterStateDisplay.prototype.initialize = function(attrs) {
-        var c, cleanModel, h,
+        var c, h,
           _this = this;
-        cleanModel = _.omit(this.model.toJSON(), "creatine", "HP", "max_HP", "max_creatine", "current_chunk", "regY", "spriteimg", "frames");
         this.attrlist = new StatList({
-          model: cleanModel
+          model: this.model
         });
         this.render();
         this.meters = {};
@@ -607,11 +634,23 @@
         this.setupMeters();
         this.listenTo(this.model, {
           "beginphase": function(phase) {
-            return this.$(".phase-number").text(phase + 1);
+            return this.$(".phase-number").text(phase + 1 + "/3");
           }
         });
         this.listenTo(this.model.actions, "change", function(actions) {
           return _this.updateActions(actions);
+        });
+        this.listenTo(this.model.get("inventory"), {
+          "remove": function(model, collection) {
+            if (collection.length === 0) {
+              return _this.$(".js-show-inventory").addClass("disabled");
+            }
+          },
+          "remove add": function(model, collection) {
+            var l;
+            l = collection.length;
+            return _this.$(".inventory-length").text(l);
+          }
         });
         _.bindAll(this, "close", "open", "toggle", "selectNext", "selectThis", "selectPrev");
         this.close();
@@ -633,7 +672,8 @@
         }
         this.showPowers();
         this.showInventory();
-        return this.updateActions(this.model.actions);
+        this.updateActions(this.model.actions);
+        return this.$(".inventory-length").text(this.model.get("inventory").length);
       };
 
       Menu.prototype.setupMeters = function() {

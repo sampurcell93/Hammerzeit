@@ -291,7 +291,7 @@ textarea {
         padding-bottom: 6px;
     }
 
-    .phase-number {
+    .phase-number, .inventory-length {
         @include border-radius(3px);
         position: absolute;
         top: 6px;
@@ -301,6 +301,11 @@ textarea {
         width: 38px;
         padding: 4px;
         text-indent: 0;
+    }
+
+    .inventory-length {
+        padding: 0;
+        top: 0;
     }
 
     &[quadrant='1'] { 

@@ -127,7 +127,7 @@
 
     })(NPC.NPC);
     PCs = new NPC.NPCArray;
-    PCs.add(new player(null, {
+    PCs.add(new player({
       main: true,
       spd: 5
     }));

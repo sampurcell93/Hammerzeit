@@ -29,12 +29,18 @@
         damage: 1,
         modifier: 4,
         action: 'standard',
-        spread: 'range'
+        spread: 'range',
+        defense: 'AC'
       };
 
       Power.prototype.idAttribute = 'name';
 
       Power.prototype.use = function() {
+        var use;
+        use = this.get("use");
+        if (_.isFunction(use)) {
+          use.call(this, subject, attacker);
+        }
         this.set("uses", this.get("uses") - 1);
         return this;
       };

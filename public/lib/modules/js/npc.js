@@ -69,7 +69,9 @@
         _.each(pow.models, function(power) {
           return power.ownedBy = _this;
         });
-        inventory = items.getDefaultInventory();
+        inventory = items.getDefaultInventory({
+          belongsTo: this
+        });
         this.listenToOnce(globals.shared_events, "items_loaded", function() {
           return _this.set("inventory", items.getDefaultInventory({
             belongsTo: _this
@@ -137,6 +139,7 @@
             frames: this.frames.down
           }))
         };
+        this.listenToStatusChanges();
         this.createMarker();
         this.on("add", function(model, coll) {
           if (coll.type === "InitiativeQueue") {
@@ -157,6 +160,10 @@
           return false;
         }
         return true;
+      };
+
+      NPC.prototype.clean = function() {
+        return _.omit(this.toJSON(), "creatine", "HP", "max_HP", "max_creatine", "current_chunk", "regY", "spriteimg", "frames");
       };
 
       NPC.prototype.createMarker = function() {
@@ -217,13 +224,39 @@
         }
       };
 
-      NPC.prototype.equip = function(item) {
-        return item.set("equipped", true);
+      NPC.prototype.drawStatusChange = function(opts) {
+        var d_i, defaults, status, staus,
+          _this = this;
+        if (opts == null) {
+          opts = {};
+        }
+        defaults = {
+          font: "bold 18px Arial",
+          color: "#fff",
+          text: "!!"
+        };
+        opts = _.extend(defaults, opts);
+        status = new createjs.Text(opts.text, opts.font, opts.color);
+        staus = _.extend(status, {
+          shadow: globals.textshadow,
+          y: 20
+        });
+        this.marker.addChild(status);
+        d_i = setInterval(function() {
+          status.y -= 2;
+          if (status.y < 0) {
+            clearInterval(d_i);
+            return _this.marker.removeChild(status);
+          }
+        }, 100);
+        return this;
       };
 
-      NPC.prototype.obtain = function(item) {
-        item.set("belongsTo", this);
-        return item.set("equipped", false);
+      NPC.prototype.equip = function(item) {
+        if (item.isEquipped() === false) {
+          item.set("equipped", true);
+        }
+        return this;
       };
 
       NPC.prototype.enterSquare = function(target, dx, dy) {
@@ -231,8 +264,9 @@
         target.tileModel.occupy(this);
         this.currentspace = target;
         if (target.end === false || target.end === "false" && (dx !== 0 && dy !== 0)) {
-          return this.move(dx, dy, 0);
+          this.move(dx, dy, 0);
         }
+        return this;
       };
 
       NPC.prototype.getCurrentSpace = function() {
@@ -270,6 +304,36 @@
         this.currentspace.occupied = false;
         this.currentspace.occupiedBy = null;
         return this;
+      };
+
+      NPC.prototype.listenToStatusChanges = function() {
+        var _this = this;
+        this.on({
+          "change:HP": function(m, hp) {
+            return _this.drawStatusChange({
+              text: (_this.previous("HP") - hp) + "HP",
+              color: "#ff0000"
+            });
+          }
+        });
+        this.on({
+          "change:creatine": function(m, cr) {
+            return _this.drawStatusChange({
+              text: (_this.previous("creatine") - cr) + "CR",
+              color: "#8f47ed"
+            });
+          }
+        });
+        return this.on({
+          "change:AC": function(m, ac) {
+            var mod;
+            ac = Math.abs(_this.previous("AC") - ac);
+            mod = ac < 0 ? "-" : "+";
+            return _this.drawStatusChange({
+              text: mod + ac + "AC"
+            });
+          }
+        });
       };
 
       NPC.prototype.moveRight = function() {
@@ -344,6 +408,11 @@
         return true;
       };
 
+      NPC.prototype.obtain = function(item) {
+        item.set("belongsTo", this);
+        return item.set("equipped", false);
+      };
+
       NPC.prototype.oppositeDir = function(dir) {
         if (dir === "x") {
           return "y";
@@ -398,6 +467,13 @@
           alert("FUCKED UP IN TURN");
         }
         return this.marker.icon.spriteSheet = sheet;
+      };
+
+      NPC.prototype.unequip = function(item) {
+        if (item.isEquipped()) {
+          item.set("equipped", false);
+        }
+        return this;
       };
 
       /* Battle functions!*/
@@ -592,8 +668,6 @@
       };
 
       NPC.prototype.takeDamage = function(damage) {
-        var d_i,
-          _this = this;
         if (this.isDead()) {
           return this;
         }
@@ -601,19 +675,6 @@
         if (this.get("HP") <= 0) {
           this.die();
         }
-        damage = new createjs.Text(damage + " HP", "bold 18px Arial", "#ff0000");
-        damage = _.extend(damage, {
-          shadow: globals.textshadow,
-          y: -10
-        });
-        this.marker.addChild(damage);
-        d_i = setInterval(function() {
-          damage.y -= 2;
-          if (damage.y < -30) {
-            clearInterval(d_i);
-            return _this.marker.removeChild(damage);
-          }
-        }, 100);
         return this;
       };
 

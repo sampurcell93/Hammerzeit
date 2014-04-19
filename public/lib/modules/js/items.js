@@ -5,11 +5,16 @@
   define(["globals", "utilities", "underscore", "backbone"], function(globals, ut) {
     var Inventory, Item, get, getItem, _items, _ref, _ref1, _usefns, _wearfns;
     _usefns = {
-      "Tattered Cloak": function(t, l) {}
+      "Tattered Cloak": function(t) {
+        return t.takeDamage(4);
+      },
+      "Bread": function(t) {
+        return t.takeDamage(4);
+      }
     };
     _wearfns = {
-      "Tattered Cloak": function(t, l) {
-        return t.ac += 1;
+      "Tattered Cloak": function(t) {
+        return t.set("AC", t.get("AC") + 2);
       }
     };
     Item = (function(_super) {
@@ -20,25 +25,77 @@
         return _ref;
       }
 
-      Item.prototype.defaults = function() {
-        return {
-          name: 'Unknown',
-          use: function() {
-            return console.log(this);
-          },
-          wear: function() {},
-          weight: 1,
-          belongsTo: null,
-          level: 1,
-          role: 1,
-          equipped: false
-        };
+      Item.prototype.idAttribute = 'name';
+
+      Item.prototype.defaults = {
+        name: null,
+        weight: 1,
+        belongsTo: null,
+        level: 1,
+        role: 1,
+        uses: 1,
+        equipped: false,
+        canUse: true,
+        canEquip: false,
+        action: 'minor',
+        use: function() {},
+        wear: function() {}
       };
 
-      Item.prototype.idAttribute = 'name';
+      Item.prototype.isNew = function() {
+        return true;
+      };
+
+      Item.prototype.initialize = function() {
+        var _this = this;
+        return this.on("change:equipped", function(model, value) {
+          if (value === true) {
+            return _this.onEquip();
+          } else {
+            return _this.onUnEquip();
+          }
+        });
+      };
 
       Item.prototype.isEquipped = function() {
         return this.get("equipped");
+      };
+
+      Item.prototype.canEquip = function() {
+        return this.get("canEquip");
+      };
+
+      Item.prototype.onEquip = function() {
+        var _ref1;
+        if ((_ref1 = this.get("wear")) != null) {
+          _ref1.call(this, this.get("belongsTo"));
+        }
+        return this;
+      };
+
+      Item.prototype.onUnEquip = function() {};
+
+      Item.prototype.canUse = function() {
+        return this.get("canUse");
+      };
+
+      Item.prototype.onUse = function(target) {
+        var _ref1;
+        if (target == null) {
+          target = this.belongsTo();
+        }
+        if ((_ref1 = this.get("use")) != null) {
+          _ref1.call(this, target);
+        }
+        this.set("uses", this.get("uses") - 1);
+        if (this.get("uses") === 0) {
+          this.destroy();
+        }
+        return this;
+      };
+
+      Item.prototype.belongsTo = function() {
+        return this.get("belongsTo");
       };
 
       return Item;
@@ -116,7 +173,7 @@
         if (opts == null) {
           opts = {};
         }
-        d = get(["Tattered Cloak"]);
+        d = get(["Tattered Cloak", "Bread"]);
         if (opts.belongsTo && d) {
           _.each(d.models, function(item) {
             return item.set("belongsTo", opts.belongsTo);

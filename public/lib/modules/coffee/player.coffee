@@ -70,7 +70,7 @@ define ["utilities", "npc", "board", "globals", "mapper", "items", "powers", "ba
 			super
 
 	PCs = new NPC.NPCArray
-	PCs.add new player null, main: true, spd: 5
+	PCs.add new player main: true, spd: 5
 	PCs.add new player init: 4, name: 'Fighter', spd: 6
 	PCs.add new player init: 2, name: 'Mage', spd: 3
 	PCs.add new player init: 3, name: 'Cleric', spd: 4

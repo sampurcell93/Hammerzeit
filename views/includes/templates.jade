@@ -31,7 +31,7 @@ script#inventory-item(type='text/template')
         <%= name %>
         ul.info
             <% if (equipped) { %> 
-            li.equipped E 
+            li.js-unequip Unequip
             <% } else { %>
             li.js-equip Equip
             <% } %>
@@ -65,8 +65,9 @@ script#menu(type='text/template')
                 li(tabindex=2).js-show-inventory 
                     i.icon-lab
                     |Inventory
+                    span.inventory-length(data-tooltip='Items in Inventory')
                     div.inventory-list.nested-menu
-                li(tabindex=2, actiontype="move").js-defend 
+                li(tabindex=2, actiontype="move", data-tooltip='+2AC for one round').js-defend 
                     i.icon-shield
                     | Defend
                 li(tabindex=2).js-end-turn End Turn

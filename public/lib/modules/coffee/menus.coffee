@@ -84,9 +84,22 @@ define ["powers", "globals", "utilities", "dialog", "battler", "board", "jquery-
     class ItemView extends Backbone.View
         tagName: 'li'
         template: $("#inventory-item").html()
-        render: ->
+        initialize: ->
+            @listenTo @model, 
+                "change:equipped": @renderSmallView
+                "remove destroy": =>
+                    @$el.addClass("disabled")
+                    setTimeout =>
+                        @$el.fadeOut "fast", =>
+                            @remove()
+                    , 300
+
+            @
+        renderSmallView: ->
             @$el.html(_.template @template, @model.toJSON())
-            more = new StatList model: @model.toJSON()
+        render: ->
+            @renderSmallView()
+            more = new StatList model: @model
             @$el.append more.render().el
             @
         events: 
@@ -95,9 +108,11 @@ define ["powers", "globals", "utilities", "dialog", "battler", "board", "jquery-
                 e.stopPropagation()
                 e.stopImmediatePropagation()
             "click .js-equip": ->
-                console.log @model
+                @model.belongsTo().equip(@model)
+            "click .js-unequip": ->
+                @model.belongsTo().unequip(@model)
             "click .js-use": ->
-
+                @model.onUse.call(@model, @model.belongsTo())
 
     class PowerList extends Backbone.View
         tagName: 'ul'
@@ -123,7 +138,7 @@ define ["powers", "globals", "utilities", "dialog", "battler", "board", "jquery-
             @listenTo @model.ownedBy.actions, "change", @checkDisabled
         render: ->
             @$el.html(_.template(@template, _.extend(@model.toJSON(), rangedisplay: @model.getRangeDisplay())))
-            more = new StatList model: @model.toJSON()
+            more = new StatList model: @model
             @$el.append more.render().el
             @renderUses(@model.get("uses"))
             @checkDisabled()
@@ -139,7 +154,7 @@ define ["powers", "globals", "utilities", "dialog", "battler", "board", "jquery-
         isDisabled: -> @disabled
         renderUses: (uses) ->
             @$(".uses").html(if isFinite(uses) then uses else "&infin;")
-            if uses <= 0 then @disable() else @enable()
+            if uses <= 0 then @disable()
             @
         checkDisabled: ->
             if !(@model.ownedBy.can(@model.get("action"))) then @disable()
@@ -214,16 +229,20 @@ define ["powers", "globals", "utilities", "dialog", "battler", "board", "jquery-
             click: -> console.log @model
 
     # A list view for character stats, like Strength, Level, Race, etc. Or any key val object really
-    # Handles object and nested objecte rendering, too.
+    # Handles object and nested object rendering, too.
     class StatList extends Backbone.View
         tagName: 'ul'
         className: 'attribute-list'
         template: "<li><span class='key'><%= key %>:</span> <%= val %></li>"
         objTemplate: "<li><span class='key'><%= key %>:</span> Some stuff</li>"
+        initialize: ->
+            # Lazy. todo: fix
+            @listenTo @model, "change", @render
         render: ->
             @$el.empty()
             objects = []
-            keys = Object.keys(@model).sort()
+            model = if @model.clean then @model.clean() else @model.toJSON()
+            keys = Object.keys(model).sort()
             _.each keys, (key) =>
                 val = @model[key]
                 key = key.capitalize()
@@ -242,8 +261,7 @@ define ["powers", "globals", "utilities", "dialog", "battler", "board", "jquery-
         className: 'attribute-container'
         template: $("#attribute-container").html()
         initialize: (attrs) ->
-            cleanModel = _.omit @model.toJSON(), "creatine", "HP", "max_HP", "max_creatine", "current_chunk", "regY", "spriteimg", "frames"
-            @attrlist = new StatList model: cleanModel
+            @attrlist = new StatList model: @model
             @render()
             @meters = {}
             h = @meters.health = new Meter el: @$("meter.HP"), model: attrs.model
@@ -299,8 +317,15 @@ define ["powers", "globals", "utilities", "dialog", "battler", "board", "jquery-
         initialize: ->
             @setupMeters()
             @listenTo @model, 
-                "beginphase": (phase) -> @$(".phase-number").text(phase + 1)
+                "beginphase": (phase) -> @$(".phase-number").text(phase + 1 + "/3")
             @listenTo @model.actions, "change", (actions) => @updateActions actions
+            @listenTo @model.get("inventory"), 
+                "remove": (model, collection) =>
+                    if collection.length is 0 then @$(".js-show-inventory").addClass("disabled")
+                "remove add": (model, collection) =>
+                    l = collection.length
+                    @$(".inventory-length").text(l)
+
             _.bindAll @, "close", "open", "toggle", "selectNext", "selectThis", "selectPrev"
             @close()
             @render()
@@ -312,6 +337,7 @@ define ["powers", "globals", "utilities", "dialog", "battler", "board", "jquery-
             @showPowers()
             @showInventory()
             @updateActions @model.actions
+            @$(".inventory-length").text(@model.get("inventory").length)
         setupMeters: ->
             container = @container = new CharacterStateDisplay model: @model
             container.$el.appendTo $wrapper

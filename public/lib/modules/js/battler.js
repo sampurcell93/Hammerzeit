@@ -1,6 +1,7 @@
 (function() {
   var __hasProp = {}.hasOwnProperty,
-    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
+    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
+    __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
 
   define(["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player", "cast"], function(board, globals, ut, mapper, NPC, mapcreator, player, cast) {
     var Battle, Dispatcher, Enemy, GridOverlay, GridSquare, InitiativeQueue, NPCArray, PCs, Player, Timer, battle_events, discardDispatch, getActive, getQueue, map, setPotentialMoves, stage, states, virtualMovePossibilities, _active_chars, _activebattle, _activemap, _ref, _ref1, _ref2, _ref3, _shared, _sm, _timer, _ts;
@@ -17,6 +18,11 @@
     _ts = globals.map.tileside;
     states = ['choosingmoves', 'choosingattacks', 'menuopen'];
     battle_events = _.extend({}, Backbone.Events);
+    _activebattle = null;
+    _active_chars = PCs;
+    _shared = globals.shared_events;
+    _activemap = null;
+    _ts = globals.map.tileside;
     Dispatcher = (function() {
       Dispatcher.prototype.visible = false;
 
@@ -201,6 +207,75 @@
       return InitiativeQueue;
 
     })(NPCArray);
+    Timer = (function() {
+      function Timer(el, number) {
+        this.el = el;
+        this.number = number;
+      }
+
+      Timer.prototype.interval = null;
+
+      Timer.prototype.totaltime = 25000;
+
+      Timer.prototype.stop = function() {
+        if (this.interval) {
+          return clearInterval(this.interval);
+        }
+      };
+
+      Timer.prototype.start = function(extra, done) {
+        var totaltime, value,
+          _this = this;
+        value = parseInt(this.el.attr("value"));
+        extra || (extra = 0);
+        totaltime = this.totaltime + extra * 100;
+        this.el.attr("max", totaltime);
+        return this.interval = setInterval(function() {
+          var numpos;
+          value += 50;
+          _this.el.attr("value", value);
+          numpos = ((totaltime - value) / totaltime) * 100 - 1;
+          _this.number.text((Math.round((totaltime * .001 - value * .001) / .1) * .1).toFixed(1) + "s");
+          if (numpos > 0) {
+            _this.number.css("right", numpos + "%");
+          }
+          if (value >= totaltime) {
+            clearInterval(_this.interval);
+            globals.shared_events.trigger("timerdone");
+            if ((done != null) && _.isFunction(done)) {
+              return done();
+            }
+          }
+        }, 50);
+      };
+
+      Timer.prototype.reset = function() {
+        this.stop();
+        return this.el.attr("value", 0);
+      };
+
+      Timer.prototype.show = function() {
+        board.$canvas.addClass("nocorners");
+        this.el.slideDown("fast");
+        return this.number.fadeIn("fast");
+      };
+
+      Timer.prototype.hide = function() {
+        board.$canvas.removeClass("nocorners");
+        this.number.fadeOut("fast");
+        return this.el.slideUp("fast");
+      };
+
+      Timer.prototype.set = function(time) {
+        if (time >= 0 && time <= this.totaltime) {
+          return this.el.attr("value", time);
+        }
+      };
+
+      return Timer;
+
+    })();
+    _timer = new Timer($("#turn-progress"), $("#turn-progress-number"));
     Battle = (function(_super) {
       __extends(Battle, _super);
 
@@ -416,94 +491,6 @@
       return Battle;
 
     })(Backbone.Model);
-    _activebattle = null;
-    _active_chars = PCs;
-    _shared = globals.shared_events;
-    _shared.on("battle", function() {
-      var grid;
-      if (_activebattle) {
-        _activebattle.destructor().destroy();
-      }
-      _activebattle = new Battle();
-      grid = new GridOverlay({
-        model: _activemap,
-        child: GridSquare,
-        battle: _activebattle
-      });
-      _activebattle.grid = grid;
-      return _activebattle.begin("random");
-    });
-    _activemap = null;
-    _ts = globals.map.tileside;
-    Timer = (function() {
-      function Timer(el, number) {
-        this.el = el;
-        this.number = number;
-      }
-
-      Timer.prototype.interval = null;
-
-      Timer.prototype.totaltime = 25000;
-
-      Timer.prototype.stop = function() {
-        if (this.interval) {
-          return clearInterval(this.interval);
-        }
-      };
-
-      Timer.prototype.start = function(extra, done) {
-        var totaltime, value,
-          _this = this;
-        value = parseInt(this.el.attr("value"));
-        extra || (extra = 0);
-        totaltime = this.totaltime + extra * 100;
-        this.el.attr("max", totaltime);
-        return this.interval = setInterval(function() {
-          var numpos;
-          value += 50;
-          _this.el.attr("value", value);
-          numpos = ((totaltime - value) / totaltime) * 100 - 1;
-          _this.number.text((Math.round((totaltime * .001 - value * .001) / .1) * .1).toFixed(1) + "s");
-          if (numpos > 0) {
-            _this.number.css("right", numpos + "%");
-          }
-          if (value >= totaltime) {
-            clearInterval(_this.interval);
-            globals.shared_events.trigger("timerdone");
-            if ((done != null) && _.isFunction(done)) {
-              return done();
-            }
-          }
-        }, 50);
-      };
-
-      Timer.prototype.reset = function() {
-        this.stop();
-        return this.el.attr("value", 0);
-      };
-
-      Timer.prototype.show = function() {
-        board.$canvas.addClass("nocorners");
-        this.el.slideDown("fast");
-        return this.number.fadeIn("fast");
-      };
-
-      Timer.prototype.hide = function() {
-        board.$canvas.removeClass("nocorners");
-        this.number.fadeOut("fast");
-        return this.el.slideUp("fast");
-      };
-
-      Timer.prototype.set = function(time) {
-        if (time >= 0 && time <= this.totaltime) {
-          return this.el.attr("value", time);
-        }
-      };
-
-      return Timer;
-
-    })();
-    _timer = new Timer($("#turn-progress"), $("#turn-progress-number"));
     GridOverlay = (function(_super) {
       __extends(GridOverlay, _super);
 
@@ -656,6 +643,7 @@
       __extends(GridSquare, _super);
 
       function GridSquare() {
+        this.resolveHit = __bind(this.resolveHit, this);
         _ref3 = GridSquare.__super__.constructor.apply(this, arguments);
         return _ref3;
       }
@@ -838,17 +826,32 @@
           });
           return this;
         }
-        if (_.isFunction(use)) {
-          use.call(power, subject, attacker);
+        if (this.resolveHit(attacker, subject, power)) {
+          power.use();
+          subject.takeDamage(attrs.damage + ut.roll(attrs.modifier));
+        } else {
+          subject.drawStatusChange({
+            text: 'MISS'
+          });
         }
-        subject.takeDamage(attrs.damage + ut.roll(attrs.modifier));
         attacker.useCreatine(attrs.creatine);
         if (opts.take_action !== false) {
           attacker.takeAction(attrs.action);
         }
-        power.use();
         _activebattle.clearAttackZone();
         return this;
+      };
+
+      GridSquare.prototype.resolveHit = function(attacker, subject, power) {
+        var mod;
+        mod = power.get("power") + attacker.get("atk");
+        mod += ut.roll(_sm);
+        console.log(mod);
+        if (mod >= subject.get(power.get("defense"))) {
+          return true;
+        } else {
+          return false;
+        }
       };
 
       GridSquare.prototype.bindMoveFns = function() {
@@ -985,6 +988,20 @@
     getQueue = function() {
       return _activebattle.get("InitQueue");
     };
+    _shared.on("battle", function() {
+      var grid;
+      if (_activebattle) {
+        _activebattle.destructor().destroy();
+      }
+      _activebattle = new Battle();
+      grid = new GridOverlay({
+        model: _activemap,
+        child: GridSquare,
+        battle: _activebattle
+      });
+      _activebattle.grid = grid;
+      return _activebattle.begin("random");
+    });
     return window.battler = {
       getActive: function(opts) {
         return getActive(opts);

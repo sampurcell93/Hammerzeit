@@ -73,9 +73,6 @@
           opts = {};
         }
         e = this.get("e");
-        if (e === "f") {
-          console.log(opts);
-        }
         if (e === false || e === "f" && !opts.ignoreDeltas) {
           return false;
         } else if (this.isOccupied() && !opts.ignoreNPCs) {
