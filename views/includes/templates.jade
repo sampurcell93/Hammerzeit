@@ -28,14 +28,16 @@ script#modify-tile(type='text/template')
 
 script#inventory-item(type='text/template')
         <i class='js-show-more icon-caret-down'></i>
-        <%= name %>
+        span.name <%= name %>
         ul.info
             <% if (equipped) { %> 
             li.js-unequip Unequip
-            <% } else { %>
+            <% } else if (canEquip) { %>
             li.js-equip Equip
             <% } %>
+            <% if (canUse) { %> 
             li.js-use Use
+            <% } %>
 
 script#mapcreate-item(type='text/template')
         <%= typeof e !== 'undefined' && e ? e : '&nbsp;' %>

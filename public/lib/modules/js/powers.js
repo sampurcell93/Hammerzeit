@@ -2,7 +2,7 @@
   var __hasProp = {}.hasOwnProperty,
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
-  define(["globals", "utilities", "board"], function(globals, utilities, board) {
+  define(["globals", "utilities", "board", "items"], function(globals, utilities, board, items) {
     var Power, PowerSet, get, getPower, _default, _pathopts, _powers, _ref, _ref1, _useFns;
     _powers = null;
     _default = ["Strike", "Arrow", "Whirl"];
@@ -24,24 +24,35 @@
         creatine: 0,
         power: 1,
         range: 1,
-        name: "Basic",
+        name: 'Basic',
         uses: Infinity,
         damage: 1,
         modifier: 4,
         action: 'standard',
         spread: 'range',
-        defense: 'AC'
+        defense: 'AC',
+        belongsTo: null
       };
 
       Power.prototype.idAttribute = 'name';
 
-      Power.prototype.use = function() {
-        var use;
+      Power.prototype.use = function(subject, opts) {
+        var attacker, use;
+        if (opts == null) {
+          opts = {
+            take_action: true
+          };
+        }
+        attacker = this.belongsTo();
         use = this.get("use");
         if (_.isFunction(use)) {
           use.call(this, subject, attacker);
         }
         this.set("uses", this.get("uses") - 1);
+        attacker.useCreatine(this.get("creatine"));
+        if (opts.take_action !== false) {
+          attacker.takeAction(this.get("action"));
+        }
         return this;
       };
 
@@ -77,6 +88,10 @@
         } else {
           return this.get("range");
         }
+      };
+
+      Power.prototype.belongsTo = function() {
+        return this.get("belongsTo");
       };
 
       return Power;
@@ -146,9 +161,19 @@
       getClassDefaults: function(c) {}
     });
     return window.powers = {
-      getDefaultPowers: function(c) {
-        var d;
-        return d = get(_default);
+      getDefaultPowers: function(opts) {
+        var d,
+          _this = this;
+        if (opts == null) {
+          opts = {};
+        }
+        d = get(_default);
+        if (opts.belongsTo) {
+          _.each(d.models, function(power) {
+            return power.set("belongsTo", opts.belongsTo);
+          });
+        }
+        return d;
       },
       get: function(name) {
         return get(name);

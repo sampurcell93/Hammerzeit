@@ -480,8 +480,7 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
         attack_fns: 
             clickHandler: (e, data) -> 
                 power = @model.boundPower
-                console.log @model, data, @
-                attacker = power.ownedBy
+                attacker = power.belongsTo()
                 if data.type is "burst"
                     subject = []
                     _.each _activebattle.attack_zone.models, (square) ->
@@ -508,7 +507,6 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
         handleAttack: (attacker, subject, power, opts={take_action: true}) ->
             attrs = power.toJSON()
             if !attacker.can(attrs.action) then return @
-            use = attrs.use
             if _.isArray subject
                 targets = subject.length
                 _.each subject, (subj, i) =>
@@ -517,24 +515,20 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
                 return @
             if @resolveHit(attacker,subject,power)
                 # Baseline damage plus a role of the dice
-                power.use()
+                power.use.call(power, subject, {take_action: opts.take_action})
                 subject.takeDamage(attrs.damage + ut.roll(attrs.modifier))
             else subject.drawStatusChange({text: 'MISS'})
             # Some powers cost magic 
-            attacker.useCreatine(attrs.creatine)
-            attacker.takeAction(attrs.action) unless opts.take_action is false
             _activebattle.clearAttackZone()
             @
         resolveHit: (attacker, subject, power) =>
             mod = power.get("power") + attacker.get("atk")
             mod += ut.roll(_sm)
-            console.log mod
             if mod >= subject.get(power.get("defense"))
                 return true
             else false
         bindMoveFns: ->
             area = @model.bitmap.hitArea
-            console.log "binding move functions"
             m = @move_fns
             area.on "click" , m.clickHandler, @, false, area: area
             area.on "mouseover", m.mouseoverHandler, @, false, area: area
@@ -552,7 +546,6 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
 
         # Pass in a stringto identify why a grid square should be highlighted
         potentialmoves: ->
-            console.log "just got triggered"
             # @haspotentialmoves = true
             area = @model.bitmap.hitArea
             @drawHitAreaSquare @colors.potential_move

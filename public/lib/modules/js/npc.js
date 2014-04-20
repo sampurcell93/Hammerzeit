@@ -3,10 +3,12 @@
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
   define(["globals", "utilities", "board", "items", "powers", "mapper", "underscore", "backbone"], function(globals, ut, board, items, powers, mapper) {
-    var CharacterArray, CharacterPropertyView, Enemy, NPC, Row, coordToDir, _events, _p, _ref, _ref1, _ref2, _ref3, _ts;
+    var CharacterArray, CharacterPropertyView, Enemy, Modifier, ModifierCollection, NPC, Row, coordToDir, _events, _p, _ref, _ref1, _ref2, _ref3, _ts;
     _ts = globals.map.tileside;
     _events = globals.shared_events;
     Row = mapper.Row;
+    ModifierCollection = items.ModifierCollection;
+    Modifier = items.Modifier;
     coordToDir = function(coord, orientation) {
       orientation || (orientation = "1");
       orientation = orientation.toString();
@@ -57,6 +59,12 @@
 
       NPC.prototype.type = 'npc';
 
+      NPC.prototype.colors = {
+        "HP": ["#ff0000", "#fff"],
+        "AC": ["#ff0000", "#fff"],
+        "creatine": ["#ff0000", "blue"]
+      };
+
       NPC.prototype.move_callbacks = {
         done: function() {},
         change: function() {}
@@ -67,7 +75,7 @@
           _this = this;
         pow = powers.getDefaultPowers();
         _.each(pow.models, function(power) {
-          return power.ownedBy = _this;
+          return power.set("belongsTo", _this);
         });
         inventory = items.getDefaultInventory({
           belongsTo: this
@@ -78,10 +86,9 @@
           }));
         });
         this.listenToOnce(globals.shared_events, "powers_loaded", function() {
-          _this.set("powers", pow = powers.getDefaultPowers());
-          return _.each(pow.models, function(power) {
-            return power.ownedBy = _this;
-          });
+          return _this.set("powers", pow = powers.getDefaultPowers({
+            belongsTo: _this
+          }));
         });
         return {
           name: "NPC",
@@ -139,6 +146,8 @@
             frames: this.frames.down
           }))
         };
+        this.modifiers = new ModifierCollection;
+        this.onNextTurn = [];
         this.listenToStatusChanges();
         this.createMarker();
         this.on("add", function(model, coll) {
@@ -146,7 +155,16 @@
             return _this.activity_queue = coll;
           }
         });
-        return this.cursor();
+        this.cursor();
+        return this;
+      };
+
+      NPC.prototype.applyModifiers = function(modifiers) {
+        var _this = this;
+        _.each(modifiers.models, function(mod) {
+          return _this.modifiers.add(mod);
+        });
+        return this;
       };
 
       NPC.prototype.canOccupy = function(t) {
@@ -273,6 +291,23 @@
         return this.currentspace;
       };
 
+      NPC.prototype.getAttrDifference = function(key) {
+        return this.previous(key) - this.get(key);
+      };
+
+      NPC.prototype.getChangeModifier = function(difference) {
+        if (difference < 0) {
+          return "+";
+        } else {
+          return "-";
+        }
+      };
+
+      NPC.prototype.getChangeColor = function(attr, value) {
+        value = value > 0 ? 0 : 1;
+        return this.colors[attr][value];
+      };
+
       NPC.prototype.getQuadrant = function() {
         var x, y;
         x = this.marker.x - 3 * globals.map.c_width / 4;
@@ -307,31 +342,37 @@
       };
 
       NPC.prototype.listenToStatusChanges = function() {
-        var _this = this;
-        this.on({
-          "change:HP": function(m, hp) {
-            return _this.drawStatusChange({
-              text: (_this.previous("HP") - hp) + "HP",
-              color: "#ff0000"
-            });
-          }
+        var handleChange,
+          _this = this;
+        handleChange = function(diff, str) {
+          var color;
+          color = _this.getChangeColor("HP", diff);
+          return _this.drawStatusChange({
+            text: _this.getChangeModifier(diff) + Math.abs(diff) + str,
+            color: color
+          });
+        };
+        _.each(["HP", "creatine", "AC"], function(attr) {
+          return _this.on("change:" + attr, function() {
+            return handleChange(_this.getAttrDifference(attr), attr);
+          });
         });
-        this.on({
-          "change:creatine": function(m, cr) {
-            return _this.drawStatusChange({
-              text: (_this.previous("creatine") - cr) + "CR",
-              color: "#8f47ed"
-            });
-          }
-        });
-        return this.on({
-          "change:AC": function(m, ac) {
-            var mod;
-            ac = Math.abs(_this.previous("AC") - ac);
-            mod = ac < 0 ? "-" : "+";
-            return _this.drawStatusChange({
-              text: mod + ac + "AC"
-            });
+        return this.listenTo(this.modifiers, {
+          "add": function(model, collection) {
+            var currentval, removeFn;
+            currentval = _this.get(model.get("prop"));
+            _this.set(model.get("prop"), currentval + model.get("mod"));
+            if (model.get("oneturn") === true) {
+              removeFn = function() {
+                return _this.modifiers.remove(model);
+              };
+              return _this.onNextTurn.push(removeFn);
+            }
+          },
+          "remove": function(model, collection) {
+            var currentval;
+            currentval = _this.get(model.get("prop"));
+            return _this.set(model.get("prop"), currentval - model.get("mod"));
           }
         });
       };
@@ -421,6 +462,18 @@
         } else {
           return "";
         }
+      };
+
+      NPC.prototype.removeModifiers = function(modifiers) {
+        var _this = this;
+        if (modifiers instanceof ModifierCollection) {
+          _.each(modifiers.models, function(mod) {
+            return _this.modifiers.remove(mod);
+          });
+        } else {
+          this.modifiers.remove(modifiers);
+        }
+        return this;
       };
 
       NPC.prototype.reanimate = function(animation, speed, next) {
@@ -545,6 +598,15 @@
         return this;
       };
 
+      NPC.prototype.executeTurnFunctions = function() {
+        var functions;
+        functions = this.onNextTurn;
+        while (functions.length) {
+          functions.shift().call(this);
+        }
+        return this;
+      };
+
       NPC.prototype.getPrivate = function(id) {
         return _p[id];
       };
@@ -568,6 +630,7 @@
       };
 
       NPC.prototype.initTurn = function() {
+        this.executeTurnFunctions();
         this.indicateActive();
         this.active = true;
         globals.shared_events.trigger("closemenus");

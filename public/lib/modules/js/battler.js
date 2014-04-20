@@ -766,8 +766,7 @@
         clickHandler: function(e, data) {
           var attacker, power, subject;
           power = this.model.boundPower;
-          console.log(this.model, data, this);
-          attacker = power.ownedBy;
+          attacker = power.belongsTo();
           if (data.type === "burst") {
             subject = [];
             _.each(_activebattle.attack_zone.models, function(square) {
@@ -803,7 +802,7 @@
       };
 
       GridSquare.prototype.handleAttack = function(attacker, subject, power, opts) {
-        var attrs, targets, use,
+        var attrs, targets,
           _this = this;
         if (opts == null) {
           opts = {
@@ -814,7 +813,6 @@
         if (!attacker.can(attrs.action)) {
           return this;
         }
-        use = attrs.use;
         if (_.isArray(subject)) {
           targets = subject.length;
           _.each(subject, function(subj, i) {
@@ -827,16 +825,14 @@
           return this;
         }
         if (this.resolveHit(attacker, subject, power)) {
-          power.use();
+          power.use.call(power, subject, {
+            take_action: opts.take_action
+          });
           subject.takeDamage(attrs.damage + ut.roll(attrs.modifier));
         } else {
           subject.drawStatusChange({
             text: 'MISS'
           });
-        }
-        attacker.useCreatine(attrs.creatine);
-        if (opts.take_action !== false) {
-          attacker.takeAction(attrs.action);
         }
         _activebattle.clearAttackZone();
         return this;
@@ -846,7 +842,6 @@
         var mod;
         mod = power.get("power") + attacker.get("atk");
         mod += ut.roll(_sm);
-        console.log(mod);
         if (mod >= subject.get(power.get("defense"))) {
           return true;
         } else {
@@ -857,7 +852,6 @@
       GridSquare.prototype.bindMoveFns = function() {
         var area, m;
         area = this.model.bitmap.hitArea;
-        console.log("binding move functions");
         m = this.move_fns;
         area.on("click", m.clickHandler, this, false, {
           area: area
@@ -897,7 +891,6 @@
 
       GridSquare.prototype.potentialmoves = function() {
         var area;
-        console.log("just got triggered");
         area = this.model.bitmap.hitArea;
         this.drawHitAreaSquare(this.colors.potential_move);
         area.alpha = 0.3;

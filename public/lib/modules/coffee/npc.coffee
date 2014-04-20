@@ -3,6 +3,8 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 	_ts = globals.map.tileside
 	_events = globals.shared_events
 	Row = mapper.Row
+	ModifierCollection = items.ModifierCollection
+	Modifier = items.Modifier
 
 	# Converts left/right/up/down to x y
 	coordToDir = (coord, orientation) ->
@@ -19,7 +21,7 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
         }
         walkspeed: 20
 	}	
-	
+
 	_ts = globals.map.tileside
 
 	class NPC extends Backbone.Model
@@ -38,18 +40,22 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 		# What phase of the user's turn are they at? Max 3
 		turnPhase: 0
 		type: 'npc'
+		colors: {
+			"HP": ["#ff0000", "#fff"]
+			"AC": ["#ff0000", "#fff"]
+			"creatine": ["#ff0000", "blue"]
+		}
 		move_callbacks: 
 			done: -> 
 			change: ->
 		defaults: ->
 			pow = powers.getDefaultPowers()
-			_.each pow.models, (power) => power.ownedBy = @
+			_.each pow.models, (power) => power.set "belongsTo", @
 			inventory = items.getDefaultInventory({belongsTo: @})
 			@listenToOnce globals.shared_events, "items_loaded", =>
 				@set("inventory", items.getDefaultInventory({belongsTo: @}))
 			@listenToOnce globals.shared_events, "powers_loaded", =>
-				@set("powers", pow = powers.getDefaultPowers())
-				_.each pow.models, (power) => power.ownedBy = @
+				@set("powers", pow = powers.getDefaultPowers({belongsTo: @}))
 
 			return {
 				name: "NPC"
@@ -102,12 +108,18 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 				"0,-1": new createjs.SpriteSheet(_.extend @walkopts, {frames: @frames.up})
 				"0,1" : new createjs.SpriteSheet(_.extend @walkopts, {frames: @frames.down})
 			}
+			@modifiers = new ModifierCollection
+			@onNextTurn = []
 			@listenToStatusChanges()
 			# Powers load async, so when loaded we need to bind defaults to an unequipped NPC
 			# then stop listening
 			@createMarker()
 			@on "add", (model, coll) => if coll.type is "InitiativeQueue" then @activity_queue = coll
 			@cursor()
+			@
+		applyModifiers: (modifiers) ->
+			_.each modifiers.models, (mod) => @modifiers.add mod
+			@
 		# Checks if a given target can be occupied. Does not account for entrance vectors, only current state.
 		canOccupy: (t) ->
 			if t.end is false then return false
@@ -182,6 +194,15 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 				@move(dx, dy, 0);
 			@
 		getCurrentSpace: -> @currentspace
+		getAttrDifference: (key) ->
+			@previous(key) - @get(key)
+		getChangeModifier: (difference) ->
+			if difference < 0 then "+" else "-"
+		# Expects an attr key (IE "HP") and the value that it is changing by (IE -2)
+		# Returns the color of the display update
+		getChangeColor: (attr, value) ->
+			value = if value > 0 then 0 else 1
+			@colors[attr][value]
 		# Returns the cartesian quadrant of the screen the NPC occupies so that the menu
 		# Can make sure not to open over them
 		getQuadrant: ->
@@ -203,20 +224,25 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 		# Binds listeners to updates to status (AC, HP, creatine)
 		# and draws the corresponding figures on the board
 		listenToStatusChanges: ->
-			@on "change:HP": (m, hp) => 
+			handleChange = (diff, str) =>
+				color = @getChangeColor("HP", diff)
 				@drawStatusChange (
-					{text: (@previous("HP") - hp) + "HP", color: "#ff0000"}
+					{text: @getChangeModifier(diff) + Math.abs(diff) + str, color: color}
 				)
-			@on "change:creatine": (m, cr) => 
-				@drawStatusChange(
-					{text: (@previous("creatine") - cr) + "CR", color: "#8f47ed"}
-				)
-			@on "change:AC": (m, ac) => 
-				ac = Math.abs(@previous("AC") - ac)
-				mod = if ac < 0 then "-" else "+"
-				@drawStatusChange(
-					{text: mod + ac + "AC"}
-				)
+			# Bind draw listeners to properties
+			_.each ["HP", "creatine", "AC"], (attr) =>
+				@on "change:#{attr}", =>
+					handleChange @getAttrDifference(attr), attr
+			@listenTo @modifiers, 
+				"add": (model, collection) =>
+					currentval = @get model.get "prop"
+					@set(model.get("prop"), currentval + model.get("mod"))
+					if model.get("oneturn") is true
+						removeFn = => @modifiers.remove model
+						@onNextTurn.push(removeFn)
+				"remove": (model, collection) =>
+					currentval = @get model.get "prop"
+					@set(model.get("prop"), currentval - model.get("mod"))
 
 		# Wrapper functions for basic moves
 		moveRight: -> @move 1, 0
@@ -270,6 +296,12 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 		# Takes in a dir string and returns the opposite
 		oppositeDir: (dir) ->
 			if dir is "x" then "y" else if dir is "y" then "x" else ""
+		removeModifiers: (modifiers) ->
+			if modifiers instanceof ModifierCollection
+				_.each modifiers.models, (mod) => 
+					@modifiers.remove mod
+			else @modifiers.remove modifiers
+			@
 		# Reset an animation's properties
 		reanimate: (animation, speed, next) ->
 			sheet = @marker.icon.spriteSheet
@@ -360,6 +392,11 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 			@trigger "turndone"
 			@resetActions()
 			@
+		executeTurnFunctions: ->
+			functions = @onNextTurn
+			while functions.length then functions.shift().call @
+			@
+
 		getPrivate: (id) ->
 			_p[id]
 		# Pass in a color to highlight the current space of the NPC
@@ -377,6 +414,7 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 		# Begin the NPC's turn by indicating it as the selected,
 		# and starting the first phase
 		initTurn: ->
+			@executeTurnFunctions()
 			@indicateActive()
 			@active = true
 			globals.shared_events.trigger "closemenus"

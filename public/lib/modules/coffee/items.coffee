@@ -5,12 +5,20 @@ define ["globals", "utilities", "underscore", "backbone"], (globals, ut) ->
     # functions accept the target (npc model or subclass thereof) 
     # of the item's use, and should be called in the item's context
     _usefns = {
-        "Tattered Cloak": (t) -> t.takeDamage(4)
-        "Bread": (t) -> t.takeDamage(4)
     }
     _wearfns = {
-        "Tattered Cloak": (t) ->  t.set("AC", t.get("AC") + 2)
     }
+
+    class Modifier extends Backbone.Model
+        defaults: 
+            prop: null
+            mod: 0
+            oneturn: false
+        prop: -> @get "prop"
+        mod:  -> @get "mod"
+
+    class ModifierCollection extends Backbone.Collection
+        model: Modifier
 
     class Item extends Backbone.Model
         idAttribute: 'name'
@@ -25,6 +33,8 @@ define ["globals", "utilities", "underscore", "backbone"], (globals, ut) ->
             canUse: true
             canEquip: false
             action: 'minor'
+            # If the item only modifies attributes, store the 
+            modifiers: new ModifierCollection
             # When the item is used, do this
             use: -> 
             # When the item is worn, do this
@@ -36,17 +46,30 @@ define ["globals", "utilities", "underscore", "backbone"], (globals, ut) ->
                 else @onUnEquip()
         isEquipped: -> @get "equipped"
         canEquip: -> @get "canEquip"
-        onEquip: ->
-            @get("wear")?.call(@, @get("belongsTo"))
+        onEquip: (target = @belongsTo())->
+            @get("wear")?.call(@, target)
+            target.applyModifiers(@get "modifiers").takeAction(@get("action"))
             @
-        onUnEquip: ->
+        onUnEquip: (target = @belongsTo()) ->
+            target.removeModifiers @get "modifiers"
+            @
         canUse: -> @get "canUse"
         onUse: (target = @belongsTo())-> 
             @get("use")?.call(@, target)
             @set("uses", @get("uses") - 1)
             if @get("uses") is 0 then @destroy()
+            target.applyModifiers(@get "modifiers").takeAction(@get("action"))
             @
-        belongsTo: -> @get "belongsTo"
+        belongsTo: (model) ->
+            belongsTo = @get "belongsTo"
+            if _.isUndefined(model) then return belongsTo
+            else return _.isEqual(belongsTo, model)
+        parse: (response) ->
+            modifiers = new ModifierCollection
+            _.each response.modifiers, (mod) =>
+                modifiers.add new Modifier(mod)
+            response.modifiers = modifiers
+            response
 
 
     # Simply a collection of items, regardless of context
@@ -85,6 +108,8 @@ define ["globals", "utilities", "underscore", "backbone"], (globals, ut) ->
 
     return window.items = {
         Item: (construction) -> new Item(construction)
+        ModifierCollection: ModifierCollection
+        Modifier: Modifier
         # Inventory: (construction) -> new Inventory(construction)
         # InventoryList: (construction) -> new InventoryList(construction)
         # ItemView: (construction) -> new ItemView(construction)

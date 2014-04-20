@@ -1,4 +1,4 @@
-define ["globals", "utilities", "board"], (globals, utilities, board) ->
+define ["globals", "utilities", "board", "items"], (globals, utilities, board, items) ->
     _powers = null
     _default = ["Strike", "Arrow","Whirl"]
 
@@ -21,11 +21,15 @@ define ["globals", "utilities", "board"], (globals, utilities, board) ->
             action: 'standard'
             spread: 'range'
             defense: 'AC'
+            belongsTo: null
         idAttribute: 'name'
-        use: ->
+        use: (subject, opts={take_action: true}) ->
+            attacker = @belongsTo()
             use = @get "use"
             if _.isFunction(use) then use.call(@, subject, attacker)
             @set("uses", @get("uses") - 1)
+            attacker.useCreatine(@get "creatine")
+            attacker.takeAction(@get "action") unless opts.take_action is false
             @
         initialize: ->
             _.bind @handlers.range, @
@@ -47,6 +51,7 @@ define ["globals", "utilities", "board"], (globals, utilities, board) ->
             if @get("spread") isnt "range"
                 @get("spread").charAt(0).toUpperCase() + @get("range")
             else @get "range"
+        belongsTo: -> @get "belongsTo"
 
 
 
@@ -92,8 +97,13 @@ define ["globals", "utilities", "board"], (globals, utilities, board) ->
 
     window.powers = {    
         # gets the generalized defaults. If a class is passed in, gets the defaults for that class
-        getDefaultPowers: (c) -> 
+        getDefaultPowers: (opts={}) -> 
             d = get _default
+            if opts.belongsTo
+                _.each d.models, (power) =>
+                    power.set("belongsTo", opts.belongsTo)
+            d
+
         # Accepts a string with the name of the power, or an array of strings. Either a Power Model or a PowerSet is returned.
         get: (name) -> get name
         # Do not provice direct class access

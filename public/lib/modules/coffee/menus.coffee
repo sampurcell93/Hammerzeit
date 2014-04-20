@@ -86,7 +86,7 @@ define ["powers", "globals", "utilities", "dialog", "battler", "board", "jquery-
         template: $("#inventory-item").html()
         initialize: ->
             @listenTo @model, 
-                "change:equipped": @renderSmallView
+                "change:equipped": @render
                 "remove destroy": =>
                     @$el.addClass("disabled")
                     setTimeout =>
@@ -99,8 +99,9 @@ define ["powers", "globals", "utilities", "dialog", "battler", "board", "jquery-
             @$el.html(_.template @template, @model.toJSON())
         render: ->
             @renderSmallView()
-            more = new StatList model: @model
-            @$el.append more.render().el
+            # if @more then @more.remove()
+            # @more = new StatList model: @model
+            # @$el.append @more.render().el
             @
         events: 
             "click .js-show-more": (e) ->
@@ -135,7 +136,7 @@ define ["powers", "globals", "utilities", "dialog", "battler", "board", "jquery-
             _.bindAll @, "chooseTargets"
             @listenTo @model,
                 "change:uses": (model, uses) -> @renderUses uses
-            @listenTo @model.ownedBy.actions, "change", @checkDisabled
+            @listenTo @model.belongsTo().actions, "change", @checkDisabled
         render: ->
             @$el.html(_.template(@template, _.extend(@model.toJSON(), rangedisplay: @model.getRangeDisplay())))
             more = new StatList model: @model
@@ -157,11 +158,11 @@ define ["powers", "globals", "utilities", "dialog", "battler", "board", "jquery-
             if uses <= 0 then @disable()
             @
         checkDisabled: ->
-            if !(@model.ownedBy.can(@model.get("action"))) then @disable()
+            if !(@model.belongsTo().can(@model.get("action"))) then @disable()
             else @enable()
         chooseTargets: ->
             if @isDisabled() then return @
-            user = @model.ownedBy
+            user = @model.belongsTo()
             if !user then return 
             battler.removeHighlighting()
             handler = @model.getHandler()
@@ -240,11 +241,10 @@ define ["powers", "globals", "utilities", "dialog", "battler", "board", "jquery-
             @listenTo @model, "change", @render
         render: ->
             @$el.empty()
-            objects = []
             model = if @model.clean then @model.clean() else @model.toJSON()
             keys = Object.keys(model).sort()
             _.each keys, (key) =>
-                val = @model[key]
+                val = @model.get key
                 key = key.capitalize()
                 if _.isObject(val)
                     @$el.append(_.template(@objTemplate, key: key))

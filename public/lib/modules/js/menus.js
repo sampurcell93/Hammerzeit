@@ -179,7 +179,7 @@
       ItemView.prototype.initialize = function() {
         var _this = this;
         this.listenTo(this.model, {
-          "change:equipped": this.renderSmallView,
+          "change:equipped": this.render,
           "remove destroy": function() {
             _this.$el.addClass("disabled");
             return setTimeout(function() {
@@ -197,12 +197,7 @@
       };
 
       ItemView.prototype.render = function() {
-        var more;
         this.renderSmallView();
-        more = new StatList({
-          model: this.model
-        });
-        this.$el.append(more.render().el);
         return this;
       };
 
@@ -278,7 +273,7 @@
             return this.renderUses(uses);
           }
         });
-        return this.listenTo(this.model.ownedBy.actions, "change", this.checkDisabled);
+        return this.listenTo(this.model.belongsTo().actions, "change", this.checkDisabled);
       };
 
       PowerListItem.prototype.render = function() {
@@ -320,7 +315,7 @@
       };
 
       PowerListItem.prototype.checkDisabled = function() {
-        if (!(this.model.ownedBy.can(this.model.get("action")))) {
+        if (!(this.model.belongsTo().can(this.model.get("action")))) {
           return this.disable();
         } else {
           return this.enable();
@@ -332,7 +327,7 @@
         if (this.isDisabled()) {
           return this;
         }
-        user = this.model.ownedBy;
+        user = this.model.belongsTo();
         if (!user) {
           return;
         }
@@ -486,15 +481,14 @@
       };
 
       StatList.prototype.render = function() {
-        var keys, model, objects,
+        var keys, model,
           _this = this;
         this.$el.empty();
-        objects = [];
         model = this.model.clean ? this.model.clean() : this.model.toJSON();
         keys = Object.keys(model).sort();
         _.each(keys, function(key) {
           var val;
-          val = _this.model[key];
+          val = _this.model.get(key);
           key = key.capitalize();
           if (_.isObject(val)) {
             return _this.$el.append(_.template(_this.objTemplate, {
