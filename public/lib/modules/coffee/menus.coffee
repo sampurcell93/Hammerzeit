@@ -78,6 +78,7 @@ define ["powers", "globals", "utilities", "dialog", "battler", "board", "jquery-
             item.render().$el.appendTo @$el
         render: ->
             @$el.empty()
+            @collection.sort()
             _.each @collection.models, @addItem
             @
 

@@ -17,7 +17,8 @@
       Modifier.prototype.defaults = {
         prop: null,
         mod: 0,
-        oneturn: false
+        turns: null,
+        timing: 0
       };
 
       Modifier.prototype.prop = function() {
@@ -74,8 +75,10 @@
         return true;
       };
 
-      Item.prototype.initialize = function() {
-        var _this = this;
+      Item.prototype.initialize = function(_arg) {
+        var name,
+          _this = this;
+        name = _arg.name;
         return this.on("change:equipped", function(model, value) {
           if (value === true) {
             return _this.onEquip();
@@ -98,7 +101,7 @@
         if (target == null) {
           target = this.belongsTo();
         }
-        if ((_ref3 = this.get("wear")) != null) {
+        if ((_ref3 = this.get("equip")) != null) {
           _ref3.call(this, target);
         }
         target.applyModifiers(this.get("modifiers")).takeAction(this.get("action"));

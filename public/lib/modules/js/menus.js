@@ -157,6 +157,7 @@
 
       InventoryList.prototype.render = function() {
         this.$el.empty();
+        this.collection.sort();
         _.each(this.collection.models, this.addItem);
         return this;
       };

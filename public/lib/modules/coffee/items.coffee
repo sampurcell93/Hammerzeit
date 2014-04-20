@@ -11,9 +11,15 @@ define ["globals", "utilities", "underscore", "backbone"], (globals, ut) ->
 
     class Modifier extends Backbone.Model
         defaults: 
+            # Which property is the modifier targeting?
             prop: null
+            # By how much should it be modified? Can be a function.
             mod: 0
-            oneturn: false
+            # For how many turns should this last?
+            turns: null
+            # If this lasts for turns, when should it be evaluated? 
+            # 0 = at the beginning of the affected's turn, 1 = at the end
+            timing: 0
         prop: -> @get "prop"
         mod:  -> @get "mod"
 
@@ -40,14 +46,14 @@ define ["globals", "utilities", "underscore", "backbone"], (globals, ut) ->
             # When the item is worn, do this
             wear: -> 
         isNew: -> true
-        initialize: ->
+        initialize: ({name})->
             @on "change:equipped", (model, value) =>
                 if value is true then @onEquip()
                 else @onUnEquip()
         isEquipped: -> @get "equipped"
         canEquip: -> @get "canEquip"
         onEquip: (target = @belongsTo())->
-            @get("wear")?.call(@, target)
+            @get("equip")?.call(@, target)
             target.applyModifiers(@get "modifiers").takeAction(@get("action"))
             @
         onUnEquip: (target = @belongsTo()) ->

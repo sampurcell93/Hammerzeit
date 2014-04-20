@@ -109,7 +109,7 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 				"0,1" : new createjs.SpriteSheet(_.extend @walkopts, {frames: @frames.down})
 			}
 			@modifiers = new ModifierCollection
-			@onNextTurn = []
+			@onTurnFunctions = []
 			@listenToStatusChanges()
 			# Powers load async, so when loaded we need to bind defaults to an unequipped NPC
 			# then stop listening
@@ -169,6 +169,7 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 				font: "bold 18px Arial"
 				color: "#fff"
 				text: "!!"
+				done: ->
 			}
 			opts = _.extend defaults, opts
 			status = new createjs.Text(opts.text, opts.font, opts.color)
@@ -179,6 +180,7 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 				if status.y < 0 
 					clearInterval d_i
 					@marker.removeChild status
+					opts.done()
 			, 100
 			@
 		equip: (item) ->
@@ -237,9 +239,9 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 				"add": (model, collection) =>
 					currentval = @get model.get "prop"
 					@set(model.get("prop"), currentval + model.get("mod"))
-					if model.get("oneturn") is true
+					if model.get("turns")
 						removeFn = => @modifiers.remove model
-						@onNextTurn.push(removeFn)
+						@onTurnFunctions.push(_.extend {fn: removeFn}, model.toJSON())
 				"remove": (model, collection) =>
 					currentval = @get model.get "prop"
 					@set(model.get("prop"), currentval - model.get("mod"))
@@ -368,7 +370,9 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 		canTakeAction: -> @can("minor") or @can("move") or @can("standard")
 		# Defend until next turn; burns a move action
 		defend: ->
-			@set("AC", @get("AC") + 2)
+			@drawStatusChange({text: "Defending!", done: =>
+				@set("AC", @get("AC") + 2)
+			})
 			@takeMove()
 			@
 		# Kill NPC
@@ -388,13 +392,22 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 		# Resets the NPC's phase counter and alerts all listeners that the turn is done
 		endTurn: ->
 			@active = false
+			@executeTurnFunctions 1
 			@turnPhase = 0
 			@trigger "turndone"
 			@resetActions()
 			@
-		executeTurnFunctions: ->
-			functions = @onNextTurn
-			while functions.length then functions.shift().call @
+		# Executes all functions in the queue. This is called at the beginning and end of every turn
+		# Optional timing variable indicates when the functions are being checked;
+		# Functions to be evaluated at the end of a turn will not be evaluated at the beginning.
+		executeTurnFunctions: (timing=0) ->
+			functions = @onTurnFunctions
+			_.each functions, (fun) =>
+				if fun.turns > 1 then fun.turns--
+				else if fun.timing is timing
+					fun.fn()
+					fun.markedForDeletion = true
+			@onTurnFunctions = _.reject functions, (fun) => fun.markedForDeletion
 			@
 
 		getPrivate: (id) ->

@@ -147,7 +147,7 @@
           }))
         };
         this.modifiers = new ModifierCollection;
-        this.onNextTurn = [];
+        this.onTurnFunctions = [];
         this.listenToStatusChanges();
         this.createMarker();
         this.on("add", function(model, coll) {
@@ -251,7 +251,8 @@
         defaults = {
           font: "bold 18px Arial",
           color: "#fff",
-          text: "!!"
+          text: "!!",
+          done: function() {}
         };
         opts = _.extend(defaults, opts);
         status = new createjs.Text(opts.text, opts.font, opts.color);
@@ -264,7 +265,8 @@
           status.y -= 2;
           if (status.y < 0) {
             clearInterval(d_i);
-            return _this.marker.removeChild(status);
+            _this.marker.removeChild(status);
+            return opts.done();
           }
         }, 100);
         return this;
@@ -362,11 +364,13 @@
             var currentval, removeFn;
             currentval = _this.get(model.get("prop"));
             _this.set(model.get("prop"), currentval + model.get("mod"));
-            if (model.get("oneturn") === true) {
+            if (model.get("turns")) {
               removeFn = function() {
                 return _this.modifiers.remove(model);
               };
-              return _this.onNextTurn.push(removeFn);
+              return _this.onTurnFunctions.push(_.extend({
+                fn: removeFn
+              }, model.toJSON()));
             }
           },
           "remove": function(model, collection) {
@@ -570,7 +574,13 @@
       };
 
       NPC.prototype.defend = function() {
-        this.set("AC", this.get("AC") + 2);
+        var _this = this;
+        this.drawStatusChange({
+          text: "Defending!",
+          done: function() {
+            return _this.set("AC", _this.get("AC") + 2);
+          }
+        });
         this.takeMove();
         return this;
       };
@@ -592,18 +602,31 @@
 
       NPC.prototype.endTurn = function() {
         this.active = false;
+        this.executeTurnFunctions(1);
         this.turnPhase = 0;
         this.trigger("turndone");
         this.resetActions();
         return this;
       };
 
-      NPC.prototype.executeTurnFunctions = function() {
-        var functions;
-        functions = this.onNextTurn;
-        while (functions.length) {
-          functions.shift().call(this);
+      NPC.prototype.executeTurnFunctions = function(timing) {
+        var functions,
+          _this = this;
+        if (timing == null) {
+          timing = 0;
         }
+        functions = this.onTurnFunctions;
+        _.each(functions, function(fun) {
+          if (fun.turns > 1) {
+            return fun.turns--;
+          } else if (fun.timing === timing) {
+            fun.fn();
+            return fun.markedForDeletion = true;
+          }
+        });
+        this.onTurnFunctions = _.reject(functions, function(fun) {
+          return fun.markedForDeletion;
+        });
         return this;
       };
 

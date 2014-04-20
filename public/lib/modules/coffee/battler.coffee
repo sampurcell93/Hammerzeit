@@ -185,7 +185,7 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
                 NPCs: new NPCArray
                 InitQueue: InitQueue
                 avglevel: PCs.getAverageLevel()
-                numenemies: 5#Math.ceil(Math.random() * PCs.length * 2 + 1)
+                numenemies: 1#Math.ceil(Math.random() * PCs.length * 2 + 1)
                 enemyBounds: {
                     min_x: 0
                     max_x: map.c_width

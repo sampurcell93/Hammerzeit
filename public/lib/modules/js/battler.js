@@ -294,7 +294,7 @@
           NPCs: new NPCArray,
           InitQueue: InitQueue,
           avglevel: PCs.getAverageLevel(),
-          numenemies: 5,
+          numenemies: 1,
           enemyBounds: {
             min_x: 0,
             max_x: map.c_width,
