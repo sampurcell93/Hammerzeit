@@ -38,7 +38,7 @@ script#inventory-item(type='text/template')
             <% if (canUse) { %> 
             li.js-use Use
             <% } %>
-            li.quantity(data-tooltip='Quantity') <%= quantity %>
+            li.js-quantity(data-tooltip='Quantity') <%= quantity %>
 
 script#mapcreate-item(type='text/template')
         <%= typeof e !== 'undefined' && e ? e : '&nbsp;' %>
@@ -68,7 +68,7 @@ script#menu(type='text/template')
                 li(tabindex=2).js-show-inventory 
                     i.icon-lab
                     |Inventory
-                    span.inventory-length(data-tooltip='Items in Inventory')
+                    span.inventory-length.list-descriptor-small(data-tooltip='Items in Inventory')
                     div.inventory-list.nested-menu
                 li(tabindex=2, actiontype="move", data-tooltip='+2AC for one round').js-defend 
                     i.icon-shield
@@ -82,12 +82,11 @@ script#attribute-container(type='text/template')
     h2 <%= name %>
     .clear
     ul.actions-remaining
-        li Actions:
-        li Std: 
+        li(title='std')
             span.standard <%= actions.standard %>
-        li Mov: 
+        li(title='mov') 
             span.move <%= actions.move %>
-        li Min: 
+        li(title='min')
             span.minor <%= actions.minor %>
         li
             span.js-toggle-full.button More

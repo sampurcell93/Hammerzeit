@@ -504,8 +504,7 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
         # NPC subject of the attack, and the power being used
         # Calls the power's use function and performing the default actions
         handleAttack: (attacker, subject, power, opts={take_action: true}) ->
-            attrs = power.toJSON()
-            if !attacker.can(attrs.action) then return @
+            if !attacker.can(power.get "action") then return @
             power.use.call(power, subject, {take_action: opts.take_action})
             # Some powers cost magic 
             _activebattle.clearAttackZone()

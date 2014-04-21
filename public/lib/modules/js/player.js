@@ -128,7 +128,7 @@
     })(NPC.NPC);
     PCs = new NPC.NPCArray;
     PCs.add(new player({
-      path: "Dragoon"
+      path: "Healer"
     }));
     return {
       model: player,

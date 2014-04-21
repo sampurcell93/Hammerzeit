@@ -113,7 +113,12 @@
       Healer.prototype.defaults = function() {
         var d, default_items;
         d = Healer.__super__.defaults.apply(this, arguments);
-        default_items = ["Wood Staff"].concat(d.default_items);
+        default_items = [
+          "Phoenix Down", {
+            id: 'Bread',
+            q: 17
+          }
+        ].concat(d.default_items);
         return {
           default_items: default_items
         };

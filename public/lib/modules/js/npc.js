@@ -4,7 +4,7 @@
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
   define(["globals", "utilities", "board", "items", "powers", "mapper", "cast", "underscore", "backbone"], function(globals, ut, board, items, powers, mapper, cast) {
-    var CharacterArray, CharacterPropertyView, Enemy, Modifier, ModifierCollection, NPC, Row, coordToDir, _events, _p, _ref, _ref1, _ref2, _ref3, _ts;
+    var CharacterArray, CharacterPropertyView, Enemy, Modifier, ModifierCollection, NPC, Row, coordToDir, _events, _ref, _ref1, _ref2, _ref3, _ts;
     _ts = globals.map.tileside;
     _events = globals.shared_events;
     Row = mapper.Row;
@@ -20,16 +20,6 @@
         "-1y": "up",
         "1y": "down"
       }[orientation.toString() + coord];
-    };
-    _p = {
-      walkopts: {
-        framerate: 30,
-        animations: {
-          run: [0, 3]
-        },
-        images: ["images/sprites/hero.png"]
-      },
-      walkspeed: 20
     };
     _ts = globals.map.tileside;
     NPC = (function(_super) {
@@ -67,6 +57,16 @@
         "AC": ["#ff0000", "#fff"],
         "creatine": ["#ff0000", "blue"]
       };
+
+      NPC.prototype.walkopts = {
+        framerate: 30,
+        animations: {
+          run: [0, 3]
+        },
+        images: ["images/sprites/hero.png"]
+      };
+
+      NPC.prototype.walkspeed = 20;
 
       NPC.prototype.move_callbacks = {
         done: function() {},
@@ -136,7 +136,7 @@
         });
         _.bind(this.move_callbacks.done, this);
         _.bind(this.move_callbacks.change, this);
-        this.walkopts = _.extend(this.getPrivate("walkopts"), {
+        this.walkopts = _.extend(this.walkopts, {
           images: [this.get("spriteimg")]
         });
         this.frames = this.get("frames");
@@ -168,21 +168,32 @@
       };
 
       NPC.prototype.applyModifiers = function(modifiers, opts) {
-        var _this = this;
+        var len, num,
+          _this = this;
         if (opts == null) {
           opts = {};
         }
+        num = 0;
         if (modifiers instanceof Modifier) {
-          this.modifiers.add(modifiers);
+          this.modifiers.add(modifiers.clone());
         } else {
+          len = modifiers.length;
           _.each(modifiers.models, function(mod, i) {
+            num = i;
             if (i === 0) {
               i = 100;
             } else {
               i = 700 * i;
             }
             return setTimeout(function() {
-              return _this.modifiers.add(mod, opts);
+              _this.modifiers.add(mod.clone(), opts);
+              if (num === len - 1 && opts.donetext) {
+                return setTimeout(function() {
+                  return _this.drawStatusChange({
+                    text: opts.donetext
+                  });
+                }, 2 * i);
+              }
             }, i);
           });
         }
@@ -304,6 +315,11 @@
         if (this.canEquip(item)) {
           item.set("equipped", true);
           this.get("slots").set(slot, item);
+        } else {
+          this.drawStatusChange({
+            text: "" + slot + " already equipped!",
+            color: "red"
+          });
         }
         return this;
       };
@@ -384,15 +400,25 @@
           });
         };
         _.each(["HP", "creatine", "AC", "atk", "range"], function(attr) {
-          return _this.on("change:" + attr, function() {
+          return _this.on("change:" + attr, function(model, val) {
             return handleChange(_this.getAttrDifference(attr), attr);
           });
         });
         return this.listenTo(this.modifiers, {
           "add": function(model, collection) {
-            var currentval, removeFn;
+            var currentval, max, mod, newval, removeFn;
             currentval = _this.get(model.get("prop"));
-            _this.set(model.get("prop"), currentval + model.get("mod"));
+            mod = model.get("mod");
+            if (_.isFunction(mod)) {
+              newval = mod.call(mod, _this, currentval);
+            } else {
+              newval = currentval + mod;
+            }
+            max = _this.get("max_" + (model.get('prop')));
+            if (max && newval > max) {
+              return;
+            }
+            _this.set(model.get("prop"), newval);
             if (model.get("turns")) {
               removeFn = function() {
                 return _this.modifiers.remove(model);
@@ -457,6 +483,9 @@
       NPC.prototype.moveInterval = function(dx, dy, walkspeed) {
         var cbs, count, m_i, target,
           _this = this;
+        if (walkspeed == null) {
+          walkspeed = this.walkspeed;
+        }
         this.cursor();
         this.turn(dx, dy);
         target = mapper.getTargetTile(dx, dy, this.currentspace);
@@ -482,7 +511,7 @@
             cbs.done.call(_this, dx, dy);
           }
           return count++;
-        }, walkspeed || _p.walkspeed);
+        }, walkspeed);
         return true;
       };
 
@@ -625,13 +654,21 @@
       };
 
       NPC.prototype.defend = function() {
-        var _this = this;
+        var mod,
+          _this = this;
         this.drawStatusChange({
-          text: "Defending!",
-          done: function() {
-            return _this.set("AC", _this.get("AC") + 2);
-          }
+          text: "Defending!"
         });
+        this.applyModifiers(mod = new Modifier({
+          prop: "AC",
+          mod: 2,
+          turns: 1
+        }));
+        this.onTurnFunctions.push(_.extend({
+          fn: function() {
+            return _this.modifiers.remove(mod);
+          }
+        }, mod.toJSON()));
         this.takeMove();
         return this;
       };
@@ -679,10 +716,6 @@
           return fun.markedForDeletion;
         });
         return this;
-      };
-
-      NPC.prototype.getPrivate = function(id) {
-        return _p[id];
       };
 
       NPC.prototype.highlightTile = function(color) {
@@ -820,12 +853,14 @@
       };
 
       NPC.prototype.useCreatine = function(creatine) {
-        var current;
-        current = this.get("creatine");
-        if (current - creatine < 0) {
+        if (this.get("creatine") - creatine < 0) {
           return false;
         }
-        this.set("creatine", current - creatine);
+        this.applyModifiers(new Modifier({
+          prop: "creatine",
+          mod: -creatine,
+          perm: true
+        }));
         return this;
       };
 

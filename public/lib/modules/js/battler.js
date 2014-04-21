@@ -802,14 +802,12 @@
       };
 
       GridSquare.prototype.handleAttack = function(attacker, subject, power, opts) {
-        var attrs;
         if (opts == null) {
           opts = {
             take_action: true
           };
         }
-        attrs = power.toJSON();
-        if (!attacker.can(attrs.action)) {
+        if (!attacker.can(power.get("action"))) {
           return this;
         }
         power.use.call(power, subject, {

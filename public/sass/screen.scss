@@ -146,16 +146,17 @@ canvas {
 }
 
 .button {
-    @include border-radius(3px);
-    @include box-shadow(0px 0px 1px 1px #fff inset);
+    // @include border-radius(3px);
+    // @include box-shadow(0px 0px 1px 1px #fff inset);
     display: inline-block;
     // needs latest Compass, add '@import "compass"' to your scss
-    background-color: #d6d6d6; // Old browsers
-    @include filter-gradient(#d6d6d6, #b5b5b5, vertical); // IE6-9
-    @include background-image(linear-gradient(top,  #d6d6d6 0%,#d3d3d3 41%,#b5b5b5 100%));
+    // background-color: #d6d6d6; // Old browsers
+    // @include filter-gradient(#d6d6d6, #b5b5b5, vertical); // IE6-9
+    // @include background-image(linear-gradient(top,  #d6d6d6 0%,#d3d3d3 41%,#b5b5b5 100%));
     padding: 3px 5px;
     color: #222;
     cursor: pointer;
+    color: #aaa;
 
     &:hover {
         text-decoration: underline;
@@ -291,21 +292,30 @@ textarea {
         padding-bottom: 6px;
     }
 
-    .phase-number, .inventory-length {
+    .phase-number {
         @include border-radius(3px);
         position: absolute;
         top: 6px;
-        right: 10px;
-        background: rgba(0,0,0,.4);
+        left: 20px;
+        // background: rgba(0,0,0,.4);
         text-align: center;
         width: 38px;
         padding: 4px;
         text-indent: 0;
     }
 
-    .inventory-length {
+    .list-descriptor-small {
         padding: 0;
-        top: 0;
+        position: absolute;
+        top: 0px;
+        font-size: .6em;
+        left: 0;
+        text-shadow: 0px 1px 2px #000, 0px -1px 2px #000, 0px 1px 0px #000;
+        color: #fff;
+        text-align: center;
+        width: 38px;
+        padding: 4px;
+        text-indent: 0;
     }
 
     &[quadrant='1'] { 
@@ -512,7 +522,7 @@ input {
     top: 55px;
     left: 15px;
     position: absolute;
-    width: 385px;
+    width: 320px;
     display: none;
     background: rgba(0,0,0,.5);
     padding: 5px;
@@ -545,16 +555,29 @@ input {
 
         li {
             display: inline-block;
-            width: 15%;
+            width: 8%;
             font-weight: bold;
+            text-align: center;
+            position: relative;
+            color: #ccc;
+            border-right: 1px solid #aaa;
 
-            &:first-of-type {
-                width: 20%;
-                // border: 1px solid red;
-            }
             &:last-of-type {
                 text-align: right;
                 width: 35%;
+                border-right: none;
+            }
+
+            &[title='min'] {border-right: none; }
+
+            &:after {
+                content: attr(title);
+                position: absolute;
+                bottom: -8px;
+                left: 2px;
+                font-size: .4em;
+                color: #aaa;
+                font-weight: normal;
             }
         }
     }

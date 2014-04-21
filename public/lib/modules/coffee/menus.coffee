@@ -98,6 +98,8 @@ define ["powers", "globals", "utilities", "dialog", "battler", "board", "jquery-
         initialize: ->
             @listenTo @model, 
                 "change:equipped": @render
+                "change:quantity": (model, quantity) =>
+                    @$(".js-quantity").text(quantity)
                 "remove destroy": =>
                     @$el.addClass("disabled")
                     setTimeout =>
@@ -107,12 +109,13 @@ define ["powers", "globals", "utilities", "dialog", "battler", "board", "jquery-
 
             @
         renderSmallView: ->
+            @$el.empty()
             @$el.html(_.template @template, @model.toJSON())
         render: ->
             @renderSmallView()
-            # if @more then @more.remove()
-            # @more = new StatList model: @model
-            # @$el.append @more.render().el
+            if !@more
+                @more = new StatList model: @model
+                @$el.append @more.render().el
             @
         events: 
             "click .js-show-more": (e) ->
@@ -201,7 +204,7 @@ define ["powers", "globals", "utilities", "dialog", "battler", "board", "jquery-
         initialize: ({model, el}) ->
             link = @link = el.attr("linker")
             attr = model.get(link)
-            max  = model.get("max_#{link}") || attr
+            max = @max  = model.get("max_#{link}") || attr
             @setMin 0
             @setMax max
             @setOptimum max
@@ -224,7 +227,7 @@ define ["powers", "globals", "utilities", "dialog", "battler", "board", "jquery-
         setHigh: (high) -> @$el.attr("high", high); @
         setLow:  (low)  -> @$el.attr("low", low); @
         setOptimum: (optimum) -> @$el.attr("optimum", optimum); @
-        setDisplay: -> @$el.attr("title", "#{@link}: #{@model.get(@link)}")
+        setDisplay: -> @$el.attr("title", "#{@link}: #{@model.get(@link)}/#{@max}")
         hide: ->
             @visible = false
             @$el.fadeOut "fast"
@@ -246,7 +249,7 @@ define ["powers", "globals", "utilities", "dialog", "battler", "board", "jquery-
         tagName: 'ul'
         className: 'attribute-list'
         template: "<li><span class='key'><%= key %>:</span> <%= val %></li>"
-        objTemplate: "<li><span class='key'><%= key %>:</span> Some stuff</li>"
+        objTemplate: "<li><span class='key'><%= key %>:</span> More</li>"
         initialize: ->
             # Lazy. todo: fix
             @listenTo @model, "change", @render

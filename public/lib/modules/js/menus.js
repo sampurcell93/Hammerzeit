@@ -201,6 +201,9 @@
         var _this = this;
         this.listenTo(this.model, {
           "change:equipped": this.render,
+          "change:quantity": function(model, quantity) {
+            return _this.$(".js-quantity").text(quantity);
+          },
           "remove destroy": function() {
             _this.$el.addClass("disabled");
             return setTimeout(function() {
@@ -214,11 +217,18 @@
       };
 
       ItemView.prototype.renderSmallView = function() {
+        this.$el.empty();
         return this.$el.html(_.template(this.template, this.model.toJSON()));
       };
 
       ItemView.prototype.render = function() {
         this.renderSmallView();
+        if (!this.more) {
+          this.more = new StatList({
+            model: this.model
+          });
+          this.$el.append(this.more.render().el);
+        }
         return this;
       };
 
@@ -398,7 +408,7 @@
         model = _arg.model, el = _arg.el;
         link = this.link = el.attr("linker");
         attr = model.get(link);
-        max = model.get("max_" + link) || attr;
+        max = this.max = model.get("max_" + link) || attr;
         this.setMin(0);
         this.setMax(max);
         this.setOptimum(max);
@@ -448,7 +458,7 @@
       };
 
       Meter.prototype.setDisplay = function() {
-        return this.$el.attr("title", "" + this.link + ": " + (this.model.get(this.link)));
+        return this.$el.attr("title", "" + this.link + ": " + (this.model.get(this.link)) + "/" + this.max);
       };
 
       Meter.prototype.hide = function() {
@@ -495,7 +505,7 @@
 
       StatList.prototype.template = "<li><span class='key'><%= key %>:</span> <%= val %></li>";
 
-      StatList.prototype.objTemplate = "<li><span class='key'><%= key %>:</span> Some stuff</li>";
+      StatList.prototype.objTemplate = "<li><span class='key'><%= key %>:</span> More</li>";
 
       StatList.prototype.initialize = function() {
         return this.listenTo(this.model, "change", this.render);

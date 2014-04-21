@@ -5,8 +5,23 @@ define ["globals", "utilities", "underscore", "backbone"], (globals, ut) ->
     # functions accept the target (npc model or subclass thereof) 
     # of the item's use, and should be called in the item's context
     _usefns = {
+        "Phoenix Down": (target) ->
+            if !target.isDead()
+                target.takeDamage(5).takeDamage(-5)
+            else target
     }
     _wearfns = {
+    }
+
+    # Common functions for modifying existing attribute values
+    _mods = {
+        "/3": (t, v) -> v/3
+        "/2": (t, v) -> v/2
+        "x2": (t, v) -> v*2
+        "x3": (t, v) -> v*3
+        "x4": (t, v) -> v*4
+        "x5": (t, v) -> v*5
+        "x6": (t, v) -> v*6
     }
 
     class Modifier extends Backbone.Model
@@ -15,6 +30,7 @@ define ["globals", "utilities", "underscore", "backbone"], (globals, ut) ->
             prop: null
             # By how much should it be modified? Can be a function.
             mod: 0
+            # mod: (target, currentval) -> currentval * 3
             # For how many turns should this last?
             turns: null
             # If this lasts for turns, when should it be evaluated? 
@@ -36,8 +52,6 @@ define ["globals", "utilities", "underscore", "backbone"], (globals, ut) ->
                 obj[slot] = null
             obj
 
-
-
     class Item extends Backbone.Model
         idAttribute: 'name'
         defaults: 
@@ -52,8 +66,9 @@ define ["globals", "utilities", "underscore", "backbone"], (globals, ut) ->
             modifiers: new ModifierCollection
             name: null
             quantity: 1
+            ranged: false
             role: 1
-            slot: "Hands"
+            slot: null
             uses: 1
             weight: 1
             # When the item is used, do this
@@ -61,6 +76,8 @@ define ["globals", "utilities", "underscore", "backbone"], (globals, ut) ->
             # When the item is worn, do this
             wear: -> 
         isNew: -> true
+        # is the item capable of being used at range?
+        isRanged: -> @get "ranged"
         initialize: ({name, max_uses})->
             @on "change:equipped", (model, value) =>
                 if value is true then @onEquip()
@@ -70,7 +87,7 @@ define ["globals", "utilities", "underscore", "backbone"], (globals, ut) ->
         isEquippable: -> @get "canEquip"
         onEquip: (target = @belongsTo())->
             @get("equip")?.call(@, target)
-            target.applyModifiers(@get "modifiers").takeAction(@get("action"))
+            target.applyModifiers(@get("modifiers"), {donetext: "Equipped!"}).takeAction(@get("action"))
             @
         onUnEquip: (target = @belongsTo()) ->
             target.removeModifiers @get "modifiers"
@@ -97,7 +114,8 @@ define ["globals", "utilities", "underscore", "backbone"], (globals, ut) ->
         parse: (response) ->
             modifiers = new ModifierCollection
             _.each response.modifiers, (mod) =>
-                modifiers.add new Modifier(mod)
+                if _.isString(mod.mod) then mod.mod = _mods[mod.mod]
+                modifiers.add modifier = new Modifier(mod)
             response.modifiers = modifiers
             response
 
@@ -128,10 +146,17 @@ define ["globals", "utilities", "underscore", "backbone"], (globals, ut) ->
             console.error resp
         parse: true
 
+    # Name can be either a string id or an object with form
+    # {id: 'Name', q: n} where qu is quantity
     getItem = (name, opts={}) ->
-        item = _items._byId[name]
+        quantity = 1
+        if _.isObject(name)
+            item = _items._byId[name.id]
+            quantity = name.q
+        else item = _items._byId[name]
         if _.isObject(item)
             item = item.clone()
+            item.set "quantity", quantity
             if opts.belongsTo 
                 item.set "belongsTo", opts.belongsTo
             return item
@@ -139,7 +164,7 @@ define ["globals", "utilities", "underscore", "backbone"], (globals, ut) ->
 
     get = (name, opts) ->
         if typeof name is "string" then return getItem name, opts
-        else if $.isArray name 
+        else if _.isArray name 
             inventory = new Inventory
             _.each name, (id) ->
                 inventory.add getItem(id, opts)

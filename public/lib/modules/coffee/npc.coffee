@@ -10,16 +10,6 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 	coordToDir = (coord, orientation="1") ->
 		{"-1x": "left", "1x": "right", "-1y": "up", "1y": "down"}[orientation.toString() + coord]
 
-	_p = {
-		 walkopts: {
-            framerate: 30
-            animations: 
-                run: [0,3]
-            images: ["images/sprites/hero.png"]
-        }
-        walkspeed: 20
-	}	
-
 	_ts = globals.map.tileside
 
 	class NPC extends Backbone.Model
@@ -43,6 +33,13 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 			"AC": ["#ff0000", "#fff"]
 			"creatine": ["#ff0000", "blue"]
 		}
+		walkopts: {
+            framerate: 30
+            animations: 
+                run: [0,3]
+            images: ["images/sprites/hero.png"]
+        }
+        walkspeed: 20
 		move_callbacks: 
 			done: -> 
 			change: ->
@@ -102,7 +99,7 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 				@set("powers", pow = powers.getDefaultPowers({belongsTo: @}))
 			_.bind @move_callbacks.done, @
 			_.bind @move_callbacks.change, @
-			@walkopts = _.extend @getPrivate("walkopts"), {images: [@get("spriteimg")]}
+			@walkopts = _.extend @walkopts, {images: [@get("spriteimg")]}
 			@frames = @get("frames")
 			@sheets = {
 				"-1,0" : new createjs.SpriteSheet(_.extend @walkopts, {frames: @frames.left})
@@ -119,16 +116,29 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 			@on "add", (model, coll) => if coll.type is "InitiativeQueue" then @activity_queue = coll
 			@cursor()
 			@
+		# Expects either an array of modifiers (found in items.coffee)
+		# or a single modifier. Pass in standard Backbone event options
+		# Adds the modifiers to the collection, effectively linking items 
+		# to their effects
 		applyModifiers: (modifiers, opts={}) ->
+			num = 0
 			if modifiers instanceof Modifier
-				@modifiers.add modifiers
+				@modifiers.add modifiers.clone()
 			else
+				len = modifiers.length
 				_.each modifiers.models, (mod, i) => 
+					num = i
 					if i is 0 then i = 100
 					else i = 700*i
 					setTimeout =>
-						@modifiers.add mod, opts
+						@modifiers.add mod.clone(), opts
+						if num is len - 1 and opts.donetext
+							setTimeout =>
+								@drawStatusChange text: opts.donetext
+							, 2*i
 					, i
+
+			
 			@
 		# Checks if a given target can be occupied. Does not account for entrance vectors, only current state.
 		canOccupy: (t) ->
@@ -200,6 +210,7 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 			if @canEquip(item)
 				item.set("equipped", true)
 				@get("slots").set(slot, item)
+			else @drawStatusChange {text: "#{slot} already equipped!", color: "red"}
 			@
 		# Pass in a tile DisplayObject, and link it to this NPC
 		enterSquare: (target, dx, dy) ->
@@ -247,12 +258,19 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 				)
 			# Bind draw listeners to properties
 			_.each ["HP", "creatine", "AC", "atk", "range"], (attr) =>
-				@on "change:#{attr}", =>
+				@on "change:#{attr}", (model, val) =>
 					handleChange @getAttrDifference(attr), attr
 			@listenTo @modifiers, 
 				"add": (model, collection) =>
 					currentval = @get model.get "prop"
-					@set(model.get("prop"), currentval + model.get("mod"))
+					mod = model.get("mod")
+					if _.isFunction(mod) 
+						newval = mod.call(mod, @, currentval) 
+					else 
+						newval = currentval + mod
+					max = @get("max_#{model.get('prop')}")
+					if max and newval > max then return
+					@set(model.get("prop"), newval)
 					if model.get("turns")
 						removeFn = => @modifiers.remove model
 						@onTurnFunctions.push(_.extend {fn: removeFn}, model.toJSON())
@@ -283,7 +301,7 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 			@moving = true
 			@moveInterval dx, dy
 			true
-		moveInterval: (dx, dy, walkspeed) ->
+		moveInterval: (dx, dy, walkspeed=@walkspeed) ->
 			@cursor()
 			@turn dx, dy
 			target = mapper.getTargetTile dx, dy, @currentspace
@@ -306,7 +324,7 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 					@trigger "donemoving"
 					cbs.done.call(@, dx, dy)
 				count++
-			, walkspeed || _p.walkspeed
+			, walkspeed
 			true
 		obtain: (item, quantity) ->
 			if quantity then item.set("quantity", quantity)
@@ -396,9 +414,9 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 		canTakeAction: -> @can("minor") or @can("move") or @can("standard")
 		# Defend until next turn; burns a move action
 		defend: ->
-			@drawStatusChange({text: "Defending!", done: =>
-				@set("AC", @get("AC") + 2)
-			})
+			@drawStatusChange({text: "Defending!"})
+			@applyModifiers(mod = new Modifier({prop: "AC", mod: 2, turns: 1}))
+			@onTurnFunctions.push(_.extend {fn: => @modifiers.remove mod}, mod.toJSON())
 			@takeMove()
 			@
 		# Kill NPC
@@ -435,9 +453,6 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 					fun.markedForDeletion = true
 			@onTurnFunctions = _.reject functions, (fun) => fun.markedForDeletion
 			@
-
-		getPrivate: (id) ->
-			_p[id]
 		# Pass in a color to highlight the current space of the NPC
 		highlightTile: (color) ->
 			currenttile =  @currentspace
@@ -527,9 +542,8 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 			if @get("HP") <= 0 then @die()
 			@
 		useCreatine: (creatine) ->
-			current = @get "creatine"
-			if current - creatine < 0 then return false
-			@set("creatine", current-creatine)
+			if @get("creatine") - creatine < 0 then return false
+			@applyModifiers(new Modifier({prop: "creatine", mod: -creatine, perm: true}))
 			@
 
 	# A basic collection of NPCs

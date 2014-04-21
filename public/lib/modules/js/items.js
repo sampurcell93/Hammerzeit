@@ -3,9 +3,40 @@
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
   define(["globals", "utilities", "underscore", "backbone"], function(globals, ut) {
-    var Inventory, Item, Modifier, ModifierCollection, Slots, get, getItem, _items, _ref, _ref1, _ref2, _ref3, _ref4, _usefns, _wearfns;
-    _usefns = {};
+    var Inventory, Item, Modifier, ModifierCollection, Slots, get, getItem, _items, _mods, _ref, _ref1, _ref2, _ref3, _ref4, _usefns, _wearfns;
+    _usefns = {
+      "Phoenix Down": function(target) {
+        if (!target.isDead()) {
+          return target.takeDamage(5).takeDamage(-5);
+        } else {
+          return target;
+        }
+      }
+    };
     _wearfns = {};
+    _mods = {
+      "/3": function(t, v) {
+        return v / 3;
+      },
+      "/2": function(t, v) {
+        return v / 2;
+      },
+      "x2": function(t, v) {
+        return v * 2;
+      },
+      "x3": function(t, v) {
+        return v * 3;
+      },
+      "x4": function(t, v) {
+        return v * 4;
+      },
+      "x5": function(t, v) {
+        return v * 5;
+      },
+      "x6": function(t, v) {
+        return v * 6;
+      }
+    };
     Modifier = (function(_super) {
       __extends(Modifier, _super);
 
@@ -89,8 +120,9 @@
         modifiers: new ModifierCollection,
         name: null,
         quantity: 1,
+        ranged: false,
         role: 1,
-        slot: "Hands",
+        slot: null,
         uses: 1,
         weight: 1,
         use: function() {},
@@ -99,6 +131,10 @@
 
       Item.prototype.isNew = function() {
         return true;
+      };
+
+      Item.prototype.isRanged = function() {
+        return this.get("ranged");
       };
 
       Item.prototype.initialize = function(_arg) {
@@ -131,7 +167,9 @@
         if ((_ref4 = this.get("equip")) != null) {
           _ref4.call(this, target);
         }
-        target.applyModifiers(this.get("modifiers")).takeAction(this.get("action"));
+        target.applyModifiers(this.get("modifiers"), {
+          donetext: "Equipped!"
+        }).takeAction(this.get("action"));
         return this;
       };
 
@@ -183,7 +221,11 @@
           _this = this;
         modifiers = new ModifierCollection;
         _.each(response.modifiers, function(mod) {
-          return modifiers.add(new Modifier(mod));
+          var modifier;
+          if (_.isString(mod.mod)) {
+            mod.mod = _mods[mod.mod];
+          }
+          return modifiers.add(modifier = new Modifier(mod));
         });
         response.modifiers = modifiers;
         return response;
@@ -241,13 +283,20 @@
       parse: true
     });
     getItem = function(name, opts) {
-      var item;
+      var item, quantity;
       if (opts == null) {
         opts = {};
       }
-      item = _items._byId[name];
+      quantity = 1;
+      if (_.isObject(name)) {
+        item = _items._byId[name.id];
+        quantity = name.q;
+      } else {
+        item = _items._byId[name];
+      }
       if (_.isObject(item)) {
         item = item.clone();
+        item.set("quantity", quantity);
         if (opts.belongsTo) {
           item.set("belongsTo", opts.belongsTo);
         }
@@ -260,7 +309,7 @@
       var inventory;
       if (typeof name === "string") {
         return getItem(name, opts);
-      } else if ($.isArray(name)) {
+      } else if (_.isArray(name)) {
         inventory = new Inventory;
         _.each(name, function(id) {
           return inventory.add(getItem(id, opts));

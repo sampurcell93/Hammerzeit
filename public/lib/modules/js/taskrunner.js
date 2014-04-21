@@ -80,9 +80,7 @@
     };
     taskrunner = {
       newGame: function() {
-        var signup;
-        signup = new SignUp();
-        return ut.launchModal(signup.render().el);
+        return loadStage(1);
       },
       loadStage: function(module) {
         return loadStage(module);

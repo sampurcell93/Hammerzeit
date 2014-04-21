@@ -78,7 +78,7 @@ define ["utilities", "globals", "items"], (ut, globals, items) ->
     class Healer     extends Class
         defaults: ->
             d = super
-            default_items = ["Wood Staff"].concat(d.default_items)
+            default_items = ["Phoenix Down", {id: 'Bread', q: 17}].concat(d.default_items)
             return {
                 default_items: default_items
             }

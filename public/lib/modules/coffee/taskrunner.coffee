@@ -36,8 +36,9 @@ define ["globals", "utilities", "battler", "board", "player", "controls", "mappe
 
 	taskrunner = {
 		newGame: () ->
-			signup = new SignUp()
-			ut.launchModal signup.render().el
+			# signup = new SignUp()
+			# ut.launchModal signup.render().el
+			loadStage 1
 		loadStage: (module) -> loadStage module
 	}
 	globals.shared_events.on "newgame", -> taskrunner.newGame()

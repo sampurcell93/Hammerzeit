@@ -70,7 +70,7 @@ define ["utilities", "npc", "board", "globals", "mapper", "items", "powers", "ba
 			super
 
 	PCs = new NPC.NPCArray
-	PCs.add new player({path: "Dragoon"})
+	PCs.add new player({path: "Healer"})
 
 	return {
 		model: player

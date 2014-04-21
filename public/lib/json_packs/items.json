@@ -10,6 +10,10 @@
     "canEquip": true
  },
  {
+    "name": "Phoenix Down",
+    "weight": 1
+ },
+ {
     "name": "Bread",
     "weight": 1,
     "modifiers": [

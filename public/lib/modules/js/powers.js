@@ -52,13 +52,14 @@
         if (this.resolve(attacker, subject) === true) {
           subject.takeDamage(this.get("damage") + ut.roll(this.get("modifier")));
           attacker.useCreatine(this.get("creatine"));
-          if (opts.take_action !== false) {
-            attacker.takeAction(this.get("action"));
-          }
         } else {
           subject.drawStatusChange({
             text: 'MISS'
           });
+        }
+        console.log(opts);
+        if (opts.take_action !== false) {
+          attacker.takeAction(this.get("action"));
         }
         return this;
       };

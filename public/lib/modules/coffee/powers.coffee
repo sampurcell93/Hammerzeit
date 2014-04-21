@@ -41,8 +41,9 @@ define ["globals", "utilities", "board", "items"], (globals, utilities, board, i
             if @resolve(attacker, subject) is true
                 subject.takeDamage(@get("damage") + ut.roll(@get "modifier"))
                 attacker.useCreatine(@get "creatine")
-                attacker.takeAction(@get "action") unless opts.take_action is false
             else subject.drawStatusChange({text: 'MISS'})
+            console.log opts
+            attacker.takeAction(@get "action") unless opts.take_action is false
             @
         resolve: (attacker=@belongsTo(), subject) ->
             mod = @get("power") + attacker.get("atk") + ut.roll()
