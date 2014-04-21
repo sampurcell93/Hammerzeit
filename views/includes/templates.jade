@@ -38,6 +38,7 @@ script#inventory-item(type='text/template')
             <% if (canUse) { %> 
             li.js-use Use
             <% } %>
+            li.quantity(data-tooltip='Quantity') <%= quantity %>
 
 script#mapcreate-item(type='text/template')
         <%= typeof e !== 'undefined' && e ? e : '&nbsp;' %>

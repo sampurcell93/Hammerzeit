@@ -164,7 +164,7 @@
     tb = function(x, y) {
       return b(x, y) || t(x, y);
     };
-    return {
+    return window.ut = {
       c: _c,
       create: Object.create,
       addEventListeners: function(obj, events) {
@@ -294,8 +294,19 @@
           deepFreeze(prop);
         }
       },
-      roll: function(sides) {
-        return Math.ceil(Math.random() * sides);
+      roll: function(sides, num) {
+        var i, sum, _i;
+        if (sides == null) {
+          sides = 20;
+        }
+        if (num == null) {
+          num = 1;
+        }
+        sum = 0;
+        for (i = _i = 0; 0 <= num ? _i < num : _i > num; i = 0 <= num ? ++_i : --_i) {
+          sum += Math.ceil(Math.random() * sides);
+        }
+        return sum;
       }
     };
   });

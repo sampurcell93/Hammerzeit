@@ -11,16 +11,26 @@ define ["globals", "utilities", "board", "items"], (globals, utilities, board, i
 
     class Power extends Backbone.Model
         defaults:
+            # How much creatine does this cost?
             creatine: 0
             power: 1
+            # How many squares away can we look?
             range: 1
+            # What is the power called?
             name: 'Basic'
+            # How many times can it be used per encounter
             uses: Infinity
+            # What is the power's base damage?
             damage: 1
+            # What type of dice should we roll to augment damage?
             modifier: 4
+            # Action type?
             action: 'standard'
+            # What search pattern should we use?
             spread: 'range'
+            # Which defence is being targeted?
             defense: 'AC'
+            # Which NPC is using this power
             belongsTo: null
         idAttribute: 'name'
         use: (subject, opts={take_action: true}) ->
@@ -28,9 +38,15 @@ define ["globals", "utilities", "board", "items"], (globals, utilities, board, i
             use = @get "use"
             if _.isFunction(use) then use.call(@, subject, attacker)
             @set("uses", @get("uses") - 1)
-            attacker.useCreatine(@get "creatine")
-            attacker.takeAction(@get "action") unless opts.take_action is false
+            if @resolve(attacker, subject) is true
+                subject.takeDamage(@get("damage") + ut.roll(@get "modifier"))
+                attacker.useCreatine(@get "creatine")
+                attacker.takeAction(@get "action") unless opts.take_action is false
+            else subject.drawStatusChange({text: 'MISS'})
             @
+        resolve: (attacker=@belongsTo(), subject) ->
+            mod = @get("power") + attacker.get("atk") + ut.roll()
+            mod >= subject.get(@get("defense"))
         initialize: ->
             _.bind @handlers.range, @
             _.bind @handlers.burst, @
@@ -61,8 +77,6 @@ define ["globals", "utilities", "board", "items"], (globals, utilities, board, i
         url: 'lib/json_packs/attacks.json'
 
     _useFns = {
-        "Strike": (target, attacker) -> 
-            target.useCreatine(3)
     }
 
     _powers = new PowerSet
@@ -78,17 +92,21 @@ define ["globals", "utilities", "board", "items"], (globals, utilities, board, i
     #         globals.shared_events.trigger "powers_loaded"
     #     parse: true
 
-    getPower = (name) ->
+    getPower = (name, opts={}) ->
         power = _powers._byId[name]
-        if _.isObject(power) then power.clone()
+        if _.isObject(power) 
+            power = power.clone()
+            if opts.belongsTo
+                power.set "belongsTo", opts.belongsTo
+            return power
         else null
 
-    get = (name) ->
-        if _.isString(name) then return getPower name
+    get = (name, opts={}) ->
+        if _.isString(name) then return getPower name, opts
         else if $.isArray name 
             subset = new PowerSet
             _.each name, (id) ->
-                power = get id
+                power = get id, opts
                 unless subset.indexOf(power) isnt -1 then subset.add power
             return subset
 
@@ -105,7 +123,7 @@ define ["globals", "utilities", "board", "items"], (globals, utilities, board, i
             d
 
         # Accepts a string with the name of the power, or an array of strings. Either a Power Model or a PowerSet is returned.
-        get: (name) -> get name
+        get: (name, opts={}) -> get name
         # Do not provice direct class access
         PowerSet: (models, construction) -> new PowerSet(models, construction)
         PowerList: (construction) -> new PowerList(construction)

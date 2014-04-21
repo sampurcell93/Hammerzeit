@@ -128,23 +128,7 @@
     })(NPC.NPC);
     PCs = new NPC.NPCArray;
     PCs.add(new player({
-      main: true,
-      spd: 5
-    }));
-    PCs.add(new player({
-      init: 4,
-      name: 'Fighter',
-      spd: 6
-    }));
-    PCs.add(new player({
-      init: 2,
-      name: 'Mage',
-      spd: 3
-    }));
-    PCs.add(new player({
-      init: 3,
-      name: 'Cleric',
-      spd: 4
+      path: "Dragoon"
     }));
     return {
       model: player,

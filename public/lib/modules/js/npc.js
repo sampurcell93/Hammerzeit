@@ -1,8 +1,9 @@
 (function() {
-  var __hasProp = {}.hasOwnProperty,
+  var __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
+    __hasProp = {}.hasOwnProperty,
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
-  define(["globals", "utilities", "board", "items", "powers", "mapper", "underscore", "backbone"], function(globals, ut, board, items, powers, mapper) {
+  define(["globals", "utilities", "board", "items", "powers", "mapper", "cast", "underscore", "backbone"], function(globals, ut, board, items, powers, mapper, cast) {
     var CharacterArray, CharacterPropertyView, Enemy, Modifier, ModifierCollection, NPC, Row, coordToDir, _events, _p, _ref, _ref1, _ref2, _ref3, _ts;
     _ts = globals.map.tileside;
     _events = globals.shared_events;
@@ -10,14 +11,15 @@
     ModifierCollection = items.ModifierCollection;
     Modifier = items.Modifier;
     coordToDir = function(coord, orientation) {
-      orientation || (orientation = "1");
-      orientation = orientation.toString();
+      if (orientation == null) {
+        orientation = "1";
+      }
       return {
         "-1x": "left",
         "1x": "right",
         "-1y": "up",
         "1y": "down"
-      }[orientation + coord];
+      }[orientation.toString() + coord];
     };
     _p = {
       walkopts: {
@@ -34,6 +36,7 @@
       __extends(NPC, _super);
 
       function NPC() {
+        this.canEquip = __bind(this.canEquip, this);
         _ref = NPC.__super__.constructor.apply(this, arguments);
         return _ref;
       }
@@ -71,47 +74,30 @@
       };
 
       NPC.prototype.defaults = function() {
-        var inventory, pow,
-          _this = this;
-        pow = powers.getDefaultPowers();
-        _.each(pow.models, function(power) {
-          return power.set("belongsTo", _this);
-        });
-        inventory = items.getDefaultInventory({
-          belongsTo: this
-        });
-        this.listenToOnce(globals.shared_events, "items_loaded", function() {
-          return _this.set("inventory", items.getDefaultInventory({
-            belongsTo: _this
-          }));
-        });
-        this.listenToOnce(globals.shared_events, "powers_loaded", function() {
-          return _this.set("powers", pow = powers.getDefaultPowers({
-            belongsTo: _this
-          }));
-        });
         return {
-          name: "NPC",
-          inventory: inventory,
-          powers: pow,
-          init: 1,
-          type: 'npc',
-          "class": 'peasant',
-          creatine: 10,
-          max_creatine: 10,
-          race: 'human',
-          level: 1,
-          HP: 10,
-          max_HP: 10,
-          spd: 10,
           AC: 10,
-          jmp: 2,
           atk: 3,
-          regY: 0,
           current_chunk: {
             x: 0,
             y: 0
           },
+          creatine: 10,
+          max_creatine: 10,
+          HP: 10,
+          max_HP: 10,
+          init: 1,
+          inventory: new items.Inventory,
+          jmp: 2,
+          level: 1,
+          name: "NPC",
+          path: 'peasant',
+          powers: powers.PowerSet(),
+          race: 'human',
+          range: 1,
+          regY: 0,
+          type: 'npc',
+          slots: items.Slots(),
+          spd: 10,
           spriteimg: "images/sprites/hero.png",
           frames: {
             down: [[0, 0, 55, 55, 0], [55, 0, 55, 55, 0], [110, 0, 55, 55, 0], [165, 0, 55, 55, 0]],
@@ -123,9 +109,31 @@
       };
 
       NPC.prototype.initialize = function(_arg) {
-        var frames, spriteimg, _ref1,
+        var frames, path, spriteimg, _ref1,
           _this = this;
-        _ref1 = _arg != null ? _arg : {}, frames = _ref1.frames, spriteimg = _ref1.spriteimg;
+        _ref1 = _arg != null ? _arg : {}, frames = _ref1.frames, spriteimg = _ref1.spriteimg, path = _ref1.path;
+        this.set("path", cast.getClassInst(path || "Peasant"));
+        this.set("powers", powers.getDefaultPowers({
+          belongsTo: this
+        }));
+        this.set("inventory", this.get("path").getDefaultInventory({
+          belongsTo: this
+        }));
+        this.listenToOnce(globals.shared_events, "items_loaded", function() {
+          var hoe, i;
+          _this.set("inventory", _this.get("path").getDefaultInventory({
+            belongsTo: _this
+          }));
+          i = _this.get("inventory");
+          hoe = items.get("Hoe");
+          return _this.obtain(hoe, 5);
+        });
+        this.listenToOnce(globals.shared_events, "powers_loaded", function() {
+          var pow;
+          return _this.set("powers", pow = powers.getDefaultPowers({
+            belongsTo: _this
+          }));
+        });
         _.bind(this.move_callbacks.done, this);
         _.bind(this.move_callbacks.change, this);
         this.walkopts = _.extend(this.getPrivate("walkopts"), {
@@ -159,11 +167,25 @@
         return this;
       };
 
-      NPC.prototype.applyModifiers = function(modifiers) {
+      NPC.prototype.applyModifiers = function(modifiers, opts) {
         var _this = this;
-        _.each(modifiers.models, function(mod) {
-          return _this.modifiers.add(mod);
-        });
+        if (opts == null) {
+          opts = {};
+        }
+        if (modifiers instanceof Modifier) {
+          this.modifiers.add(modifiers);
+        } else {
+          _.each(modifiers.models, function(mod, i) {
+            if (i === 0) {
+              i = 100;
+            } else {
+              i = 700 * i;
+            }
+            return setTimeout(function() {
+              return _this.modifiers.add(mod, opts);
+            }, i);
+          });
+        }
         return this;
       };
 
@@ -207,6 +229,10 @@
         this.c = c;
         c.hide().move(this.marker);
         return c;
+      };
+
+      NPC.prototype.canEquip = function(item) {
+        return item.isEquipped() === false && this.get("slots").get(item.get("slot")) === null;
       };
 
       NPC.prototype.canMoveOffChunk = function(x, y) {
@@ -273,8 +299,11 @@
       };
 
       NPC.prototype.equip = function(item) {
-        if (item.isEquipped() === false) {
+        var slot;
+        slot = item.get("slot");
+        if (this.canEquip(item)) {
           item.set("equipped", true);
+          this.get("slots").set(slot, item);
         }
         return this;
       };
@@ -354,7 +383,7 @@
             color: color
           });
         };
-        _.each(["HP", "creatine", "AC"], function(attr) {
+        _.each(["HP", "creatine", "AC", "atk", "range"], function(attr) {
           return _this.on("change:" + attr, function() {
             return handleChange(_this.getAttrDifference(attr), attr);
           });
@@ -371,6 +400,10 @@
               return _this.onTurnFunctions.push(_.extend({
                 fn: removeFn
               }, model.toJSON()));
+            } else if (model.get("perm") === true) {
+              return _this.modifiers.remove(model, {
+                silent: true
+              });
             }
           },
           "remove": function(model, collection) {
@@ -453,9 +486,14 @@
         return true;
       };
 
-      NPC.prototype.obtain = function(item) {
+      NPC.prototype.obtain = function(item, quantity) {
+        if (quantity) {
+          item.set("quantity", quantity);
+        }
         item.set("belongsTo", this);
-        return item.set("equipped", false);
+        item.set("equipped", false);
+        this.get("inventory").add(item);
+        return this;
       };
 
       NPC.prototype.oppositeDir = function(dir) {
@@ -468,14 +506,24 @@
         }
       };
 
-      NPC.prototype.removeModifiers = function(modifiers) {
+      NPC.prototype.removeModifiers = function(modifiers, opts) {
         var _this = this;
-        if (modifiers instanceof ModifierCollection) {
-          _.each(modifiers.models, function(mod) {
-            return _this.modifiers.remove(mod);
-          });
-        } else {
+        if (opts == null) {
+          opts = {};
+        }
+        if (modifiers instanceof Modifier) {
           this.modifiers.remove(modifiers);
+        } else {
+          _.each(modifiers.models, function(mod, i) {
+            if (i === 0) {
+              i = 100;
+            } else {
+              i = 700 * i;
+            }
+            return setTimeout(function() {
+              return _this.modifiers.remove(mod, opts);
+            }, i);
+          });
         }
         return this;
       };
@@ -527,8 +575,11 @@
       };
 
       NPC.prototype.unequip = function(item) {
+        var slot;
         if (item.isEquipped()) {
           item.set("equipped", false);
+          slot = item.get("slot");
+          this.get("slots").set(slot, null);
         }
         return this;
       };
@@ -757,7 +808,11 @@
         if (this.isDead()) {
           return this;
         }
-        this.set("HP", this.get("HP") - damage);
+        this.applyModifiers(new Modifier({
+          prop: "HP",
+          mod: -damage,
+          perm: true
+        }));
         if (this.get("HP") <= 0) {
           this.die();
         }

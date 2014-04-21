@@ -1,9 +1,8 @@
 (function() {
   var __hasProp = {}.hasOwnProperty,
-    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
-    __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
+    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
-  define(["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player", "cast"], function(board, globals, ut, mapper, NPC, mapcreator, player, cast) {
+  define(["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player", "cast", "items"], function(board, globals, ut, mapper, NPC, mapcreator, player, cast, items) {
     var Battle, Dispatcher, Enemy, GridOverlay, GridSquare, InitiativeQueue, NPCArray, PCs, Player, Timer, battle_events, discardDispatch, getActive, getQueue, map, setPotentialMoves, stage, states, virtualMovePossibilities, _active_chars, _activebattle, _activemap, _ref, _ref1, _ref2, _ref3, _shared, _sm, _timer, _ts;
     window.t = function() {
       return getQueue().next();
@@ -399,6 +398,8 @@
         for (i = _i = 0, _ref2 = o.numenemies; 0 <= _ref2 ? _i < _ref2 : _i > _ref2; i = 0 <= _ref2 ? ++_i : --_i) {
           this.get("NPCs").add(n = new Enemy({
             name: names[i]
+          }, {
+            parse: true
           }));
           this.get("InitQueue").add(n);
           n.addToMap();
@@ -643,7 +644,6 @@
       __extends(GridSquare, _super);
 
       function GridSquare() {
-        this.resolveHit = __bind(this.resolveHit, this);
         _ref3 = GridSquare.__super__.constructor.apply(this, arguments);
         return _ref3;
       }
@@ -764,17 +764,17 @@
 
       GridSquare.prototype.attack_fns = {
         clickHandler: function(e, data) {
-          var attacker, power, subject;
+          var attacker, power, subject,
+            _this = this;
           power = this.model.boundPower;
           attacker = power.belongsTo();
           if (data.type === "burst") {
-            subject = [];
-            _.each(_activebattle.attack_zone.models, function(square) {
-              var occupant;
-              occupant = square.getOccupant();
-              if (square.isOccupied() && !_.isEqual(occupant, attacker)) {
-                return subject.push(occupant);
+            _.each(_activebattle.attack_zone.getOccupied({
+              reject: function(subj) {
+                return _.isEqual(subj.getOccupant(), attacker);
               }
+            }).models, function(square, i) {
+              return _this.handleAttack(attacker, square.getOccupant(), power);
             });
           } else {
             subject = this.model.getOccupant();
@@ -802,8 +802,7 @@
       };
 
       GridSquare.prototype.handleAttack = function(attacker, subject, power, opts) {
-        var attrs, targets,
-          _this = this;
+        var attrs;
         if (opts == null) {
           opts = {
             take_action: true
@@ -813,40 +812,11 @@
         if (!attacker.can(attrs.action)) {
           return this;
         }
-        if (_.isArray(subject)) {
-          targets = subject.length;
-          _.each(subject, function(subj, i) {
-            var take_action;
-            take_action = i < targets - 1 ? false : true;
-            return _this.handleAttack(attacker, subj, power, {
-              take_action: take_action
-            });
-          });
-          return this;
-        }
-        if (this.resolveHit(attacker, subject, power)) {
-          power.use.call(power, subject, {
-            take_action: opts.take_action
-          });
-          subject.takeDamage(attrs.damage + ut.roll(attrs.modifier));
-        } else {
-          subject.drawStatusChange({
-            text: 'MISS'
-          });
-        }
+        power.use.call(power, subject, {
+          take_action: opts.take_action
+        });
         _activebattle.clearAttackZone();
         return this;
-      };
-
-      GridSquare.prototype.resolveHit = function(attacker, subject, power) {
-        var mod;
-        mod = power.get("power") + attacker.get("atk");
-        mod += ut.roll(_sm);
-        if (mod >= subject.get(power.get("defense"))) {
-          return true;
-        } else {
-          return false;
-        }
       };
 
       GridSquare.prototype.bindMoveFns = function() {

@@ -121,7 +121,7 @@ define  ["jquery", "underscore"], ->
 	# top or bottom
 	tb = (x,y) -> b(x,y) or t(x,y)
 
-	return {
+	return window.ut =  {
 		# Quick logger, saves keystrokes
 		c: _c
 		create: Object.create
@@ -216,6 +216,10 @@ define  ["jquery", "underscore"], ->
 				deepFreeze prop # Recursively call deepFreeze.
 			return
 		# Rolls a dice with sides sides
-		roll: (sides) -> Math.ceil(Math.random()*sides)
+		roll: (sides=20, num=1) -> 
+			sum = 0
+			for i in [0...num]
+				sum += Math.ceil(Math.random()*sides)
+			sum
 
 	}

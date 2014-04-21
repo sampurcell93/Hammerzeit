@@ -3,7 +3,7 @@
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
   define(["globals", "utilities", "underscore", "backbone"], function(globals, ut) {
-    var Inventory, Item, Modifier, ModifierCollection, get, getItem, _items, _ref, _ref1, _ref2, _ref3, _usefns, _wearfns;
+    var Inventory, Item, Modifier, ModifierCollection, Slots, get, getItem, _items, _ref, _ref1, _ref2, _ref3, _ref4, _usefns, _wearfns;
     _usefns = {};
     _wearfns = {};
     Modifier = (function(_super) {
@@ -18,7 +18,8 @@
         prop: null,
         mod: 0,
         turns: null,
-        timing: 0
+        timing: 0,
+        perm: false
       };
 
       Modifier.prototype.prop = function() {
@@ -45,28 +46,53 @@
       return ModifierCollection;
 
     })(Backbone.Collection);
+    Slots = (function(_super) {
+      __extends(Slots, _super);
+
+      function Slots() {
+        _ref2 = Slots.__super__.constructor.apply(this, arguments);
+        return _ref2;
+      }
+
+      Slots.prototype.defaults = function() {
+        var obj, slots,
+          _this = this;
+        slots = ["head", "hands", "feet", "neck", "waist", "armor", "legs"];
+        obj = {};
+        _.each(slots, function(slot) {
+          return obj[slot] = null;
+        });
+        return obj;
+      };
+
+      return Slots;
+
+    })(Backbone.Model);
     Item = (function(_super) {
       __extends(Item, _super);
 
       function Item() {
-        _ref2 = Item.__super__.constructor.apply(this, arguments);
-        return _ref2;
+        _ref3 = Item.__super__.constructor.apply(this, arguments);
+        return _ref3;
       }
 
       Item.prototype.idAttribute = 'name';
 
       Item.prototype.defaults = {
-        name: null,
-        weight: 1,
-        belongsTo: null,
-        level: 1,
-        role: 1,
-        uses: 1,
-        equipped: false,
-        canUse: true,
-        canEquip: false,
         action: 'minor',
+        belongsTo: null,
+        canEquip: false,
+        canUse: true,
+        equipped: false,
+        level: 1,
+        max_uses: 1,
         modifiers: new ModifierCollection,
+        name: null,
+        quantity: 1,
+        role: 1,
+        slot: "Hands",
+        uses: 1,
+        weight: 1,
         use: function() {},
         wear: function() {}
       };
@@ -76,33 +102,34 @@
       };
 
       Item.prototype.initialize = function(_arg) {
-        var name,
+        var max_uses, name,
           _this = this;
-        name = _arg.name;
-        return this.on("change:equipped", function(model, value) {
+        name = _arg.name, max_uses = _arg.max_uses;
+        this.on("change:equipped", function(model, value) {
           if (value === true) {
             return _this.onEquip();
           } else {
             return _this.onUnEquip();
           }
         });
+        return this.set("uses", max_uses);
       };
 
       Item.prototype.isEquipped = function() {
         return this.get("equipped");
       };
 
-      Item.prototype.canEquip = function() {
+      Item.prototype.isEquippable = function() {
         return this.get("canEquip");
       };
 
       Item.prototype.onEquip = function(target) {
-        var _ref3;
+        var _ref4;
         if (target == null) {
           target = this.belongsTo();
         }
-        if ((_ref3 = this.get("equip")) != null) {
-          _ref3.call(this, target);
+        if ((_ref4 = this.get("equip")) != null) {
+          _ref4.call(this, target);
         }
         target.applyModifiers(this.get("modifiers")).takeAction(this.get("action"));
         return this;
@@ -116,21 +143,26 @@
         return this;
       };
 
-      Item.prototype.canUse = function() {
+      Item.prototype.isUsable = function() {
         return this.get("canUse");
       };
 
       Item.prototype.onUse = function(target) {
-        var _ref3;
+        var _ref4;
         if (target == null) {
           target = this.belongsTo();
         }
-        if ((_ref3 = this.get("use")) != null) {
-          _ref3.call(this, target);
+        if ((_ref4 = this.get("use")) != null) {
+          _ref4.call(this, target);
         }
         this.set("uses", this.get("uses") - 1);
         if (this.get("uses") === 0) {
-          this.destroy();
+          this.set("quantity", this.get("quantity") - 1);
+          if (this.get("quantity") === 0) {
+            this.destroy();
+          } else {
+            this.set("uses", this.get("max_uses"));
+          }
         }
         target.applyModifiers(this.get("modifiers")).takeAction(this.get("action"));
         return this;
@@ -164,8 +196,8 @@
       __extends(Inventory, _super);
 
       function Inventory() {
-        _ref3 = Inventory.__super__.constructor.apply(this, arguments);
-        return _ref3;
+        _ref4 = Inventory.__super__.constructor.apply(this, arguments);
+        return _ref4;
       }
 
       Inventory.prototype.model = Item;
@@ -184,6 +216,16 @@
         return -model.get("equipped");
       };
 
+      Inventory.prototype.getTotalItems = function() {
+        var sum,
+          _this = this;
+        sum = 0;
+        _.each(this.models, function(item) {
+          return sum += item.get("quantity");
+        });
+        return sum;
+      };
+
       return Inventory;
 
     })(Backbone.Collection);
@@ -198,23 +240,30 @@
       },
       parse: true
     });
-    getItem = function(name) {
+    getItem = function(name, opts) {
       var item;
+      if (opts == null) {
+        opts = {};
+      }
       item = _items._byId[name];
       if (_.isObject(item)) {
-        return item.clone();
+        item = item.clone();
+        if (opts.belongsTo) {
+          item.set("belongsTo", opts.belongsTo);
+        }
+        return item;
       } else {
         return null;
       }
     };
-    get = function(name) {
+    get = function(name, opts) {
       var inventory;
       if (typeof name === "string") {
-        return getItem(name);
+        return getItem(name, opts);
       } else if ($.isArray(name)) {
         inventory = new Inventory;
         _.each(name, function(id) {
-          return inventory.add(getItem(id));
+          return inventory.add(getItem(id, opts));
         });
         return inventory;
       }
@@ -223,10 +272,17 @@
       Item: function(construction) {
         return new Item(construction);
       },
+      Slots: function() {
+        return new Slots;
+      },
+      Inventory: Inventory,
       ModifierCollection: ModifierCollection,
       Modifier: Modifier,
-      get: function(name) {
-        return get(name);
+      get: function(name, opts) {
+        if (opts == null) {
+          opts = {};
+        }
+        return get(name, opts);
       },
       getDefaultInventory: function(opts) {
         var d,

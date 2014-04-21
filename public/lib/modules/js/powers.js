@@ -49,11 +49,27 @@
           use.call(this, subject, attacker);
         }
         this.set("uses", this.get("uses") - 1);
-        attacker.useCreatine(this.get("creatine"));
-        if (opts.take_action !== false) {
-          attacker.takeAction(this.get("action"));
+        if (this.resolve(attacker, subject) === true) {
+          subject.takeDamage(this.get("damage") + ut.roll(this.get("modifier")));
+          attacker.useCreatine(this.get("creatine"));
+          if (opts.take_action !== false) {
+            attacker.takeAction(this.get("action"));
+          }
+        } else {
+          subject.drawStatusChange({
+            text: 'MISS'
+          });
         }
         return this;
+      };
+
+      Power.prototype.resolve = function(attacker, subject) {
+        var mod;
+        if (attacker == null) {
+          attacker = this.belongsTo();
+        }
+        mod = this.get("power") + attacker.get("atk") + ut.roll();
+        return mod >= subject.get(this.get("defense"));
       };
 
       Power.prototype.initialize = function() {
@@ -114,11 +130,7 @@
       return PowerSet;
 
     })(Backbone.Collection);
-    _useFns = {
-      "Strike": function(target, attacker) {
-        return target.useCreatine(3);
-      }
-    };
+    _useFns = {};
     _powers = new PowerSet;
     _powers.fetch({
       success: function() {
@@ -132,24 +144,34 @@
         return globals.shared_events.trigger("powers_loaded");
       }
     });
-    getPower = function(name) {
+    getPower = function(name, opts) {
       var power;
+      if (opts == null) {
+        opts = {};
+      }
       power = _powers._byId[name];
       if (_.isObject(power)) {
-        return power.clone();
+        power = power.clone();
+        if (opts.belongsTo) {
+          power.set("belongsTo", opts.belongsTo);
+        }
+        return power;
       } else {
         return null;
       }
     };
-    get = function(name) {
+    get = function(name, opts) {
       var subset;
+      if (opts == null) {
+        opts = {};
+      }
       if (_.isString(name)) {
-        return getPower(name);
+        return getPower(name, opts);
       } else if ($.isArray(name)) {
         subset = new PowerSet;
         _.each(name, function(id) {
           var power;
-          power = get(id);
+          power = get(id, opts);
           if (subset.indexOf(power) === -1) {
             return subset.add(power);
           }
@@ -175,7 +197,10 @@
         }
         return d;
       },
-      get: function(name) {
+      get: function(name, opts) {
+        if (opts == null) {
+          opts = {};
+        }
         return get(name);
       },
       PowerSet: function(models, construction) {

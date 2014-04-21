@@ -1,4 +1,4 @@
-define ["globals", "utilities", "board", "items", "powers", "mapper", "underscore", "backbone"], (globals, ut, board, items, powers, mapper) ->
+define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "underscore", "backbone"], (globals, ut, board, items, powers, mapper, cast) ->
 
 	_ts = globals.map.tileside
 	_events = globals.shared_events
@@ -7,10 +7,8 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 	Modifier = items.Modifier
 
 	# Converts left/right/up/down to x y
-	coordToDir = (coord, orientation) ->
-		orientation || orientation = "1"
-		orientation = orientation.toString()
-		{"-1x": "left", "1x": "right", "-1y": "up", "1y": "down"}[orientation + coord]
+	coordToDir = (coord, orientation="1") ->
+		{"-1x": "left", "1x": "right", "-1y": "up", "1y": "down"}[orientation.toString() + coord]
 
 	_p = {
 		 walkopts: {
@@ -49,33 +47,27 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 			done: -> 
 			change: ->
 		defaults: ->
-			pow = powers.getDefaultPowers()
-			_.each pow.models, (power) => power.set "belongsTo", @
-			inventory = items.getDefaultInventory({belongsTo: @})
-			@listenToOnce globals.shared_events, "items_loaded", =>
-				@set("inventory", items.getDefaultInventory({belongsTo: @}))
-			@listenToOnce globals.shared_events, "powers_loaded", =>
-				@set("powers", pow = powers.getDefaultPowers({belongsTo: @}))
-
 			return {
-				name: "NPC"
-				inventory: inventory
-				powers: pow
-				init: 1
-				type: 'npc'
-				class: 'peasant'
+				AC: 10
+				atk: 3
+				current_chunk: { x: 0, y: 0 }
 				creatine: 10
 				max_creatine: 10
-				race: 'human'
-				level: 1
 				HP: 10
 				max_HP: 10
-				spd: 10
-				AC: 10
+				init: 1
+				inventory: new items.Inventory
 				jmp: 2
-				atk: 3
+				level: 1
+				name: "NPC"
+				path: 'peasant'
+				powers: powers.PowerSet()
+				race: 'human'
+				range: 1
 				regY: 0
-				current_chunk: { x: 0, y: 0 }
+				type: 'npc'
+				slots: items.Slots()
+				spd: 10
 				spriteimg: "images/sprites/hero.png"
 				frames: {
 					# The in place animation frames for the default NPC
@@ -97,7 +89,17 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 						[165, 165, 55, 55, 0]]
 				}
 			}
-		initialize: ({frames, spriteimg} = {}) ->
+		initialize: ({frames, spriteimg, path} = {}) ->
+			@set "path", cast.getClassInst(path || "Peasant")
+			@set "powers", powers.getDefaultPowers({belongsTo: @})
+			@set "inventory",  @get("path").getDefaultInventory({belongsTo: @})
+			@listenToOnce globals.shared_events, "items_loaded", =>
+				@set("inventory", @get("path").getDefaultInventory({belongsTo: @}))
+				i = @get "inventory"
+				hoe = items.get "Hoe"
+				@obtain hoe, 5
+			@listenToOnce globals.shared_events, "powers_loaded", =>
+				@set("powers", pow = powers.getDefaultPowers({belongsTo: @}))
 			_.bind @move_callbacks.done, @
 			_.bind @move_callbacks.change, @
 			@walkopts = _.extend @getPrivate("walkopts"), {images: [@get("spriteimg")]}
@@ -117,8 +119,16 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 			@on "add", (model, coll) => if coll.type is "InitiativeQueue" then @activity_queue = coll
 			@cursor()
 			@
-		applyModifiers: (modifiers) ->
-			_.each modifiers.models, (mod) => @modifiers.add mod
+		applyModifiers: (modifiers, opts={}) ->
+			if modifiers instanceof Modifier
+				@modifiers.add modifiers
+			else
+				_.each modifiers.models, (mod, i) => 
+					if i is 0 then i = 100
+					else i = 700*i
+					setTimeout =>
+						@modifiers.add mod, opts
+					, i
 			@
 		# Checks if a given target can be occupied. Does not account for entrance vectors, only current state.
 		canOccupy: (t) ->
@@ -144,6 +154,8 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 			@c = c
 			c.hide().move @marker
 			c
+		canEquip: (item) =>
+			item.isEquipped() is false and @get("slots").get(item.get("slot")) is null
 		canMoveOffChunk: (x, y) -> 
 			!(board.hasState("battle")) and board.inBounds(x) and board.inBounds(y)
 		# Pass in the tile the NPC will move to - if the diff in elevations exceeds the jump
@@ -184,8 +196,10 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 			, 100
 			@
 		equip: (item) ->
-			if item.isEquipped() is false
+			slot = item.get("slot")
+			if @canEquip(item)
 				item.set("equipped", true)
+				@get("slots").set(slot, item)
 			@
 		# Pass in a tile DisplayObject, and link it to this NPC
 		enterSquare: (target, dx, dy) ->
@@ -232,7 +246,7 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 					{text: @getChangeModifier(diff) + Math.abs(diff) + str, color: color}
 				)
 			# Bind draw listeners to properties
-			_.each ["HP", "creatine", "AC"], (attr) =>
+			_.each ["HP", "creatine", "AC", "atk", "range"], (attr) =>
 				@on "change:#{attr}", =>
 					handleChange @getAttrDifference(attr), attr
 			@listenTo @modifiers, 
@@ -242,6 +256,8 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 					if model.get("turns")
 						removeFn = => @modifiers.remove model
 						@onTurnFunctions.push(_.extend {fn: removeFn}, model.toJSON())
+					else if model.get("perm") is true
+						@modifiers.remove model, {silent: true}
 				"remove": (model, collection) =>
 					currentval = @get model.get "prop"
 					@set(model.get("prop"), currentval - model.get("mod"))
@@ -292,17 +308,25 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 				count++
 			, walkspeed || _p.walkspeed
 			true
-		obtain: (item) ->
+		obtain: (item, quantity) ->
+			if quantity then item.set("quantity", quantity)
 			item.set("belongsTo", @)
 			item.set("equipped", false)
+			@get("inventory").add item
+			@
 		# Takes in a dir string and returns the opposite
 		oppositeDir: (dir) ->
 			if dir is "x" then "y" else if dir is "y" then "x" else ""
-		removeModifiers: (modifiers) ->
-			if modifiers instanceof ModifierCollection
-				_.each modifiers.models, (mod) => 
-					@modifiers.remove mod
-			else @modifiers.remove modifiers
+		removeModifiers: (modifiers, opts={}) ->
+			if modifiers instanceof Modifier
+				@modifiers.remove modifiers
+			else 
+				_.each modifiers.models, (mod, i) => 
+					if i is 0 then i = 100
+					else i = 700*i
+					setTimeout =>
+						@modifiers.remove mod, opts
+					, i
 			@
 		# Reset an animation's properties
 		reanimate: (animation, speed, next) ->
@@ -337,6 +361,8 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 		unequip: (item) ->
 			if item.isEquipped()
 				item.set("equipped", false)
+				slot = item.get "slot"
+				@get("slots").set(slot, null)
 			@
 		##################################################
 		### Battle functions! ###
@@ -497,7 +523,7 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "underscor
 		# Takes an integer damage value, subtracts it, and renders it to the canvas
 		takeDamage: (damage) ->
 			if @isDead() then return @
-			@set("HP", @get("HP") - damage)
+			@applyModifiers(new Modifier({prop: "HP", mod: -damage, perm: true}))
 			if @get("HP") <= 0 then @die()
 			@
 		useCreatine: (creatine) ->

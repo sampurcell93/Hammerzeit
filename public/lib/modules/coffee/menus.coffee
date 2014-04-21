@@ -72,14 +72,24 @@ define ["powers", "globals", "utilities", "dialog", "battler", "board", "jquery-
         tagName: 'ul'
         initialize: ->
             _.bindAll @, "render", "addItem"
+            @listenTo @collection, 
+                "add": (collection, item) =>
+                    @addItem item, true
+
             @
-        addItem: (item) ->
+        addItem: (item, append=false) ->
             item = new ItemView model: item
-            item.render().$el.appendTo @$el
+            if append is true
+                item.render().$el.appendTo @$el
+            item
         render: ->
             @$el.empty()
+            frag = document.createDocumentFragment()
             @collection.sort()
-            _.each @collection.models, @addItem
+            _.each @collection.models, (item)=> 
+                view = @addItem(item)
+                frag.appendChild view.render().el
+            @$el.append frag
             @
 
     class ItemView extends Backbone.View
@@ -334,11 +344,12 @@ define ["powers", "globals", "utilities", "dialog", "battler", "board", "jquery-
         render: (quadrant = @model.getQuadrant()) ->
             extras = {phase: @model.turnPhase}
             @$el.html(_.template @template, _.extend(@model.toJSON(),extras))
-            if quadrant then @$el.attr("quadrant", quadrant)
+            @$el.attr("quadrant", quadrant)
             @showPowers()
             @showInventory()
             @updateActions @model.actions
-            @$(".inventory-length").text(@model.get("inventory").length)
+            @$(".inventory-length").text(@model.get("inventory").getTotalItems())
+            @
         setupMeters: ->
             container = @container = new CharacterStateDisplay model: @model
             container.$el.appendTo $wrapper

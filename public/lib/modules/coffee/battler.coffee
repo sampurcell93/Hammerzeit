@@ -1,4 +1,4 @@
-define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player", "cast"], (board, globals, ut, mapper, NPC, mapcreator, player, cast) ->
+define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player", "cast", "items"], (board, globals, ut, mapper, NPC, mapcreator, player, cast, items) ->
 
     window.t = ->
         getQueue().next()
@@ -241,7 +241,7 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
             o = _.extend @defaults(), o
             names = ["Steve", "John", "Ken", "Tom", "Bob", "Zeke", "Dan"]
             for i in [0...o.numenemies]
-                @get("NPCs").add(n = new Enemy({name: names[i]}))
+                @get("NPCs").add(n = new Enemy({name: names[i]}, {parse: true}))
                 @get("InitQueue").add n
                 n.addToMap()
                 globals.shared_events.trigger "bindmenu", n
@@ -482,11 +482,10 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
                 power = @model.boundPower
                 attacker = power.belongsTo()
                 if data.type is "burst"
-                    subject = []
-                    _.each _activebattle.attack_zone.models, (square) ->
-                        occupant = square.getOccupant()
-                        if square.isOccupied() and !_.isEqual(occupant,attacker)
-                            subject.push(occupant) 
+                    _.each _activebattle.attack_zone.getOccupied(
+                        {reject: (subj) -> _.isEqual(subj.getOccupant(), attacker)}).models
+                    , (square, i) =>
+                        @handleAttack attacker, square.getOccupant(), power
                 else subject = @model.getOccupant()
                 if !subject? then return false
                 else @handleAttack(attacker, subject, power)
@@ -507,26 +506,10 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
         handleAttack: (attacker, subject, power, opts={take_action: true}) ->
             attrs = power.toJSON()
             if !attacker.can(attrs.action) then return @
-            if _.isArray subject
-                targets = subject.length
-                _.each subject, (subj, i) =>
-                    take_action = if i < targets-1 then false else true
-                    @handleAttack attacker, subj, power, {take_action: take_action}
-                return @
-            if @resolveHit(attacker,subject,power)
-                # Baseline damage plus a role of the dice
-                power.use.call(power, subject, {take_action: opts.take_action})
-                subject.takeDamage(attrs.damage + ut.roll(attrs.modifier))
-            else subject.drawStatusChange({text: 'MISS'})
+            power.use.call(power, subject, {take_action: opts.take_action})
             # Some powers cost magic 
             _activebattle.clearAttackZone()
             @
-        resolveHit: (attacker, subject, power) =>
-            mod = power.get("power") + attacker.get("atk")
-            mod += ut.roll(_sm)
-            if mod >= subject.get(power.get("defense"))
-                return true
-            else false
         bindMoveFns: ->
             area = @model.bitmap.hitArea
             m = @move_fns

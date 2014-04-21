@@ -58,6 +58,10 @@ define ["globals", "utilities", "board", "mapper", "underscore", "backbone", "ea
 
     class Row extends Backbone.Collection
         model: Tile
+        getOccupied: (opts={reject: -> false}) -> 
+            new Row(_.filter @models, (model) => 
+                model.isOccupied() and !opts.reject(model)
+            )
 
     class Chunk extends Backbone.Model
         defaults: ->
@@ -200,7 +204,9 @@ define ["globals", "utilities", "board", "mapper", "underscore", "backbone", "ea
         # Given move deltas, retrieve the DisplayObject (bitmap) at that position in the current chunk
         getTargetTile: (dx, dy, start) ->
             if _activechunk
-                _activechunk.children[(start.y+(50*dy))/50]?.children[(start.x+(50*dx))/50] || {}
+                y = (start.y+(50*dy))/50
+                x = (start.x+(50*dx))/50
+                _activechunk.children[y]?.children[x] || {}
         Tile: Tile
         Row: Row
         Chunk: Chunk

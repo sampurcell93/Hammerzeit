@@ -144,21 +144,41 @@
       InventoryList.prototype.tagName = 'ul';
 
       InventoryList.prototype.initialize = function() {
+        var _this = this;
         _.bindAll(this, "render", "addItem");
+        this.listenTo(this.collection, {
+          "add": function(collection, item) {
+            return _this.addItem(item, true);
+          }
+        });
         return this;
       };
 
-      InventoryList.prototype.addItem = function(item) {
+      InventoryList.prototype.addItem = function(item, append) {
+        if (append == null) {
+          append = false;
+        }
         item = new ItemView({
           model: item
         });
-        return item.render().$el.appendTo(this.$el);
+        if (append === true) {
+          item.render().$el.appendTo(this.$el);
+        }
+        return item;
       };
 
       InventoryList.prototype.render = function() {
+        var frag,
+          _this = this;
         this.$el.empty();
+        frag = document.createDocumentFragment();
         this.collection.sort();
-        _.each(this.collection.models, this.addItem);
+        _.each(this.collection.models, function(item) {
+          var view;
+          view = _this.addItem(item);
+          return frag.appendChild(view.render().el);
+        });
+        this.$el.append(frag);
         return this;
       };
 
@@ -662,13 +682,12 @@
           phase: this.model.turnPhase
         };
         this.$el.html(_.template(this.template, _.extend(this.model.toJSON(), extras)));
-        if (quadrant) {
-          this.$el.attr("quadrant", quadrant);
-        }
+        this.$el.attr("quadrant", quadrant);
         this.showPowers();
         this.showInventory();
         this.updateActions(this.model.actions);
-        return this.$(".inventory-length").text(this.model.get("inventory").length);
+        this.$(".inventory-length").text(this.model.get("inventory").getTotalItems());
+        return this;
       };
 
       Menu.prototype.setupMeters = function() {

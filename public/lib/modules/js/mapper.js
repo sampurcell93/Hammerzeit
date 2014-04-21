@@ -99,6 +99,20 @@
 
       Row.prototype.model = Tile;
 
+      Row.prototype.getOccupied = function(opts) {
+        var _this = this;
+        if (opts == null) {
+          opts = {
+            reject: function() {
+              return false;
+            }
+          };
+        }
+        return new Row(_.filter(this.models, function(model) {
+          return model.isOccupied() && !opts.reject(model);
+        }));
+      };
+
       return Row;
 
     })(Backbone.Collection);
@@ -279,9 +293,11 @@
         return setTile(tile);
       },
       getTargetTile: function(dx, dy, start) {
-        var _ref3;
+        var x, y, _ref3;
         if (_activechunk) {
-          return ((_ref3 = _activechunk.children[(start.y + (50 * dy)) / 50]) != null ? _ref3.children[(start.x + (50 * dx)) / 50] : void 0) || {};
+          y = (start.y + (50 * dy)) / 50;
+          x = (start.x + (50 * dx)) / 50;
+          return ((_ref3 = _activechunk.children[y]) != null ? _ref3.children[x] : void 0) || {};
         }
       },
       Tile: Tile,

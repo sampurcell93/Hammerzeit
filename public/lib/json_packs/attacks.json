@@ -1,5 +1,5 @@
 [
     {"name": "Strike", "uses": 3},
     {"name": "Arrow", "range": 10, "uses": 5},
-    {"name": "Whirl", "spread": "burst"}
+    {"name": "Whirl", "spread": "burst", "range": 15}
 ]

@@ -20,38 +20,54 @@ define ["globals", "utilities", "underscore", "backbone"], (globals, ut) ->
             # If this lasts for turns, when should it be evaluated? 
             # 0 = at the beginning of the affected's turn, 1 = at the end
             timing: 0
+            # Is this effect permanant?
+            perm: false
         prop: -> @get "prop"
         mod:  -> @get "mod"
 
     class ModifierCollection extends Backbone.Collection
         model: Modifier
 
+    class Slots extends Backbone.Model
+        defaults: ->
+            slots = ["head", "hands", "feet", "neck", "waist", "armor", "legs"]
+            obj = {}
+            _.each slots, (slot) =>
+                obj[slot] = null
+            obj
+
+
+
     class Item extends Backbone.Model
         idAttribute: 'name'
         defaults: 
-            name: null
-            weight: 1
-            belongsTo: null
-            level: 1
-            role: 1
-            uses: 1
-            equipped: false
-            canUse: true
-            canEquip: false
             action: 'minor'
-            # If the item only modifies attributes, store the 
+            belongsTo: null
+            canEquip: false
+            canUse: true
+            equipped: false
+            level: 1
+            max_uses: 1
+            # If the item modifies attributes, store them
             modifiers: new ModifierCollection
+            name: null
+            quantity: 1
+            role: 1
+            slot: "Hands"
+            uses: 1
+            weight: 1
             # When the item is used, do this
             use: -> 
             # When the item is worn, do this
             wear: -> 
         isNew: -> true
-        initialize: ({name})->
+        initialize: ({name, max_uses})->
             @on "change:equipped", (model, value) =>
                 if value is true then @onEquip()
                 else @onUnEquip()
+            @set "uses", max_uses
         isEquipped: -> @get "equipped"
-        canEquip: -> @get "canEquip"
+        isEquippable: -> @get "canEquip"
         onEquip: (target = @belongsTo())->
             @get("equip")?.call(@, target)
             target.applyModifiers(@get "modifiers").takeAction(@get("action"))
@@ -59,11 +75,19 @@ define ["globals", "utilities", "underscore", "backbone"], (globals, ut) ->
         onUnEquip: (target = @belongsTo()) ->
             target.removeModifiers @get "modifiers"
             @
-        canUse: -> @get "canUse"
+        isUsable: -> @get "canUse"
         onUse: (target = @belongsTo())-> 
             @get("use")?.call(@, target)
+            # Decrement the item's uses
             @set("uses", @get("uses") - 1)
-            if @get("uses") is 0 then @destroy()
+            # If no uses left, the item is expended
+            if @get("uses") is 0  
+                @set("quantity", @get("quantity") - 1)
+                # If no more of item, destroy this
+                if @get("quantity") is 0
+                    @destroy()
+                # Otherwise, reset the use count
+                else @set("uses", @get("max_uses"))
             target.applyModifiers(@get "modifiers").takeAction(@get("action"))
             @
         belongsTo: (model) ->
@@ -89,6 +113,11 @@ define ["globals", "utilities", "underscore", "backbone"], (globals, ut) ->
             resp
         comparator: (model) ->
             -model.get("equipped")
+        getTotalItems: ->
+            sum = 0
+            _.each @models, (item) =>
+                sum += item.get "quantity"
+            sum
 
     _items = new Inventory
     _items.url = "lib/json_packs/items.json"
@@ -99,21 +128,27 @@ define ["globals", "utilities", "underscore", "backbone"], (globals, ut) ->
             console.error resp
         parse: true
 
-    getItem = (name) ->
+    getItem = (name, opts={}) ->
         item = _items._byId[name]
-        if _.isObject(item) then item.clone()
+        if _.isObject(item)
+            item = item.clone()
+            if opts.belongsTo 
+                item.set "belongsTo", opts.belongsTo
+            return item
         else null
 
-    get = (name) ->
-        if typeof name is "string" then return getItem name
+    get = (name, opts) ->
+        if typeof name is "string" then return getItem name, opts
         else if $.isArray name 
             inventory = new Inventory
             _.each name, (id) ->
-                inventory.add getItem id
+                inventory.add getItem(id, opts)
             inventory
 
     return window.items = {
         Item: (construction) -> new Item(construction)
+        Slots: -> new Slots
+        Inventory: Inventory
         ModifierCollection: ModifierCollection
         Modifier: Modifier
         # Inventory: (construction) -> new Inventory(construction)
@@ -121,8 +156,8 @@ define ["globals", "utilities", "underscore", "backbone"], (globals, ut) ->
         # ItemView: (construction) -> new ItemView(construction)
         # Pass in item name (also ID) and the Item model is returned
         # Can also pass in string array, and an inventory object will be returned
-        get: (name) -> 
-            get name
+        get: (name, opts={}) -> 
+            get name, opts
         getDefaultInventory: (opts = {}) ->
             d = get ["Tattered Cloak", "Bread"]
             if opts.belongsTo and d

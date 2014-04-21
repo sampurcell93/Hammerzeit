@@ -2,6 +2,7 @@
     "width": 4,
     "height": 4,
     "background": "images/map_frames/hometown.jpg",
+    "name": "Velkommen Village",
     "map": [
         [
             {
