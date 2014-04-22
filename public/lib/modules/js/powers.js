@@ -50,7 +50,7 @@
         }
         this.set("uses", this.get("uses") - 1);
         if (this.resolve(attacker, subject) === true) {
-          subject.takeDamage(this.get("damage") + ut.roll(this.get("modifier")));
+          subject.takeDamage(ut.roll(this.get("modifier")), 1, this.get("damage"));
           attacker.useCreatine(this.get("creatine"));
         } else {
           subject.drawStatusChange({

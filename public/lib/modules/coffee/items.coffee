@@ -51,6 +51,8 @@ define ["globals", "utilities", "underscore", "backbone"], (globals, ut) ->
             _.each slots, (slot) =>
                 obj[slot] = null
             obj
+        initialize: ({slots}={}) ->
+            @set("slots", _.extend(@defaults(), slots))
 
     class Item extends Backbone.Model
         idAttribute: 'name'
@@ -179,7 +181,7 @@ define ["globals", "utilities", "underscore", "backbone"], (globals, ut) ->
 
     return window.items = {
         Item: (construction) -> new Item(construction)
-        Slots: -> new Slots
+        Slots: (construction, opts) -> new Slots construction, opts
         Inventory: Inventory
         ModifierCollection: ModifierCollection
         Modifier: Modifier

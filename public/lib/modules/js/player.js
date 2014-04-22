@@ -127,9 +127,6 @@
 
     })(NPC.NPC);
     PCs = new NPC.NPCArray;
-    PCs.add(new player({
-      path: "Healer"
-    }));
     return {
       model: player,
       PC: PCs.at(0),

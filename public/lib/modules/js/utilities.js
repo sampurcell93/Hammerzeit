@@ -103,7 +103,7 @@
         modal.find(".close-modal").on("click", function() {
           return destroyModal(null, options);
         });
-        modal.on("keyup", function(e) {
+        modal.on("keydown keyup", function(e) {
           var key;
           key = e.keyCode || e.which;
           if (key === 27) {
@@ -112,6 +112,7 @@
         });
       }
       $(document.body).addClass("active-modal").append(modal);
+      modal.fadeIn("slow");
       return modal;
     };
     destroyModal = function(existing, options) {
@@ -165,7 +166,9 @@
       return b(x, y) || t(x, y);
     };
     return window.ut = {
-      c: _c,
+      c: function() {
+        return _c.call(_c, arguments);
+      },
       create: Object.create,
       addEventListeners: function(obj, events) {
         return _.each(events, function(fn, name) {
@@ -294,19 +297,25 @@
           deepFreeze(prop);
         }
       },
-      roll: function(sides, num) {
-        var i, sum, _i;
+      roll: function(sides, num, modifier) {
+        var i, _i;
         if (sides == null) {
           sides = 20;
         }
         if (num == null) {
           num = 1;
         }
-        sum = 0;
-        for (i = _i = 0; 0 <= num ? _i < num : _i > num; i = 0 <= num ? ++_i : --_i) {
-          sum += Math.ceil(Math.random() * sides);
+        if (modifier == null) {
+          modifier = 0;
         }
-        return sum;
+        for (i = _i = 0; 0 <= num ? _i < num : _i > num; i = 0 <= num ? ++_i : --_i) {
+          modifier += Math.ceil(Math.random() * sides);
+        }
+        if (modifier < 0) {
+          return 0;
+        } else {
+          return modifier;
+        }
       }
     };
   });

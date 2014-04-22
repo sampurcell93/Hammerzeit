@@ -2,7 +2,7 @@
   var __hasProp = {}.hasOwnProperty,
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
-  define(["globals", "utilities", "battler", "board", "npc", "player", "controls", "mapper", "mapcreator", "menus"], function(globals, ut, battler, board, NPC, player, controls, mapper, mapcreator, menus) {
+  define(["globals", "utilities", "battler", "board", "npc", "player", "mapper", "mapcreator", "menus"], function(globals, ut, battler, board, NPC, player, mapper, mapcreator, menus) {
     var Loader, SignUp, User, loadGame, loadStage, newGame, t, _ref, _ref1, _ref2, _user;
     window.PC = player.PC;
     _user = null;
@@ -32,6 +32,10 @@
       };
 
       User.prototype.parse = function(user) {
+        console.log("parsing shit");
+        user.party = new NPC.NPCArray(user.party, {
+          parse: true
+        });
         return user;
       };
 
@@ -84,7 +88,8 @@
           return _user.fetch({
             success: function() {
               return console.log(arguments);
-            }
+            },
+            parse: true
           });
         }
       };
@@ -178,6 +183,9 @@
       },
       setUser: function(key, val) {
         return _user.set(key, val);
+      },
+      getUser: function() {
+        return _user;
       }
     };
   });

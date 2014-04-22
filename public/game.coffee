@@ -25,4 +25,4 @@ require.config
 		'cast'		: 'lib/modules/js/cast'
 
 
-define ['utilities', 'board', 'taskrunner'], (ut, board, taskrunner) ->
+define ['utilities', 'board', 'taskrunner', "controls"], (ut, board, taskrunner) ->

@@ -39,7 +39,7 @@ define ["globals", "utilities", "board", "items"], (globals, utilities, board, i
             if _.isFunction(use) then use.call(@, subject, attacker)
             @set("uses", @get("uses") - 1)
             if @resolve(attacker, subject) is true
-                subject.takeDamage(@get("damage") + ut.roll(@get "modifier"))
+                subject.takeDamage(ut.roll(@get "modifier"), 1, @get("damage"))
                 attacker.useCreatine(@get "creatine")
             else subject.drawStatusChange({text: 'MISS'})
             console.log opts

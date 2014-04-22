@@ -96,6 +96,12 @@
         return obj;
       };
 
+      Slots.prototype.initialize = function(_arg) {
+        var slots;
+        slots = (_arg != null ? _arg : {}).slots;
+        return this.set("slots", _.extend(this.defaults(), slots));
+      };
+
       return Slots;
 
     })(Backbone.Model);
@@ -337,8 +343,8 @@
       Item: function(construction) {
         return new Item(construction);
       },
-      Slots: function() {
-        return new Slots;
+      Slots: function(construction, opts) {
+        return new Slots(construction, opts);
       },
       Inventory: Inventory,
       ModifierCollection: ModifierCollection,

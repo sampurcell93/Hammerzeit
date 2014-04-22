@@ -77,11 +77,12 @@ define  ["jquery", "underscore"], ->
 		    modal.prepend("<i class='close-modal'>X</i>")
 		    modal.find(".close-modal").on "click", ->
 		        destroyModal(null, options)
-		    modal.on("keyup", (e) ->
+		    modal.on("keydown keyup", (e) ->
 		    	key = e.keyCode || e.which
 		    	if key == 27 then destroyModal()
 		    )
 		$(document.body).addClass("active-modal").append(modal)
+		modal.fadeIn("slow")
 		modal
 
 	destroyModal = (existing, options) ->
@@ -123,13 +124,14 @@ define  ["jquery", "underscore"], ->
 
 	return window.ut =  {
 		# Quick logger, saves keystrokes
-		c: _c
+		c: -> _c.call(_c, arguments)
 		create: Object.create
 		# Bind multiple events to an object at once.... this is probably native and I'm missing it.
 		addEventListeners: (obj, events) -> 
 			_.each events, (fn, name) -> 
 				obj.addEventListener name, fn
 				_.bind fn, obj
+		# Canvas contains no easy function for underlining text.
 		underline: (ctx, text, x, y, size, color, thickness, offset) ->
 		  width = ctx.measureText(text).width
 		  switch ctx.textAlign
@@ -151,6 +153,7 @@ define  ["jquery", "underscore"], ->
 	        launchModal content, options
 	  	destroyModal: (existing, options) ->
 	        destroyModal existing, options
+	    # Boolean functions which determine from which directions a tile may be entered.
 	    tileEntryCheckers: {
 			# Only entered from the left
 			l: (x,y) -> x>0
@@ -182,15 +185,19 @@ define  ["jquery", "underscore"], ->
 			tb: (x,y) -> b(x,y) or t(x,y)
 			e: -> true
 		}
+		# Rounds to the closest one, either negative or positive
 		floorToOne: (val) ->
 			if val < 0 then -1 else if val > 0 then 1 else 0
+		# Checks if an input has changed from the time it was instantiated.
 		$inputChanged: $.fn.inputChanged
+		# Quick ref for the slice function. Need more checking tho
 		slice: Array.prototype.slice
 		parseBool: (str) ->
 			str = str.toLowerCase()
 			if str is "true" then true 
 			else if str is "false" then false
 			else str
+		# Shuffles an array! O(n)
 		array_shuffle: (o) ->
 			j = undefined
 			x = undefined
@@ -203,6 +210,7 @@ define  ["jquery", "underscore"], ->
 				o[j] = x
 			o
 		deep_clone: (orig) -> clone orig
+		# Freezes an object and all objects it contains.
 		deep_freeze: (o) ->
 			prop = undefined
 			propKey = undefined
@@ -215,11 +223,11 @@ define  ["jquery", "underscore"], ->
 				continue if not o.hasOwnProperty(propKey) or (typeof prop isnt "object") or Object.isFrozen(prop)
 				deepFreeze prop # Recursively call deepFreeze.
 			return
-		# Rolls a dice with sides sides
-		roll: (sides=20, num=1) -> 
-			sum = 0
+		# Rolls a dice with sides sides, and add a modifier to it
+		# Return value WILL be a non-negative integer.
+		roll: (sides=20, num=1, modifier=0) -> 
 			for i in [0...num]
-				sum += Math.ceil(Math.random()*sides)
-			sum
+				modifier += Math.ceil(Math.random()*sides)
+			if modifier < 0 then 0 else modifier
 
 	}

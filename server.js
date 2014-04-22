@@ -31,11 +31,11 @@
     return res.render("index");
   });
 
-  app.post("/users", function(req, res) {
+  app.post("/users/:name", function(req, res) {
     var password, username,
       _this = this;
     password = req.body.password;
-    username = req.body.username;
+    username = req.params.name;
     return db.players.findAndModify({
       query: {
         username: req.body.username
@@ -55,7 +55,7 @@
   });
 
   app.get("/users/:name", function(req, res) {
-    return db.players.find({
+    return db.players.findOne({
       username: req.params.name
     }, function(err, found) {
       if (!err) {

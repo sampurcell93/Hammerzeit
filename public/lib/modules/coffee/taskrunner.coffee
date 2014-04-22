@@ -1,4 +1,4 @@
-define ["globals", "utilities", "battler", "board", "npc", "player", "controls", "mapper", "mapcreator", "menus"], (globals, ut, battler, board, NPC, player, controls, mapper, mapcreator, menus) ->
+define ["globals", "utilities", "battler", "board", "npc", "player", "mapper", "mapcreator", "menus"], (globals, ut, battler, board, NPC, player, mapper, mapcreator, menus) ->
 	window.PC = player.PC
 	_user = null
 	globals.shared_events.on "newgame", -> newGame()
@@ -13,6 +13,8 @@ define ["globals", "utilities", "battler", "board", "npc", "player", "controls",
 				return '/users/' + @get("username")
 			else "/users/"
 		parse: (user) ->
+			console.log "parsing shit"
+			user.party = new NPC.NPCArray(user.party, {parse: true})
 			user
 		initialize: ->
 		clean: (pcs=[])->
@@ -35,6 +37,7 @@ define ["globals", "utilities", "battler", "board", "npc", "player", "controls",
 				_user.fetch
 					success: ->
 						console.log arguments
+					parse: true
 
 
 	class SignUp extends Backbone.View
@@ -84,5 +87,6 @@ define ["globals", "utilities", "battler", "board", "npc", "player", "controls",
 			else loadGame userid
 		loadStage: (module) -> loadStage module
 		setUser: (key, val) -> _user.set key, val
+		getUser: -> _user
 
 	}

@@ -22,9 +22,9 @@ app.configure ->
 app.get "/", (req, res) ->
   res.render "index"
 
-app.post "/users", (req, res) ->
+app.post "/users/:name", (req, res) ->
   password = req.body.password;
-  username = req.body.username;
+  username = req.params.name;
   db.players.findAndModify({
     query: {username: req.body.username}
     update: {
@@ -38,6 +38,6 @@ app.post "/users", (req, res) ->
   )
 
 app.get "/users/:name", (req, res) ->
-  db.players.find {username: req.params.name}, (err, found) ->
+  db.players.findOne {username: req.params.name}, (err, found) ->
     if !err then res.json found
 

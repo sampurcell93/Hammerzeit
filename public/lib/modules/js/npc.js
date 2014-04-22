@@ -123,7 +123,7 @@
         var frames, path, spriteimg, _ref1,
           _this = this;
         _ref1 = _arg != null ? _arg : {}, frames = _ref1.frames, spriteimg = _ref1.spriteimg, path = _ref1.path;
-        this.set("path", cast.getClassInst(path || "Peasant"));
+        this.setPath(path);
         this.set("powers", powers.getDefaultPowers({
           belongsTo: this
         }));
@@ -603,6 +603,20 @@
         return this;
       };
 
+      NPC.prototype.setPath = function(path) {
+        if (path == null) {
+          path = "Peasant";
+        }
+        if (_.isString(path)) {
+          this.set("path", cast.getClassInst(path));
+        } else if (path instanceof Backbone.Model) {
+          return this;
+        } else if (_.isObject(path)) {
+          this.set("path", cast.getClassInst(path.name));
+        }
+        return this;
+      };
+
       NPC.prototype.setPos = function(x, y) {
         this.marker.x = x;
         this.marker.y = y;
@@ -934,6 +948,22 @@
         return (_.filter(this.models, function(model) {
           return model.dispatched === true;
         })).length > 0;
+      };
+
+      CharacterArray.prototype.parse = function(resp) {
+        var _this = this;
+        _.each(resp, function(m) {
+          m.inventory = new items.Inventory(m.inventory, {
+            parse: true
+          });
+          m.powers = powers.PowerSet(m.powers, {
+            parse: true
+          });
+          return m.slots = items.Slots({
+            slots: m.slots
+          });
+        });
+        return resp;
       };
 
       return CharacterArray;

@@ -94,7 +94,7 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 				}
 			}
 		initialize: ({frames, spriteimg, path} = {}) ->
-			@set "path", cast.getClassInst(path || "Peasant")
+			@setPath path
 			@set "powers", powers.getDefaultPowers({belongsTo: @})
 			@set "inventory",  @get("path").getDefaultInventory({belongsTo: @})
 			@listenToOnce globals.shared_events, "items_loaded", =>
@@ -377,6 +377,14 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 			@set "current_chunk", chunk, {silent: true}
 			@trigger "change:current_chunk"
 			@
+		setPath: (path="Peasant") ->
+			if _.isString(path)
+				@set "path", cast.getClassInst(path)
+			else if path instanceof Backbone.Model
+				return @
+			else if _.isObject(path) 
+				@set "path", cast.getClassInst(path.name)
+			@
 		# Expects pixel multiples, IE 500, 700
 		setPos: (x,y) ->
 			@marker.x = x
@@ -581,6 +589,12 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 		comparator: (model) -> model.i
 		# Returns true if any PCs have been dispatched. Make faster todo
 		anyDispatched: -> (_.filter @models, (model) -> model.dispatched is true).length > 0
+		parse: (resp) ->
+			_.each resp, (m) =>
+				m.inventory = new items.Inventory(m.inventory, {parse: true})
+				m.powers = powers.PowerSet(m.powers, {parse: true})
+				m.slots = items.Slots({slots: m.slots})
+			resp
 
 
 

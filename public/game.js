@@ -27,6 +27,6 @@
     }
   });
 
-  define(['utilities', 'board', 'taskrunner'], function(ut, board, taskrunner) {});
+  define(['utilities', 'board', 'taskrunner', "controls"], function(ut, board, taskrunner) {});
 
 }).call(this);
