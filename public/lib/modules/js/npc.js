@@ -37,6 +37,8 @@
 
       NPC.prototype.dead = false;
 
+      NPC.prototype.defending = false;
+
       NPC.prototype.dispatched = false;
 
       NPC.prototype.actions = _.extend({
@@ -71,6 +73,15 @@
       NPC.prototype.move_callbacks = {
         done: function() {},
         change: function() {}
+      };
+
+      NPC.prototype.prepareForSave = function() {
+        var attrs;
+        attrs = this.toJSON();
+        return _.extend(attrs, {
+          inventory: attrs.inventory.toJSON(true),
+          powers: attrs.powers.toJSON(true)
+        });
       };
 
       NPC.prototype.defaults = function() {
@@ -176,6 +187,13 @@
         num = 0;
         if (modifiers instanceof Modifier) {
           this.modifiers.add(modifiers.clone());
+          if (opts.donetext) {
+            setTimeout(function() {
+              return _this.drawStatusChange({
+                text: opts.donetext
+              });
+            }, 500);
+          }
         } else {
           len = modifiers.length;
           _.each(modifiers.models, function(mod, i) {
@@ -214,7 +232,10 @@
       };
 
       NPC.prototype.clean = function() {
-        return _.omit(this.toJSON(), "creatine", "HP", "max_HP", "max_creatine", "current_chunk", "regY", "spriteimg", "frames");
+        var o;
+        o = _.omit(this.toJSON(), "creatine", "HP", "max_HP", "max_creatine", "current_chunk", "regY", "spriteimg", "frames");
+        o.path = o.path.get("name");
+        return o;
       };
 
       NPC.prototype.createMarker = function() {
@@ -406,7 +427,7 @@
         });
         return this.listenTo(this.modifiers, {
           "add": function(model, collection) {
-            var currentval, max, mod, newval, removeFn;
+            var currentval, max, mod, newval;
             currentval = _this.get(model.get("prop"));
             mod = model.get("mod");
             if (_.isFunction(mod)) {
@@ -420,14 +441,13 @@
             }
             _this.set(model.get("prop"), newval);
             if (model.get("turns")) {
-              removeFn = function() {
-                return _this.modifiers.remove(model);
-              };
-              return _this.onTurnFunctions.push(_.extend({
-                fn: removeFn
+              return _this.addTurnFunction(_.extend({
+                fn: function() {
+                  return _this.removeModifiers(model);
+                }
               }, model.toJSON()));
             } else if (model.get("perm") === true) {
-              return _this.modifiers.remove(model, {
+              return _this.removeModifiers(model, {
                 silent: true
               });
             }
@@ -616,6 +636,18 @@
       /* Battle functions!*/
 
 
+      NPC.prototype.addTurnFunction = function(opts) {
+        if (opts == null) {
+          opts = {};
+        }
+        opts = _.extend({
+          timing: 0,
+          turns: 1
+        }, opts);
+        this.onTurnFunctions.push(opts);
+        return this;
+      };
+
       NPC.prototype.addToMap = function() {
         var chunk, tile, x, y, _ref1, _ref2, _ref3;
         chunk = (_ref1 = mapper.getVisibleChunk()) != null ? _ref1.children : void 0;
@@ -654,21 +686,20 @@
       };
 
       NPC.prototype.defend = function() {
-        var mod,
-          _this = this;
-        this.drawStatusChange({
-          text: "Defending!"
-        });
-        this.applyModifiers(mod = new Modifier({
+        var _this = this;
+        this.applyModifiers(new Modifier({
           prop: "AC",
           mod: 2,
           turns: 1
-        }));
-        this.onTurnFunctions.push(_.extend({
-          fn: function() {
-            return _this.modifiers.remove(mod);
-          }
-        }, mod.toJSON()));
+        }), {
+          donetext: "Defending!"
+        });
+        this.addTurnFunction({
+          fn: (function() {
+            return _this.defending = false;
+          })
+        });
+        this.defending = true;
         this.takeMove();
         return this;
       };
@@ -751,6 +782,10 @@
 
       NPC.prototype.isDead = function() {
         return this.dead;
+      };
+
+      NPC.prototype.isDefending = function() {
+        return this.defending;
       };
 
       NPC.prototype.nextPhase = function() {

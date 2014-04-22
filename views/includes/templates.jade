@@ -4,6 +4,9 @@ script#new-game(type='text/template')
     input(type='password', name='confirm-password', placeholder='Confirm password')
     input(type='button', value='Start Game').js-start-game
 
+script#load-game(type='text/template')
+    <input type='text' name='username' placeholder='Username' class='username' value='<%=  typeof username !== "undefined" ? username : "" %>'/>
+    input(type='button', value='Start Game').js-start-game
 
 script#modify-tile(type='text/template')
         <h2>
@@ -27,7 +30,7 @@ script#modify-tile(type='text/template')
         </label>
 
 script#inventory-item(type='text/template')
-        <i class='js-show-more icon-caret-down'></i>
+        <i class='js-show-more icon-arrow-down'></i>
         span.name <%= name %>
         ul.info
             <% if (equipped) { %> 
@@ -49,7 +52,7 @@ script#character-view(type='text/template')
         | This is a character template
 
 script#power-item(type='text/template')
-        <i class='js-show-more icon-caret-down'></i>
+        <i class='js-show-more icon-arrow-down'></i>
         <span class='name <%= uses <= 0 ? " disabled" : "" %>'> <%= name %> </span>
         ul.info
                 li(data-tooltip='Uses').uses <%= isFinite(uses) ? uses : "&infin;" %> 
@@ -73,7 +76,9 @@ script#menu(type='text/template')
                 li(tabindex=2, actiontype="move", data-tooltip='+2AC for one round').js-defend 
                     i.icon-shield
                     | Defend
-                li(tabindex=2).js-end-turn End Turn
+                li(tabindex=2).js-end-turn 
+                    i.icon-blocked
+                    | End Turn
 
 script#attribute-container(type='text/template')
     .meterwrap
@@ -98,3 +103,12 @@ script#dispatch-menu-item(type='text/template')
         <%= name %>
         | <%= d ? "Dispatched" : "" %>
         span.js-view-attrs View
+
+script#stat-list-obj(type='text/template')
+    <li class='obj-caller js-show-<%= key %> icon-arrow-right'>
+    <span class='key'><%= key %></span>
+    </li>
+
+
+
+

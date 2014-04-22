@@ -268,6 +268,22 @@
         return sum;
       };
 
+      Inventory.prototype.toJSON = function(save) {
+        var arr,
+          _this = this;
+        if (save == null) {
+          save = false;
+        }
+        if (!save) {
+          return Inventory.__super__.toJSON.apply(this, arguments);
+        }
+        arr = Inventory.__super__.toJSON.apply(this, arguments);
+        _.each(arr, function(item) {
+          return item.belongsTo = item.belongsTo.get("id");
+        });
+        return arr;
+      };
+
       return Inventory;
 
     })(Backbone.Collection);

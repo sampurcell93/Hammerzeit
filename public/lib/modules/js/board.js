@@ -132,7 +132,7 @@
       });
       ut.addEventListeners(loadgame, {
         "click": function() {
-          return ut.c("load, you say?");
+          return taskrunner.loadGame();
         },
         "mouseover": function() {
           return loadgame.font = "bold 30px Arial";

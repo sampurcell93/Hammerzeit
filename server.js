@@ -31,13 +31,36 @@
     return res.render("index");
   });
 
-  app.post("/user", function(req, res) {
-    var password, username;
+  app.post("/users", function(req, res) {
+    var password, username,
+      _this = this;
     password = req.body.password;
     username = req.body.username;
-    console.log(username, password);
-    return res.json({
-      success: true
+    return db.players.findAndModify({
+      query: {
+        username: req.body.username
+      },
+      update: {
+        $setOnInsert: req.body
+      },
+      "new": true,
+      upsert: true
+    }, function(err, updated) {
+      if (!err) {
+        return res.json({
+          username: updated.username
+        });
+      }
+    });
+  });
+
+  app.get("/users/:name", function(req, res) {
+    return db.players.find({
+      username: req.params.name
+    }, function(err, found) {
+      if (!err) {
+        return res.json(found);
+      }
     });
   });
 

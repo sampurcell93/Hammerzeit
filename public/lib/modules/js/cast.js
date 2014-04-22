@@ -246,7 +246,9 @@
         if (classname == null) {
           classname = null;
         }
-        return new _classes[classname];
+        return new _classes[classname]({
+          name: classname
+        });
       }
     };
   });

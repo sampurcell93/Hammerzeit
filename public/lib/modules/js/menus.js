@@ -143,6 +143,8 @@
 
       InventoryList.prototype.tagName = 'ul';
 
+      InventoryList.prototype.className = 'inventory-list';
+
       InventoryList.prototype.initialize = function() {
         var _this = this;
         _.bindAll(this, "render", "addItem");
@@ -194,6 +196,8 @@
       }
 
       ItemView.prototype.tagName = 'li';
+
+      ItemView.prototype.className = 'inventory-item';
 
       ItemView.prototype.template = $("#inventory-item").html();
 
@@ -261,6 +265,8 @@
       }
 
       PowerList.prototype.tagName = 'ul';
+
+      PowerList.prototype.className = 'power-list';
 
       PowerList.prototype.initialize = function() {
         _.bindAll(this, "append");
@@ -505,26 +511,27 @@
 
       StatList.prototype.template = "<li><span class='key'><%= key %>:</span> <%= val %></li>";
 
-      StatList.prototype.objTemplate = "<li><span class='key'><%= key %>:</span> More</li>";
+      StatList.prototype.objTemplate = $("#stat-list-obj").html();
 
       StatList.prototype.initialize = function() {
         return this.listenTo(this.model, "change", this.render);
       };
 
       StatList.prototype.render = function() {
-        var keys, model,
+        var model, objects,
           _this = this;
         this.$el.empty();
         model = this.model.clean ? this.model.clean() : this.model.toJSON();
-        keys = Object.keys(model).sort();
-        _.each(keys, function(key) {
+        objects = [];
+        _.each(Object.keys(model).sort(), function(key) {
           var val;
-          val = _this.model.get(key);
+          val = model[key];
           key = key.capitalize();
           if (_.isObject(val)) {
-            return _this.$el.append(_.template(_this.objTemplate, {
-              key: key
-            }));
+            return objects.push({
+              key: key,
+              val: val
+            });
           } else {
             if (_.isString(val)) {
               val = val.capitalize();
@@ -535,7 +542,31 @@
             }));
           }
         });
+        _.each(objects, function(obj) {
+          return _this.$el.append(_.template(_this.objTemplate, {
+            key: obj.key
+          }));
+        });
         return this;
+      };
+
+      StatList.prototype.events = function() {
+        return {
+          "click .js-show-Inventory": function() {
+            var l;
+            l = new InventoryList({
+              collection: this.model.get("inventory")
+            });
+            return ut.launchModal(l.render().el);
+          },
+          "click .js-show-Powers": function() {
+            var l;
+            l = new PowerList({
+              collection: this.model.get("powers")
+            });
+            return ut.launchModal(l.render().el);
+          }
+        };
       };
 
       return StatList;

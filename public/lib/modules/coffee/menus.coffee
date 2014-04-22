@@ -70,6 +70,7 @@ define ["powers", "globals", "utilities", "dialog", "battler", "board", "jquery-
 
     class InventoryList extends Backbone.View
         tagName: 'ul'
+        className: 'inventory-list'
         initialize: ->
             _.bindAll @, "render", "addItem"
             @listenTo @collection, 
@@ -94,6 +95,7 @@ define ["powers", "globals", "utilities", "dialog", "battler", "board", "jquery-
 
     class ItemView extends Backbone.View
         tagName: 'li'
+        className: 'inventory-item'
         template: $("#inventory-item").html()
         initialize: ->
             @listenTo @model, 
@@ -131,6 +133,7 @@ define ["powers", "globals", "utilities", "dialog", "battler", "board", "jquery-
 
     class PowerList extends Backbone.View
         tagName: 'ul'
+        className: 'power-list'
         initialize: ->
             _.bindAll @, "append"
             @
@@ -249,24 +252,34 @@ define ["powers", "globals", "utilities", "dialog", "battler", "board", "jquery-
         tagName: 'ul'
         className: 'attribute-list'
         template: "<li><span class='key'><%= key %>:</span> <%= val %></li>"
-        objTemplate: "<li><span class='key'><%= key %>:</span> More</li>"
+        objTemplate: $("#stat-list-obj").html()
         initialize: ->
             # Lazy. todo: fix
             @listenTo @model, "change", @render
         render: ->
             @$el.empty()
             model = if @model.clean then @model.clean() else @model.toJSON()
-            keys = Object.keys(model).sort()
-            _.each keys, (key) =>
-                val = @model.get key
+            objects = []
+            _.each Object.keys(model).sort(), (key) =>
+                val = model[key]
                 key = key.capitalize()
                 if _.isObject(val)
-                    @$el.append(_.template(@objTemplate, key: key))
-                    # @$el.append new StatList({model: val.models})
+                    objects.push({key: key, val: val})
                 else
                     if _.isString(val) then val = val.capitalize()
                     @$el.append(_.template(@template, {val: val, key: key}))
+            _.each objects, (obj) =>
+                @$el.append _.template @objTemplate, {key: obj.key}
             @
+        events: ->
+            "click .js-show-Inventory": ->
+                l = new InventoryList collection: @model.get("inventory")
+                ut.launchModal l.render().el
+            "click .js-show-Powers": ->
+                l = new PowerList collection: @model.get("powers")
+                ut.launchModal l.render().el
+
+
 
     # Displays all states on a character, including HP, creatine, actions remaining, 
     # statistics, temporary effects, etc

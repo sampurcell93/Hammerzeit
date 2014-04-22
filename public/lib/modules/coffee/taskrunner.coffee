@@ -1,10 +1,41 @@
-define ["globals", "utilities", "battler", "board", "player", "controls", "mapper", "mapcreator", "menus"], (globals, ut, battler, board, player, controls, mapper, mapcreator, menus) ->
+define ["globals", "utilities", "battler", "board", "npc", "player", "controls", "mapper", "mapcreator", "menus"], (globals, ut, battler, board, NPC, player, controls, mapper, mapcreator, menus) ->
 	window.PC = player.PC
+	_user = null
+	globals.shared_events.on "newgame", -> newGame()
+
 
 	class User extends Backbone.Model
+		defaults: 
+			party: new NPC.NPCArray([new player.model])
+		idAttribute: '_id'
 		url: ->
-			if @id then '/user/#{@id}'
-			else "/user/"
+			if @get("username")
+				return '/users/' + @get("username")
+			else "/users/"
+		parse: (user) ->
+			user
+		initialize: ->
+		clean: (pcs=[])->
+			j = @toJSON()
+			_.each j.party.models, (p) =>
+				pcs.push p.prepareForSave()
+			_.extend j, {
+				party: pcs
+			}
+
+	class Loader extends Backbone.View
+		template: $("#load-game").html()
+		initialize: ({@username}) ->
+		render: ->
+			@$el.html _.template(@template, {username: @username})
+			@
+		events: 
+			"click .js-start-game": ->
+				_user = new User({username: $(".username").val()})
+				_user.fetch
+					success: ->
+						console.log arguments
+
 
 	class SignUp extends Backbone.View
 		template: $("#new-game").html()
@@ -13,8 +44,13 @@ define ["globals", "utilities", "battler", "board", "player", "controls", "mappe
 			@
 		events: ->
 			"click .js-start-game": -> 
-				user = new User username: 'Sam', password: 'Sampass'
-				user.save null, { success: (u, resp) => loadStage(1); ut.destroyModal() }
+				_user = new User username: 'Sams', password: 'Sampass'
+				clean = _user.clean()
+				_user.save clean, { 
+					success: (u, resp) => 
+						ut.destroyModal() 
+						localStorage.setItem "username", resp.username
+				}
 
 
 	loadStage = (module) ->
@@ -32,15 +68,21 @@ define ["globals", "utilities", "battler", "board", "player", "controls", "mappe
 				mapper.renderChunk full_chunk, board.getStage()
 				battler.clearPotentialMoves()
 
+	loadGame = (id) ->
+		loader = new Loader({username: id})
+		ut.launchModal loader.render().el
+	newGame = ->
+		signup = new SignUp()
+		ut.launchModal signup.render().el
 				
 
-	taskrunner = {
-		newGame: () ->
-			# signup = new SignUp()
-			# ut.launchModal signup.render().el
-			loadStage 1
+	t = window.taskrunner = {
+		newGame: -> newGame()
+		loadGame: (userid=null) ->
+			if localStorage.getItem "username" 
+				loadGame localStorage.getItem("username")
+			else loadGame userid
 		loadStage: (module) -> loadStage module
-	}
-	globals.shared_events.on "newgame", -> taskrunner.newGame()
+		setUser: (key, val) -> _user.set key, val
 
-	taskrunner
+	}

@@ -117,7 +117,7 @@ define ['globals', 'utilities', 'jquery', 'underscore', 'easel'], (globals, ut) 
         _.extend loadgame, {x: 380, y: 280, shadow: textshadow, cursor: 'pointer'}
         ut.addEventListeners loadgame, {
             "click": ->
-                ut.c "load, you say?"
+                taskrunner.loadGame()
             "mouseover": ->
                 loadgame.font = "bold 30px Arial"
             "mouseout": ->

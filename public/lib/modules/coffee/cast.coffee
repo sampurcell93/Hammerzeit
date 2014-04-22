@@ -133,6 +133,6 @@ define ["utilities", "globals", "items"], (ut, globals, items) ->
     return window.cast = {
         # Returns the toJSON() object for the person
         getPerson: (name) -> test
-        getClassInst: (classname=null) -> new _classes[classname]
+        getClassInst: (classname=null) -> new _classes[classname]({name: classname})
 
     }

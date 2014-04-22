@@ -128,6 +128,22 @@
 
       PowerSet.prototype.url = 'lib/json_packs/attacks.json';
 
+      PowerSet.prototype.toJSON = function(save) {
+        var arr,
+          _this = this;
+        if (save == null) {
+          save = false;
+        }
+        if (!save) {
+          return PowerSet.__super__.toJSON.apply(this, arguments);
+        }
+        arr = PowerSet.__super__.toJSON.apply(this, arguments);
+        _.each(arr, function(power) {
+          return power.belongsTo = power.belongsTo.get("id");
+        });
+        return arr;
+      };
+
       return PowerSet;
 
     })(Backbone.Collection);

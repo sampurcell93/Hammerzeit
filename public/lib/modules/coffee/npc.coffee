@@ -16,6 +16,7 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 		currentspace: {}
 		active: false
 		dead: false
+		defending: false
 		dispatched: false
 		# Default action values. Can be reset with initTurn or augmented with items
 		actions: _.extend {
@@ -43,6 +44,12 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 		move_callbacks: 
 			done: -> 
 			change: ->
+		prepareForSave: ->
+			attrs = @toJSON()
+			_.extend attrs, {
+				inventory: attrs.inventory.toJSON(true)
+				powers: attrs.powers.toJSON(true)
+			}
 		defaults: ->
 			return {
 				AC: 10
@@ -124,6 +131,10 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 			num = 0
 			if modifiers instanceof Modifier
 				@modifiers.add modifiers.clone()
+				if opts.donetext
+					setTimeout =>
+						@drawStatusChange text: opts.donetext
+					, 500
 			else
 				len = modifiers.length
 				_.each modifiers.models, (mod, i) => 
@@ -147,7 +158,9 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 			if t.occupied is true then return false
 			true
 		clean: ->
-			_.omit @toJSON(), "creatine", "HP", "max_HP", "max_creatine", "current_chunk", "regY", "spriteimg", "frames"
+			o = _.omit @toJSON(), "creatine", "HP", "max_HP", "max_creatine", "current_chunk", "regY", "spriteimg", "frames"
+			o.path = o.path.get("name")
+			o
 		createMarker: ->
 			sheet = @sheets["0,1"]
 			sheet.getAnimation("run").speed = .13
@@ -186,6 +199,7 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 		# Accepts delta params and returns a string for direction. so (1,0) would return "x"
 		deltaToString: (dx, dy) ->	
 			if dx isnt 0 then "x" else if dy isnt 0 then "y" else ""
+		# Draw floating text on this marker
 		drawStatusChange: (opts = {}) ->
 			defaults = {
 				font: "bold 18px Arial"
@@ -272,10 +286,9 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 					if max and newval > max then return
 					@set(model.get("prop"), newval)
 					if model.get("turns")
-						removeFn = => @modifiers.remove model
-						@onTurnFunctions.push(_.extend {fn: removeFn}, model.toJSON())
+						@addTurnFunction(_.extend {fn: => @removeModifiers model}, model.toJSON())
 					else if model.get("perm") is true
-						@modifiers.remove model, {silent: true}
+						@removeModifiers model, {silent: true}
 				"remove": (model, collection) =>
 					currentval = @get model.get "prop"
 					@set(model.get("prop"), currentval - model.get("mod"))
@@ -335,6 +348,7 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 		# Takes in a dir string and returns the opposite
 		oppositeDir: (dir) ->
 			if dir is "x" then "y" else if dir is "y" then "x" else ""
+		# Removes a specific modifier
 		removeModifiers: (modifiers, opts={}) ->
 			if modifiers instanceof Modifier
 				@modifiers.remove modifiers
@@ -387,6 +401,13 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 		##################################################
 		# Adds the NPC's marker to the current map at a random valid square
 		# Only a temp function for testing
+		addTurnFunction: (opts={}) ->
+			opts = _.extend {
+				timing: 0
+				turns: 1
+			}, opts
+			@onTurnFunctions.push opts
+			@
 		addToMap: () ->
 			chunk = mapper.getVisibleChunk()?.children
 			x = Math.abs Math.ceil(Math.random()*globals.map.c_width/_ts - 1)
@@ -414,9 +435,9 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 		canTakeAction: -> @can("minor") or @can("move") or @can("standard")
 		# Defend until next turn; burns a move action
 		defend: ->
-			@drawStatusChange({text: "Defending!"})
-			@applyModifiers(mod = new Modifier({prop: "AC", mod: 2, turns: 1}))
-			@onTurnFunctions.push(_.extend {fn: => @modifiers.remove mod}, mod.toJSON())
+			@applyModifiers(new Modifier({prop: "AC", mod: 2, turns: 1}), {donetext: "Defending!"})
+			@addTurnFunction {fn: (=> @defending = false)}
+			@defending = true
 			@takeMove()
 			@
 		# Kill NPC
@@ -476,6 +497,7 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 			@nextPhase()
 		isActive: -> @active
 		isDead: -> @dead
+		isDefending: -> @defending
 		# Increments the phase counter and sets the game timer according to the 
 		# NPC's initiative roll
 		nextPhase: ->
@@ -574,9 +596,7 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 		defaults: ->
 			defaults = super
 			_.extend defaults, {type: 'enemy'}
-	# Bind all the private functions to the public object.... invisibly 0_0
-	# _.each move_fns, (fn) ->
-		# if typeof fn == "function" then _.bind fn, NPC
+
 
 	# We return the objects directly so we can subclass them :(
 	{

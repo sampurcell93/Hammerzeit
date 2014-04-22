@@ -14,6 +14,7 @@ define ["utilities", "globals", "dialog", "npc", "mapper", "mapcreator", "battle
 		ESCAPE: 27
 		# N
 		NEW: 78
+		LOADGAME: 76
 		COMMAND: 91
 		# B
 		BATTLE: 66
@@ -54,6 +55,7 @@ define ["utilities", "globals", "dialog", "npc", "mapper", "mapcreator", "battle
 			INTRO: (key) ->
 				switch key
 					when kc["NEW"] then taskrunner.newGame()
+					when kc["LOADGAME"] then taskrunner.loadGame()
 			WAITING: (key) ->
 			BATTLE: (key) ->
 				# Only allow key presses when a player is active

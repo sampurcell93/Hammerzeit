@@ -136,6 +136,13 @@ define ["globals", "utilities", "underscore", "backbone"], (globals, ut) ->
             _.each @models, (item) =>
                 sum += item.get "quantity"
             sum
+        toJSON: (save=false) ->
+            if !save then return super
+            arr = super
+            _.each arr, (item) =>
+                item.belongsTo = item.belongsTo.get("id")
+            arr
+
 
     _items = new Inventory
     _items.url = "lib/json_packs/items.json"

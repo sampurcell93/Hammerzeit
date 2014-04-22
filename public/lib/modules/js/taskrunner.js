@@ -2,9 +2,13 @@
   var __hasProp = {}.hasOwnProperty,
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
-  define(["globals", "utilities", "battler", "board", "player", "controls", "mapper", "mapcreator", "menus"], function(globals, ut, battler, board, player, controls, mapper, mapcreator, menus) {
-    var SignUp, User, loadStage, taskrunner, _ref, _ref1;
+  define(["globals", "utilities", "battler", "board", "npc", "player", "controls", "mapper", "mapcreator", "menus"], function(globals, ut, battler, board, NPC, player, controls, mapper, mapcreator, menus) {
+    var Loader, SignUp, User, loadGame, loadStage, newGame, t, _ref, _ref1, _ref2, _user;
     window.PC = player.PC;
+    _user = null;
+    globals.shared_events.on("newgame", function() {
+      return newGame();
+    });
     User = (function(_super) {
       __extends(User, _super);
 
@@ -13,23 +17,87 @@
         return _ref;
       }
 
+      User.prototype.defaults = {
+        party: new NPC.NPCArray([new player.model])
+      };
+
+      User.prototype.idAttribute = '_id';
+
       User.prototype.url = function() {
-        if (this.id) {
-          return '/user/#{@id}';
+        if (this.get("username")) {
+          return '/users/' + this.get("username");
         } else {
-          return "/user/";
+          return "/users/";
         }
+      };
+
+      User.prototype.parse = function(user) {
+        return user;
+      };
+
+      User.prototype.initialize = function() {};
+
+      User.prototype.clean = function(pcs) {
+        var j,
+          _this = this;
+        if (pcs == null) {
+          pcs = [];
+        }
+        j = this.toJSON();
+        _.each(j.party.models, function(p) {
+          return pcs.push(p.prepareForSave());
+        });
+        return _.extend(j, {
+          party: pcs
+        });
       };
 
       return User;
 
     })(Backbone.Model);
+    Loader = (function(_super) {
+      __extends(Loader, _super);
+
+      function Loader() {
+        _ref1 = Loader.__super__.constructor.apply(this, arguments);
+        return _ref1;
+      }
+
+      Loader.prototype.template = $("#load-game").html();
+
+      Loader.prototype.initialize = function(_arg) {
+        this.username = _arg.username;
+      };
+
+      Loader.prototype.render = function() {
+        this.$el.html(_.template(this.template, {
+          username: this.username
+        }));
+        return this;
+      };
+
+      Loader.prototype.events = {
+        "click .js-start-game": function() {
+          _user = new User({
+            username: $(".username").val()
+          });
+          return _user.fetch({
+            success: function() {
+              return console.log(arguments);
+            }
+          });
+        }
+      };
+
+      return Loader;
+
+    })(Backbone.View);
     SignUp = (function(_super) {
       __extends(SignUp, _super);
 
       function SignUp() {
-        _ref1 = SignUp.__super__.constructor.apply(this, arguments);
-        return _ref1;
+        _ref2 = SignUp.__super__.constructor.apply(this, arguments);
+        return _ref2;
       }
 
       SignUp.prototype.template = $("#new-game").html();
@@ -42,16 +110,17 @@
       SignUp.prototype.events = function() {
         return {
           "click .js-start-game": function() {
-            var user,
+            var clean,
               _this = this;
-            user = new User({
-              username: 'Sam',
+            _user = new User({
+              username: 'Sams',
               password: 'Sampass'
             });
-            return user.save(null, {
+            clean = _user.clean();
+            return _user.save(clean, {
               success: function(u, resp) {
-                loadStage(1);
-                return ut.destroyModal();
+                ut.destroyModal();
+                return localStorage.setItem("username", resp.username);
               }
             });
           }
@@ -78,18 +147,39 @@
         });
       });
     };
-    taskrunner = {
+    loadGame = function(id) {
+      var loader;
+      loader = new Loader({
+        username: id
+      });
+      return ut.launchModal(loader.render().el);
+    };
+    newGame = function() {
+      var signup;
+      signup = new SignUp();
+      return ut.launchModal(signup.render().el);
+    };
+    return t = window.taskrunner = {
       newGame: function() {
-        return loadStage(1);
+        return newGame();
+      },
+      loadGame: function(userid) {
+        if (userid == null) {
+          userid = null;
+        }
+        if (localStorage.getItem("username")) {
+          return loadGame(localStorage.getItem("username"));
+        } else {
+          return loadGame(userid);
+        }
       },
       loadStage: function(module) {
         return loadStage(module);
+      },
+      setUser: function(key, val) {
+        return _user.set(key, val);
       }
     };
-    globals.shared_events.on("newgame", function() {
-      return taskrunner.newGame();
-    });
-    return taskrunner;
   });
 
 }).call(this);

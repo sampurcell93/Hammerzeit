@@ -22,9 +22,22 @@ app.configure ->
 app.get "/", (req, res) ->
   res.render "index"
 
-app.post "/user", (req, res) ->
+app.post "/users", (req, res) ->
   password = req.body.password;
   username = req.body.username;
-  console.log username, password
-  res.json success: true
+  db.players.findAndModify({
+    query: {username: req.body.username}
+    update: {
+      $setOnInsert: req.body
+    },
+    new: true,   
+    upsert: true 
+  }, (err, updated) => 
+      if !err
+        res.json username: updated.username
+  )
+
+app.get "/users/:name", (req, res) ->
+  db.players.find {username: req.params.name}, (err, found) ->
+    if !err then res.json found
 

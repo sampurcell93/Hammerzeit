@@ -433,6 +433,8 @@ textarea {
     }
 }
 
+
+
 input {
     @include border-radius(3px);
     @include box-shadow(0px 2px 4px #ddd inset);
@@ -600,6 +602,15 @@ input {
 
             &:nth-of-type(2n) {
                 margin-left: 20%;
+            }
+
+            &.obj-caller {
+                color: #fff;
+                cursor: pointer;
+
+                &:hover {
+                    text-decoration: underline;
+                }
             }
         }
 

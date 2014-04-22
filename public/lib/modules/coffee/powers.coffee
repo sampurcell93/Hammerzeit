@@ -76,6 +76,13 @@ define ["globals", "utilities", "board", "items"], (globals, utilities, board, i
         model: Power
         type: 'PowerSet'
         url: 'lib/json_packs/attacks.json'
+        toJSON: (save=false) ->
+            if !save then return super
+            arr = super
+            _.each arr, (power) =>
+                power.belongsTo = power.belongsTo.get("id")
+            arr
+
 
     _useFns = {
     }

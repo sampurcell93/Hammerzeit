@@ -11,6 +11,7 @@
       RIGHT: 39,
       ESCAPE: 27,
       NEW: 78,
+      LOADGAME: 76,
       COMMAND: 91,
       BATTLE: 66,
       CLEAR: 67,
@@ -41,6 +42,8 @@
           switch (key) {
             case kc["NEW"]:
               return taskrunner.newGame();
+            case kc["LOADGAME"]:
+              return taskrunner.loadGame();
           }
         },
         WAITING: function(key) {},
