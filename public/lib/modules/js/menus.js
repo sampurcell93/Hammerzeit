@@ -2,7 +2,7 @@
   var __hasProp = {}.hasOwnProperty,
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
-  define(["powers", "globals", "utilities", "dialog", "battler", "board", "jquery-ui"], function(powers, globals, ut, dialog, battler, board) {
+  define(["taskrunner", "powers", "globals", "utilities", "dialog", "battler", "board", "jquery-ui"], function(taskrunner, powers, globals, ut, dialog, battler, board) {
     var $wrapper, CharacterStateDisplay, DispatchMenu, InventoryList, ItemView, Menu, Meter, PlayerDispatch, PowerList, PowerListItem, StatList, closeAll, stage, toggleMenu, _activemenu, _dispatchmenu, _menus, _potential_moves, _ref, _ref1, _ref2, _ref3, _ref4, _ref5, _ref6, _ref7, _ref8, _ref9;
     board.focus();
     stage = board.getStage();
@@ -18,9 +18,17 @@
     });
     globals.shared_events.on("bindmenu", function(character) {
       _activemenu = character.menu = new Menu({
-        model: character
+        model: character,
+        type: 'battle'
       });
       return _menus.push(_activemenu);
+    });
+    globals.shared_events.on("travel", function() {
+      return _activemenu = new Menu({
+        model: taskrunner.getPC(),
+        template: $("#travel-menu").html(),
+        type: 'travel'
+      });
     });
     battler.events.on("showDispatchMenu", function(collection) {
       closeAll();
@@ -148,7 +156,7 @@
         var _this = this;
         _.bindAll(this, "render", "addItem");
         this.listenTo(this.collection, {
-          "add": function(collection, item) {
+          "add": function(item, coll) {
             return _this.addItem(item, true);
           }
         });
@@ -216,6 +224,7 @@
             }, 300);
           }
         });
+        _.bindAll(this, "renderSmallView", "render");
         return this;
       };
 
@@ -579,15 +588,14 @@
         return _ref8;
       }
 
-      CharacterStateDisplay.prototype.tagName = 'div';
-
       CharacterStateDisplay.prototype.className = 'attribute-container';
 
       CharacterStateDisplay.prototype.template = $("#attribute-container").html();
 
-      CharacterStateDisplay.prototype.initialize = function(attrs) {
-        var c, h,
+      CharacterStateDisplay.prototype.initialize = function(_arg) {
+        var c, h, model, tagName,
           _this = this;
+        model = _arg.model, tagName = _arg.tagName;
         this.attrlist = new StatList({
           model: this.model
         });
@@ -595,11 +603,11 @@
         this.meters = {};
         h = this.meters.health = new Meter({
           el: this.$("meter.HP"),
-          model: attrs.model
+          model: model
         });
         c = this.meters.creatine = new Meter({
           el: this.$("meter.creatine"),
-          model: attrs.model
+          model: model
         });
         this.listenTo(this.model.actions, "change", function(actions) {
           return _this.updateActions(actions);
@@ -680,17 +688,22 @@
 
       Menu.prototype.className = 'game-menu';
 
-      Menu.prototype.template = $("#menu").html();
-
-      Menu.prototype.type = 'battle';
-
-      Menu.prototype.initialize = function() {
-        var _this = this;
+      Menu.prototype.initialize = function(_arg) {
+        var template,
+          _this = this;
+        this.type = _arg.type, template = _arg.template;
+        if (template) {
+          this.template = template;
+        } else {
+          this.template = $("#menu").html();
+        }
         this.setupMeters();
         this.listenTo(this.model, {
           "beginphase": function(phase) {
             return this.$(".phase-number").text(phase + 1 + "/3");
-          }
+          },
+          "change:inventory": this.renderInventory,
+          "change:powers": this.renderPowers
         });
         this.listenTo(this.model.actions, "change", function(actions) {
           return _this.updateActions(actions);
@@ -702,9 +715,7 @@
             }
           },
           "remove add": function(model, collection) {
-            var l;
-            l = collection.length;
-            return _this.$(".inventory-length").text(l);
+            return _this.$(".inventory-length").text(collection.getTotalItems());
           }
         });
         _.bindAll(this, "close", "open", "toggle", "selectNext", "selectThis", "selectPrev");
@@ -713,21 +724,28 @@
         return this.$el.appendTo($wrapper);
       };
 
-      Menu.prototype.render = function(quadrant) {
+      Menu.prototype.render = function() {
         var extras;
-        if (quadrant == null) {
-          quadrant = this.model.getQuadrant();
-        }
         extras = {
           phase: this.model.turnPhase
         };
         this.$el.html(_.template(this.template, _.extend(this.model.toJSON(), extras)));
-        this.$el.attr("quadrant", quadrant);
-        this.showPowers();
-        this.showInventory();
+        this.renderPowers();
+        this.renderInventory();
         this.updateActions(this.model.actions);
         this.$(".inventory-length").text(this.model.get("inventory").getTotalItems());
         return this;
+      };
+
+      Menu.prototype.setPosition = function(quadrant) {
+        if (quadrant == null) {
+          quadrant = this.model.getQuadrant();
+        }
+        return this.$el.attr("quadrant", quadrant);
+      };
+
+      Menu.prototype.isBattleMenu = function() {
+        return this.type === "battle";
       };
 
       Menu.prototype.setupMeters = function() {
@@ -752,18 +770,33 @@
         });
       };
 
-      Menu.prototype.showInventory = function() {
+      Menu.prototype.renderParty = function() {
+        var frag,
+          _this = this;
+        frag = document.createDocumentFragment();
+        _.each(taskrunner.getParty().models, function(char) {
+          var display;
+          display = new CharacterStateDisplay({
+            model: char
+          });
+          return frag.appendChild(display.el);
+        });
+        this.party = frag;
+        return this;
+      };
+
+      Menu.prototype.renderInventory = function() {
         var list;
-        list = new InventoryList({
+        this.inventorylist = list = new InventoryList({
           collection: this.model.get("inventory")
         });
         this.$(".inventory-list").html(list.render().el);
         return this;
       };
 
-      Menu.prototype.showPowers = function() {
+      Menu.prototype.renderPowers = function() {
         var list;
-        list = new PowerList({
+        this.powerlist = list = new PowerList({
           collection: this.model.get("powers")
         });
         this.$(".power-list").html(list.render().el);
@@ -788,10 +821,17 @@
           return console.log(this.model.get("name"));
         },
         "click .js-close-menu": function() {
-          return toggleMenu(this.type);
+          return this.close();
+        },
+        "click .js-save-game": function() {
+          return globals.shared_events.trigger("savegame");
         },
         "click .js-show-inventory": function(e) {
           return e.stopPropagation();
+        },
+        "click .js-show-party": function() {
+          this.renderParty();
+          return ut.launchModal(this.party);
         },
         "click li": function(e) {
           var $t;
@@ -851,22 +891,23 @@
           easing: 'easeInOutQuart'
         }), 300);
         board.unpause().focus();
-        battler.removeHighlighting();
+        if (this.isBattleMenu()) {
+          battler.removeHighlighting();
+        }
         this.hideAttributeOverlay();
         return this;
       };
 
       Menu.prototype.open = function() {
-        var active_player, dir, quadrant;
-        active_player = battler.getActive();
-        battler.setState("menuopen");
+        var dir, quadrant;
         quadrant = this.model.getQuadrant();
         _activemenu = this;
         this.showing = true;
         dir = quadrant === 1 ? "left" : "right";
         $(".game-menu").hide();
         $(".attribute-container").hide();
-        this.render(quadrant);
+        this.setPosition(quadrant);
+        this.render();
         this.showAttributeOverlay();
         this.$el.focus().select().effect("slide", _.extend({
           mode: 'show'

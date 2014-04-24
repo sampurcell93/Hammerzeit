@@ -51,8 +51,6 @@ define ["globals", "utilities", "underscore", "backbone"], (globals, ut) ->
             _.each slots, (slot) =>
                 obj[slot] = null
             obj
-        initialize: ({slots}={}) ->
-            @set("slots", _.extend(@defaults(), slots))
 
     class Item extends Backbone.Model
         idAttribute: 'name'
@@ -88,11 +86,10 @@ define ["globals", "utilities", "underscore", "backbone"], (globals, ut) ->
         isEquipped: -> @get "equipped"
         isEquippable: -> @get "canEquip"
         onEquip: (target = @belongsTo())->
-            @get("equip")?.call(@, target)
-            target.applyModifiers(@get("modifiers"), {donetext: "Equipped!"}).takeAction(@get("action"))
+            target.applyModifiers(@get("modifiers"), {donetext: 'Equipped ' + @get("name")}).takeAction(@get("action"))
             @
         onUnEquip: (target = @belongsTo()) ->
-            target.removeModifiers @get "modifiers"
+            target.removeModifiers(@get("modifiers"), {donetext: 'Unequipped ' + @get("name")})
             @
         isUsable: -> @get "canUse"
         onUse: (target = @belongsTo())-> 
@@ -144,6 +141,16 @@ define ["globals", "utilities", "underscore", "backbone"], (globals, ut) ->
             _.each arr, (item) =>
                 item.belongsTo = item.belongsTo.get("id")
             arr
+        # Returns the item if it is contained, null otherwise
+        contains: (item) ->
+            if _.isString(item)
+                filter = (check) -> check.get("name") is item
+            else if _.isObject(item) 
+                filter = (check) -> check.get("name") is item.get("name")
+            else if _.isUndefined(item) then throw Error("Passed an undefined item to Inventory.contains.")
+            for i in @models
+                if filter(i) is true then return i
+            return null
 
 
     _items = new Inventory

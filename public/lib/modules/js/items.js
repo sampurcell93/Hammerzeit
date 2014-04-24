@@ -96,12 +96,6 @@
         return obj;
       };
 
-      Slots.prototype.initialize = function(_arg) {
-        var slots;
-        slots = (_arg != null ? _arg : {}).slots;
-        return this.set("slots", _.extend(this.defaults(), slots));
-      };
-
       return Slots;
 
     })(Backbone.Model);
@@ -166,15 +160,11 @@
       };
 
       Item.prototype.onEquip = function(target) {
-        var _ref4;
         if (target == null) {
           target = this.belongsTo();
         }
-        if ((_ref4 = this.get("equip")) != null) {
-          _ref4.call(this, target);
-        }
         target.applyModifiers(this.get("modifiers"), {
-          donetext: "Equipped!"
+          donetext: 'Equipped ' + this.get("name")
         }).takeAction(this.get("action"));
         return this;
       };
@@ -183,7 +173,9 @@
         if (target == null) {
           target = this.belongsTo();
         }
-        target.removeModifiers(this.get("modifiers"));
+        target.removeModifiers(this.get("modifiers"), {
+          donetext: 'Unequipped ' + this.get("name")
+        });
         return this;
       };
 
@@ -288,6 +280,29 @@
           return item.belongsTo = item.belongsTo.get("id");
         });
         return arr;
+      };
+
+      Inventory.prototype.contains = function(item) {
+        var filter, i, _i, _len, _ref5;
+        if (_.isString(item)) {
+          filter = function(check) {
+            return check.get("name") === item;
+          };
+        } else if (_.isObject(item)) {
+          filter = function(check) {
+            return check.get("name") === item.get("name");
+          };
+        } else if (_.isUndefined(item)) {
+          throw Error("Passed an undefined item to Inventory.contains.");
+        }
+        _ref5 = this.models;
+        for (_i = 0, _len = _ref5.length; _i < _len; _i++) {
+          i = _ref5[_i];
+          if (filter(i) === true) {
+            return i;
+          }
+        }
+        return null;
       };
 
       return Inventory;

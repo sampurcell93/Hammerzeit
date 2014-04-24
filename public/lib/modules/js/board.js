@@ -172,8 +172,7 @@
       add: {
         "BATTLE": function() {
           ut.c("the state has changed to battle. get it son");
-          flashStateChange();
-          return globals.shared_events.trigger("battle");
+          return flashStateChange();
         },
         "LOADING": function() {
           return ut.c("the state has changed to loading. spinny wheel brah");
@@ -195,6 +194,7 @@
       var fn;
       if (hasState(newstate) === false) {
         state.push(newstate);
+        globals.shared_events.trigger(newstate.toLowerCase());
         fn = stateChangeEvents.add[newstate];
         if (fn != null) {
           return fn();

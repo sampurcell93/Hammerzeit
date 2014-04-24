@@ -33,7 +33,10 @@ define ["globals", "utilities", "board", "npc", "player", "mapper", "mapcreator"
 			"click .js-start-game": ->
 				_user = new User({username: $(".username").val()})
 				_user.fetch
-					success: -> loadStage 1
+					success: -> 
+						loadStage 1
+						window.PC = _user.get("party").at(0)
+						ut.destroyModal()
 					parse: true
 
 
@@ -46,6 +49,8 @@ define ["globals", "utilities", "board", "npc", "player", "mapper", "mapcreator"
 			"click .js-start-game": -> 
 				_user = new User username: 'Sams', password: 'Sampass'
 				clean = _user.clean()
+				console.log clean
+				debugger
 				_user.save clean, { 
 					success: (u, resp) => 
 						ut.destroyModal() 

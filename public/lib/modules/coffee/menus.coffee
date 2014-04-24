@@ -1,4 +1,4 @@
-define ["powers", "globals", "utilities", "dialog", "battler", "board", "jquery-ui"], (powers, globals, ut, dialog, battler, board) ->
+define ["taskrunner", "powers", "globals", "utilities", "dialog", "battler", "board", "jquery-ui"], (taskrunner, powers, globals, ut, dialog, battler, board) ->
 
     board.focus()
     stage = board.getStage()
@@ -16,8 +16,11 @@ define ["powers", "globals", "utilities", "dialog", "battler", "board", "jquery-
         _activemenu.open()
 
     globals.shared_events.on "bindmenu", (character) ->
-        _activemenu = character.menu = new Menu model: character
+        _activemenu = character.menu = new Menu model: character, type: 'battle'
         _menus.push _activemenu
+
+    globals.shared_events.on "travel", ->
+        _activemenu = new Menu model: taskrunner.getPC(), template: $("#travel-menu").html(), type: 'travel'
 
     battler.events.on "showDispatchMenu", (collection) ->
         closeAll()
@@ -73,7 +76,7 @@ define ["powers", "globals", "utilities", "dialog", "battler", "board", "jquery-
         initialize: ->
             _.bindAll @, "render", "addItem"
             @listenTo @collection, 
-                "add": (collection, item) =>
+                "add": (item, coll) =>
                     @addItem item, true
 
             @
@@ -107,6 +110,7 @@ define ["powers", "globals", "utilities", "dialog", "battler", "board", "jquery-
                         @$el.fadeOut "fast", =>
                             @remove()
                     , 300
+            _.bindAll @, "renderSmallView", "render"
 
             @
         renderSmallView: ->
@@ -283,15 +287,15 @@ define ["powers", "globals", "utilities", "dialog", "battler", "board", "jquery-
     # Displays all states on a character, including HP, creatine, actions remaining, 
     # statistics, temporary effects, etc
     class CharacterStateDisplay extends Backbone.View
-        tagName: 'div'
         className: 'attribute-container'
         template: $("#attribute-container").html()
-        initialize: (attrs) ->
+        initialize: ({model, tagName}) ->
+            # if tagName then @setElement(@make(tagName, _(@attributes).extend(class: @className)))
             @attrlist = new StatList model: @model
             @render()
             @meters = {}
-            h = @meters.health = new Meter el: @$("meter.HP"), model: attrs.model
-            c = @meters.creatine = new Meter el: @$("meter.creatine"), model: attrs.model
+            h = @meters.health = new Meter el: @$("meter.HP"), model: model
+            c = @meters.creatine = new Meter el: @$("meter.creatine"), model: model
             @listenTo @model.actions, "change", (actions) => @updateActions actions
             @
         render: ->
@@ -338,33 +342,36 @@ define ["powers", "globals", "utilities", "dialog", "battler", "board", "jquery-
     # Contains subclasses, including Meters and CharacterStateDisplay
     class Menu extends Backbone.View
         className: 'game-menu'
-        template: $("#menu").html()
-        type: 'battle'
-        initialize: ->
+        initialize: ({@type, template})->
+            if template then @template = template
+            else @template = $("#menu").html() 
             @setupMeters()
             @listenTo @model, 
                 "beginphase": (phase) -> @$(".phase-number").text(phase + 1 + "/3")
+                "change:inventory": @renderInventory
+                "change:powers": @renderPowers
             @listenTo @model.actions, "change", (actions) => @updateActions actions
             @listenTo @model.get("inventory"), 
                 "remove": (model, collection) =>
                     if collection.length is 0 then @$(".js-show-inventory").addClass("disabled")
                 "remove add": (model, collection) =>
-                    l = collection.length
-                    @$(".inventory-length").text(l)
+                    @$(".inventory-length").text(collection.getTotalItems())
 
             _.bindAll @, "close", "open", "toggle", "selectNext", "selectThis", "selectPrev"
             @close()
             @render()
             @$el.appendTo $wrapper
-        render: (quadrant = @model.getQuadrant()) ->
+        render: () ->
             extras = {phase: @model.turnPhase}
             @$el.html(_.template @template, _.extend(@model.toJSON(),extras))
-            @$el.attr("quadrant", quadrant)
-            @showPowers()
-            @showInventory()
+            @renderPowers()
+            @renderInventory()
             @updateActions @model.actions
             @$(".inventory-length").text(@model.get("inventory").getTotalItems())
             @
+        setPosition: (quadrant = @model.getQuadrant())->
+            @$el.attr("quadrant", quadrant)            
+        isBattleMenu: -> @type is "battle"
         setupMeters: ->
             container = @container = new CharacterStateDisplay model: @model
             container.$el.appendTo $wrapper
@@ -377,12 +384,19 @@ define ["powers", "globals", "utilities", "dialog", "battler", "board", "jquery-
                 needed = $t.attr("actiontype")
                 if !model.can(needed)
                     $t.addClass("disabled")
-        showInventory: ->
-            list = new InventoryList collection: @model.get "inventory"
+        renderParty: ->
+            frag = document.createDocumentFragment()
+            _.each taskrunner.getParty().models, (char) =>
+                display = new CharacterStateDisplay({model: char})
+                frag.appendChild(display.el)
+            @party = frag
+            @
+        renderInventory: ->
+            @inventorylist = list = new InventoryList collection: @model.get "inventory"
             @$(".inventory-list").html(list.render().el)
             @
-        showPowers: ->
-            list = new PowerList collection: @model.get "powers"
+        renderPowers: ->
+            @powerlist = list = new PowerList collection: @model.get "powers"
             @$(".power-list").html(list.render().el)
             @
         selectThis: ($item) ->
@@ -396,10 +410,13 @@ define ["powers", "globals", "utilities", "dialog", "battler", "board", "jquery-
         events:
             "click": ->
                 console.log @model.get "name"
-            "click .js-close-menu": ->
-                toggleMenu @type
+            "click .js-close-menu": -> @close()
+            "click .js-save-game": -> globals.shared_events.trigger("savegame")
             "click .js-show-inventory": (e) ->
                 e.stopPropagation()
+            "click .js-show-party": ->
+                @renderParty()
+                ut.launchModal @party
             "click li": (e) ->
                 $t = $(e.currentTarget)
                 if $t.hasClass "disabled"
@@ -431,19 +448,19 @@ define ["powers", "globals", "utilities", "dialog", "battler", "board", "jquery-
             @showing = false
             @$el.effect "slide", _.extend({mode: 'hide'}, {direction: 'right', easing: 'easeInOutQuart'}), 300
             board.unpause().focus()
-            battler.removeHighlighting()
+            if @isBattleMenu()
+                battler.removeHighlighting()
             @hideAttributeOverlay()
             @
         open: ->
-            active_player = battler.getActive()
-            battler.setState("menuopen")
             quadrant = @model.getQuadrant()
             _activemenu = @
             @showing = true 
             dir = if quadrant is 1 then "left" else "right"
             $(".game-menu").hide()
             $(".attribute-container").hide()
-            @render(quadrant)
+            @setPosition(quadrant)
+            @render()
             @showAttributeOverlay()
             @$el.focus().select().effect "slide", _.extend({mode: 'show'}, {direction: dir, easing: 'easeInOutQuart'}) , 300
             @

@@ -152,7 +152,6 @@ define ['globals', 'utilities', 'jquery', 'underscore', 'easel'], (globals, ut) 
             "BATTLE": =>
                 ut.c "the state has changed to battle. get it son"
                 flashStateChange()
-                globals.shared_events.trigger("battle")
             "LOADING": =>
                 ut.c "the state has changed to loading. spinny wheel brah"
         }
@@ -169,6 +168,7 @@ define ['globals', 'utilities', 'jquery', 'underscore', 'easel'], (globals, ut) 
     addState = (newstate) ->
         if hasState(newstate) is false
             state.push newstate
+            globals.shared_events.trigger(newstate.toLowerCase())
             fn = stateChangeEvents.add[newstate]
             if fn? then fn()
 

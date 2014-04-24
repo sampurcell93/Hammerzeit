@@ -417,7 +417,7 @@ textarea {
 
 .stat-item {
     position: relative;
-    padding-top: 10px;
+    padding-top: 5px;
 
     &:before {
         content: attr(title);
@@ -425,7 +425,7 @@ textarea {
         display: block;
         top: -4px;
         color: #fff;
-        font-size: .65em;
+        font-size: .5em;
         border-bottom: 1px solid #aaa;
     }
 }

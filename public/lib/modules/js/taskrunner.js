@@ -90,7 +90,9 @@
           });
           return _user.fetch({
             success: function() {
-              return loadStage(1);
+              loadStage(1);
+              window.PC = _user.get("party").at(0);
+              return ut.destroyModal();
             },
             parse: true
           });
@@ -125,6 +127,8 @@
               password: 'Sampass'
             });
             clean = _user.clean();
+            console.log(clean);
+            debugger;
             return _user.save(clean, {
               success: function(u, resp) {
                 ut.destroyModal();

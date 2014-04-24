@@ -58,10 +58,11 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 				currentstage: 1
 				creatine: 10
 				max_creatine: 10
-				HP: 10
-				max_HP: 10
+				HP: 100
+				max_HP: 100
 				init: 1
 				inventory: new items.Inventory
+				modifiers: new ModifierCollection
 				jmp: 2
 				level: 1
 				name: "NPC"
@@ -112,7 +113,6 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 				"0,-1": new createjs.SpriteSheet(_.extend @walkopts, {frames: @frames.up})
 				"0,1" : new createjs.SpriteSheet(_.extend @walkopts, {frames: @frames.down})
 			}
-			@modifiers = new ModifierCollection
 			@onTurnFunctions = []
 			@listenToStatusChanges()
 			# Powers load async, so when loaded we need to bind defaults to an unequipped NPC
@@ -121,14 +121,6 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 			@on "add", (model, coll) => if coll.type is "InitiativeQueue" then @activity_queue = coll
 			@cursor()
 			@
-		setPowers:(pow=powers.getDefaultPowers({belongsTo: @})) ->
-			_.each pow.models, (p) => p.set("belongsTo", @)
-			@set "powers", pow
-			@
-		setInventory:(inventory=@get("path").getDefaultInventory({belongsTo: @})) ->
-			_.each inventory.models, (i) => i.set("belongsTo", @)
-			@set "inventory", inventory
-			@
 		# Expects either an array of modifiers (found in items.coffee)
 		# or a single modifier. Pass in standard Backbone event options
 		# Adds the modifiers to the collection, effectively linking items 
@@ -136,11 +128,11 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 		applyModifiers: (modifiers, opts={}) ->
 			num = 0
 			if modifiers instanceof Modifier
-				@modifiers.add modifiers.clone()
+				@get("modifiers").add modifiers
 				if opts.donetext
 					setTimeout =>
 						@drawStatusChange text: opts.donetext
-					, 500
+					, 1000
 			else
 				len = modifiers.length
 				_.each modifiers.models, (mod, i) => 
@@ -148,12 +140,12 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 					if i is 0 then i = 100
 					else i = 700*i
 					setTimeout =>
-						@modifiers.add mod.clone(), opts
-						if num is len - 1 and opts.donetext
-							setTimeout =>
-								@drawStatusChange text: opts.donetext
-							, 2*i
+						@get("modifiers").add mod, opts
 					, i
+					if num is len - 1 and opts.donetext
+						setTimeout =>
+							@drawStatusChange text: opts.donetext
+						, 1.6*i
 
 			
 			@
@@ -261,6 +253,9 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 			else 4
 		getX: -> @marker.x/_ts
 		getY: -> @marker.y/_ts
+		# returns if the NPC has an item
+		hasItem: (item) ->
+			@get("inventory").contains item
 		isPC: -> false
 		# The square that the NPC was previously in should be cleared when left
 		# Should be called in conjunction with "entersquare"
@@ -280,24 +275,25 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 			_.each ["HP", "creatine", "AC", "atk", "range"], (attr) =>
 				@on "change:#{attr}", (model, val) =>
 					handleChange @getAttrDifference(attr), attr
-			@listenTo @modifiers, 
-				"add": (model, collection) =>
-					currentval = @get model.get "prop"
-					mod = model.get("mod")
+			@listenTo @get("modifiers"), 
+				"add": (modifier, collection) =>
+					currentval = @get modifier.get "prop"
+					mod = modifier.get("mod")
 					if _.isFunction(mod) 
 						newval = mod.call(mod, @, currentval) 
 					else 
 						newval = currentval + mod
-					max = @get("max_#{model.get('prop')}")
-					if max and newval > max then return
-					@set(model.get("prop"), newval)
-					if model.get("turns")
-						@addTurnFunction(_.extend {fn: => @removeModifiers model}, model.toJSON())
-					else if model.get("perm") is true
-						@removeModifiers model, {silent: true}
-				"remove": (model, collection) =>
-					currentval = @get model.get "prop"
-					@set(model.get("prop"), currentval - model.get("mod"))
+					max = @get("max_#{modifier.get('prop')}")
+					if max and newval > max then newval = max
+					else if newval < 0 then newval = 0
+					@set(modifier.get("prop"), newval)
+					if modifier.get("turns")
+						@addTurnFunction(_.extend {fn: => @removeModifiers modifier}, modifier.toJSON())
+					else if modifier.get("perm") is true
+						@removeModifiers modifier, {silent: true}
+				"remove": (modifier, collection) =>
+					currentval = @get modifier.get "prop"
+					@set(modifier.get("prop"), currentval - modifier.get("mod"))
 
 		# Wrapper functions for basic moves
 		moveRight: -> @move 1, 0
@@ -345,8 +341,12 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 				count++
 			, walkspeed
 			true
-		obtain: (item, quantity) ->
-			if quantity then item.set("quantity", quantity)
+		obtain: (item, quantity=1) ->
+			existing = @hasItem(item)
+			if existing 
+				quantity += existing.get("quantity")
+				item = existing
+			item.set("quantity", quantity)
 			item.set("belongsTo", @)
 			item.set("equipped", false)
 			@get("inventory").add item
@@ -354,17 +354,31 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 		# Takes in a dir string and returns the opposite
 		oppositeDir: (dir) ->
 			if dir is "x" then "y" else if dir is "y" then "x" else ""
-		# Removes a specific modifier
+		# Removes a specific modifier. Cleanup todo
 		removeModifiers: (modifiers, opts={}) ->
+			num = 0
 			if modifiers instanceof Modifier
-				@modifiers.remove modifiers, opts
+				@get("modifiers").remove modifiers, opts
+				if opts.donetext
+					setTimeout =>
+						@drawStatusChange text: opts.donetext
+					, 100
 			else 
+				len = modifiers.length
 				_.each modifiers.models, (mod, i) => 
+					num = i
+					console.log i, len
+					debugger
 					if i is 0 then i = 100
 					else i = 700*i
 					setTimeout =>
-						@modifiers.remove mod, opts
+						@get("modifiers").remove mod, opts
 					, i
+					if (num is len - 1) and opts.donetext
+						setTimeout =>
+							console.loh 
+							@drawStatusChange text: opts.donetext
+						, 1.6*i
 			@
 		# Reset an animation's properties
 		reanimate: (animation, speed, next) ->
@@ -391,10 +405,18 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 			else if _.isObject(path) 
 				@set "path", cast.getClassInst(path.name)
 			@
+		setInventory:(inventory=@get("path").getDefaultInventory({belongsTo: @})) ->
+			_.each inventory.models, (i) => i.set("belongsTo", @)
+			@set "inventory", inventory
+			@
 		# Expects pixel multiples, IE 500, 700
 		setPos: (x,y) ->
 			@marker.x = x
 			@marker.y = y
+			@
+		setPowers:(pow=powers.getDefaultPowers({belongsTo: @})) ->
+			_.each pow.models, (p) => p.set("belongsTo", @)
+			@set "powers", pow
 			@
 		# Set the sprite sheet to the direction given by the x,y coords. 
 		turn: (dx,dy) ->
@@ -407,8 +429,7 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 		unequip: (item) ->
 			if item.isEquipped()
 				item.set("equipped", false)
-				slot = item.get "slot"
-				@get("slots").set(slot, null)
+				@get("slots").set(item.get("slot"), null)
 			@
 		##################################################
 		### Battle functions! ###
@@ -543,7 +564,8 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 				actions.standard--
 				actions.move--
 				actions.change()
-			unless burn then @nextPhase()
+			if !burn then @nextPhase()
+			else @drawStatusChange {text: 'Burned Action', color: 'red'}  
 			@
 		# Take a move action
 		takeMove: (burn) ->
@@ -554,7 +576,8 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 				if actions.standard > 0 then actions.standard--
 				actions.minor--
 			actions.change()
-			unless burn then @nextPhase()
+			if !burn then @nextPhase()
+			else @drawStatusChange {text: 'Burned Action', color: 'red'} 
 			@
 		# Take a minor action
 		takeMinor: (burn) ->
@@ -564,21 +587,21 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 			if actions.minor is 0
 				actions.move--
 				actions.change()
-			unless burn then @nextPhase()
+			if !burn then @nextPhase()
+			else @drawStatusChange {text: 'Burned Action', color: 'red'} 
 			@
 		takeAction: (type) ->
+
 			actions = ["standard", "minor", "move"]
 			if actions.indexOf(type) isnt -1
 				@["take" + type.capitalize()]()
 			@
-		# Takes an integer damage value, subtracts it, and renders it to the canvas
+		# Subracts from NPC's health. Pass in negative numbers to heal
 		takeDamage: (damage) ->
-			if @isDead() then return @
 			@applyModifiers(new Modifier({prop: "HP", mod: -damage, perm: true}))
 			if @get("HP") <= 0 then @die()
 			@
 		useCreatine: (creatine) ->
-			if @get("creatine") - creatine < 0 then return false
 			@applyModifiers(new Modifier({prop: "creatine", mod: -creatine, perm: true}))
 			@
 
@@ -599,7 +622,7 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 			_.each resp, (m) =>
 				m.inventory = new items.Inventory(m.inventory, {parse: true})
 				m.powers = powers.PowerSet(m.powers, {parse: true})
-				m.slots = items.Slots({slots: m.slots})
+				m.slots = items.Slots(m.slots)
 			resp
 
 
