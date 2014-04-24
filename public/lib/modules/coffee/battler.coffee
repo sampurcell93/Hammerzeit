@@ -1,9 +1,8 @@
-define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player", "cast", "items"], (board, globals, ut, mapper, NPC, mapcreator, player, cast, items) ->
+define ["board", "globals", "utilities", "taskrunner", "mapper", "npc", "mapcreator", "player", "cast", "items"], (board, globals, ut, taskrunner, mapper, NPC, mapcreator, player, cast, items) ->
 
     window.t = ->
         getQueue().next()
 
-    PCs = player.PCs
     Player = player.model
     NPCArray = NPC.NPCArray
     Enemy = NPC.Enemy
@@ -15,10 +14,126 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
     states = ['choosingmoves', 'choosingattacks', 'menuopen']
     battle_events = _.extend {}, Backbone.Events
     _activebattle = null
-    _active_chars = PCs
     _shared = globals.shared_events
     _activemap = null
     _ts = globals.map.tileside
+
+    # Handler for battle state functions. Respnsible for battle state (a subset of board state)
+    class Battle extends Backbone.Model
+        states: []
+        defaults: ->
+            InitQueue = new InitiativeQueue()
+            PCs = InitQueue.PCs = taskrunner.getParty()
+            return {
+                NPCs: new NPCArray
+                InitQueue: InitQueue
+                avglevel: PCs.getAverageLevel()
+                numenemies: 1#Math.ceil(Math.random() * PCs.length * 2 + 1)
+                enemyBounds: {
+                    min_x: 0
+                    max_x: map.c_width
+                    min_y: 0
+                    max_y: map.c_height
+                }
+            }
+        initialize:  ->
+            @PC = PC = taskrunner.getPC()
+            @dispatcher = new Dispatcher(PC.marker.x, PC.marker.y)
+            @listenTo @get("NPCs"), 
+                die: @checkStillLiving
+            @on 
+                "choosingmoves"  : -> @clearAttackZone()
+                "choosingattacks": -> @clearPotentialMoves()
+        addState: (newstate) ->
+            if @hasState(newstate) is false
+                @states.push newstate
+        setState: (newstate) ->
+            @trigger "newstate"
+            @states = [newstate]
+            @
+        removeState: (removeme) ->
+            if @states.length > 1
+                index = @states.indexOf removeme
+                @states.splice(index, 1) unless index == -1
+            else throw new Error("The board currently has only one state - you can't remove it. Try adding another state first.")
+            @
+        hasState: (checkstate) ->
+            @states == checkstate.toUpperCase()
+        checkStillLiving: (model, collection, options) ->
+            if collection
+                flag = true
+                _.each collection.models, (character) =>
+                    if character.dead is false then flag = false
+                return flag
+            false
+        removeTravelPC: -> 
+            stage.removeChild @PC.marker
+            @PC.leaveSquare()
+            @PC.setPos 0, 0
+        begin: (type, opts) ->
+            @removeTravelPC()
+            @dispatcher.show().showDispatchMenu()
+            @grid.activate()
+            if type is "random" then @randomize(opts)
+            else @load type, opts
+        load: (id) ->
+            @url = @id || globals.battle_dir + id
+            @fetch success: (battle) ->
+                console.log battle
+        # A function for creating a random battle, within parameters (or NOT?!!)
+        randomize: (o={}) ->
+            o = _.extend @defaults(), o
+            names = ["Steve", "John", "Ken", "Tom", "Bob", "Zeke", "Dan"]
+            for i in [0...o.numenemies]
+                @get("NPCs").add(n = new Enemy({name: names[i]}, {parse: true}))
+                @get("InitQueue").add n
+                n.addToMap()
+                globals.shared_events.trigger "bindmenu", n
+            @get("InitQueue").sort()
+            @
+        destroy: ->
+            @destructor()
+            super
+        destructor: ->
+            NPCs = @get("NPCs")
+            while npc = NPCs.first()
+                npc.leaveSquare()
+                stage.removeChild npc.marker
+                npc.destroy()
+            @
+        clearPotentialMoves: ->
+            if !@potential_moves? then return @
+            _.each @potential_moves.models, (tile) ->
+                tile.removePotentialMovePath()
+            @
+        clearAttackZone: ->
+            if !@attack_zone? then return @
+            _.each @attack_zone.models, (tile) ->
+                tile.trigger "removeattackzone"
+            @
+        clearAllHighlights: ->
+            @clearAttackZone()
+            @clearPotentialMoves()
+
+        # Checks if there is only one type of model left
+        # If only PCs left, the PCs have won and vice versa
+        checkEndOfBattle: (type) ->
+            initiative = @get("InitQueue").models
+            NPCArr = []
+            PCArr = []
+            _.each initiative, (character) ->
+                if character instanceof Player then PCArr.push character
+                else NPCArr.push character
+            if NPCArr.length is 0
+                alert "you won!"
+            else if PCArr.length is 0 
+                alert "they won :/"
+        virtualMovePossibilities: ->
+            @grid.virtualMovePossibilities.apply(@grid, arguments)
+        pulseGrid: -> @grid.model.trigger "pulse"
+        activateGrid: -> @grid.activate()
+        deactivateGrid: -> @grid.deactivate()
+        toggleGrid: -> @grid.toggle()
 
     # To begin each battle, players are dispatched from a central point. 
     # This class contains the controls for that central point
@@ -55,7 +170,7 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
             @bindEvents()
             @
         showDispatchMenu: ->
-            battle_events.trigger "showDispatchMenu", player.PCs
+            battle_events.trigger "showDispatchMenu", taskrunner.getParty()
             @
         bindEvents: ->
             @marker.on "click", @showDispatchMenu, false, @
@@ -174,122 +289,6 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
                 @el.attr("value", time)
  
     _timer = new Timer($("#turn-progress"),$("#turn-progress-number"))
-
-    # Handler for battle state functions. Respnsible for battle state (a subset of board state)
-    class Battle extends Backbone.Model
-        states: []
-        defaults: ->
-            InitQueue = new InitiativeQueue()
-            InitQueue.PCs = PCs
-            return {
-                NPCs: new NPCArray
-                InitQueue: InitQueue
-                avglevel: PCs.getAverageLevel()
-                numenemies: 1#Math.ceil(Math.random() * PCs.length * 2 + 1)
-                enemyBounds: {
-                    min_x: 0
-                    max_x: map.c_width
-                    min_y: 0
-                    max_y: map.c_height
-                }
-            }
-        initialize:  ->
-            @dispatcher = new Dispatcher(PC.marker.x, PC.marker.y)
-            @listenTo @get("NPCs"), 
-                die: @checkStillLiving
-            @on 
-                "choosingmoves"  : -> @clearAttackZone()
-                "choosingattacks": -> @clearPotentialMoves()
-        addState: (newstate) ->
-            if @hasState(newstate) is false
-                @states.push newstate
-        setState: (newstate) ->
-            @trigger "newstate"
-            @states = [newstate]
-            @
-        removeState: (removeme) ->
-            if @states.length > 1
-                index = @states.indexOf removeme
-                @states.splice(index, 1) unless index == -1
-            else throw new Error("The board currently has only one state - you can't remove it. Try adding another state first.")
-            @
-        hasState: (checkstate) ->
-            @states == checkstate.toUpperCase()
-        checkStillLiving: (model, collection, options) ->
-            if collection
-                flag = true
-                _.each collection.models, (character) =>
-                    if character.dead is false then flag = false
-                return flag
-            false
-        removeTravelPC: -> 
-            stage.removeChild player.PC.marker
-            player.PC.leaveSquare()
-            player.PC.setPos 0, 0
-        begin: (type, opts) ->
-            @removeTravelPC()
-            @dispatcher.show().showDispatchMenu()
-            @grid.activate()
-            if type is "random" then @randomize(opts)
-            else @load type, opts
-        load: (id) ->
-            @url = @id || globals.battle_dir + id
-            @fetch success: (battle) ->
-                console.log battle
-        # A function for creating a random battle, within parameters (or NOT?!!)
-        randomize: (o={}) ->
-            o = _.extend @defaults(), o
-            names = ["Steve", "John", "Ken", "Tom", "Bob", "Zeke", "Dan"]
-            for i in [0...o.numenemies]
-                @get("NPCs").add(n = new Enemy({name: names[i]}, {parse: true}))
-                @get("InitQueue").add n
-                n.addToMap()
-                globals.shared_events.trigger "bindmenu", n
-            @get("InitQueue").sort()
-            @
-        destroy: ->
-            @destructor()
-            super
-        destructor: ->
-            NPCs = @get("NPCs")
-            while npc = NPCs.first()
-                npc.leaveSquare()
-                stage.removeChild npc.marker
-                npc.destroy()
-            @
-        clearPotentialMoves: ->
-            if !@potential_moves? then return @
-            _.each @potential_moves.models, (tile) ->
-                tile.removePotentialMovePath()
-            @
-        clearAttackZone: ->
-            if !@attack_zone? then return @
-            _.each @attack_zone.models, (tile) ->
-                tile.trigger "removeattackzone"
-            @
-        clearAllHighlights: ->
-            @clearAttackZone()
-            @clearPotentialMoves()
-
-        # Checks if there is only one type of model left
-        # If only PCs left, the PCs have won and vice versa
-        checkEndOfBattle: (type) ->
-            initiative = @get("InitQueue").models
-            NPCArr = []
-            PCArr = []
-            _.each initiative, (character) ->
-                if character instanceof Player then PCArr.push character
-                else NPCArr.push character
-            if NPCArr.length is 0
-                alert "you won!"
-            else if PCArr.length is 0 
-                alert "they won :/"
-        virtualMovePossibilities: ->
-            @grid.virtualMovePossibilities.apply(@grid, arguments)
-        pulseGrid: -> @grid.model.trigger "pulse"
-        activateGrid: -> @grid.activate()
-        deactivateGrid: -> @grid.deactivate()
-        toggleGrid: -> @grid.toggle()
 
     class GridOverlay extends mapcreator.Overlay
         show: -> @$el.fadeIn  "fast"
@@ -599,7 +598,7 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
         # Returns the currently active player
         getActive: (opts) -> getActive opts
         # Returns only players. Even dead ones.
-        getPlayers: -> player.PCs
+        getPlayers: -> taskrunner.getParty()
         getNPCs: -> _activebattle.get("NPCs")
 
         toggleGrid: ->
@@ -681,17 +680,18 @@ define ["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player"
             if _activebattle
                 _activebattle.pulseGrid()
         virtualMovePossibilities: -> virtualMovePossibilities.apply(@, arguments)
-        # Expects a NPC model, and places it softly on the dispatcher
+        # Expects a PC model, and places it softly on the dispatcher (only appears there)
         potentialDispatch: (character) ->
             dispatcher = _activebattle.dispatcher
             if dispatcher.canDispatch()
                 dispatcher.marker.addChildAt character.marker, 1
                 dispatcher.potential_dispatch = character
                 setPotentialMoves virtualMovePossibilities "dispatch", null, {range: character.get("spd")}
+        # Remove the softly placed PC
         discardDispatch: ->
             discardDispatch()
             @
-        # 
+        # Add the PC to the battle at the dispatcher's square
         confirmDispatch: ->
             dispatcher = _activebattle.dispatcher
             if dispatcher.canDispatch()

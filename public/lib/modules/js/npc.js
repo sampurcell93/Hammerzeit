@@ -92,6 +92,7 @@
             x: 0,
             y: 0
           },
+          currentstage: 1,
           creatine: 10,
           max_creatine: 10,
           HP: 10,
@@ -120,27 +121,20 @@
       };
 
       NPC.prototype.initialize = function(_arg) {
-        var frames, path, spriteimg, _ref1,
+        var frames, inventory, path, pow, spriteimg, _ref1,
           _this = this;
-        _ref1 = _arg != null ? _arg : {}, frames = _ref1.frames, spriteimg = _ref1.spriteimg, path = _ref1.path;
-        this.setPath(path);
-        this.set("powers", powers.getDefaultPowers({
-          belongsTo: this
-        }));
-        this.set("inventory", this.get("path").getDefaultInventory({
-          belongsTo: this
-        }));
+        _ref1 = _arg != null ? _arg : {}, pow = _ref1.pow, frames = _ref1.frames, spriteimg = _ref1.spriteimg, path = _ref1.path, inventory = _ref1.inventory;
+        if (!(path instanceof Backbone.Model)) {
+          this.setPath(path);
+        }
+        this.setPowers(pow);
+        this.setInventory(inventory);
         this.listenToOnce(globals.shared_events, "items_loaded", function() {
-          var hoe, i;
-          _this.set("inventory", _this.get("path").getDefaultInventory({
+          return _this.set("inventory", _this.get("path").getDefaultInventory({
             belongsTo: _this
           }));
-          i = _this.get("inventory");
-          hoe = items.get("Hoe");
-          return _this.obtain(hoe, 5);
         });
         this.listenToOnce(globals.shared_events, "powers_loaded", function() {
-          var pow;
           return _this.set("powers", pow = powers.getDefaultPowers({
             belongsTo: _this
           }));
@@ -175,6 +169,34 @@
           }
         });
         this.cursor();
+        return this;
+      };
+
+      NPC.prototype.setPowers = function(pow) {
+        var _this = this;
+        if (pow == null) {
+          pow = powers.getDefaultPowers({
+            belongsTo: this
+          });
+        }
+        _.each(pow.models, function(p) {
+          return p.set("belongsTo", _this);
+        });
+        this.set("powers", pow);
+        return this;
+      };
+
+      NPC.prototype.setInventory = function(inventory) {
+        var _this = this;
+        if (inventory == null) {
+          inventory = this.get("path").getDefaultInventory({
+            belongsTo: this
+          });
+        }
+        _.each(inventory.models, function(i) {
+          return i.set("belongsTo", _this);
+        });
+        this.set("inventory", inventory);
         return this;
       };
 
@@ -561,7 +583,7 @@
           opts = {};
         }
         if (modifiers instanceof Modifier) {
-          this.modifiers.remove(modifiers);
+          this.modifiers.remove(modifiers, opts);
         } else {
           _.each(modifiers.models, function(mod, i) {
             if (i === 0) {

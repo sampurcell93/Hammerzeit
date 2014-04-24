@@ -415,6 +415,21 @@ textarea {
     }
 }
 
+.stat-item {
+    position: relative;
+    padding-top: 10px;
+
+    &:before {
+        content: attr(title);
+        position: absolute;
+        display: block;
+        top: -4px;
+        color: #fff;
+        font-size: .65em;
+        border-bottom: 1px solid #aaa;
+    }
+}
+
 .power-list, .inventory-list {
     .attribute-list {
         @extend .clearfix;

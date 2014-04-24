@@ -2,7 +2,6 @@ define ["board", "taskrunner", "utilities", "globals", "dialog", "npc", "mapper"
 
 	# When the board has multiple states, sometimes commands have to be resolved in a certain order
 	_priority_queue = ["CUTSCENE", "MENUOPEN", "DIALOG", "BATTLE", "TRAVEL", "INTRO", "WAITING", "DRAWING", "LOADING"]
-
 	# Keycodes
 	kc = {
 		ENTER: 13
@@ -35,7 +34,7 @@ define ["board", "taskrunner", "utilities", "globals", "dialog", "npc", "mapper"
 		# O
 		ZOOMOUT: 79
 	}
-	PC = player.PC
+
 	keysdisabled = false
 
 	$c = board.$canvas.focus()
@@ -71,6 +70,7 @@ define ["board", "taskrunner", "utilities", "globals", "dialog", "npc", "mapper"
 				console.log battler.getActive()
 		CUTSCENE: (key) ->
 		TRAVEL: (key) -> 
+			PC = taskrunner.getPC()
 			switch key
 				when kc["UP"] 	 then PC.moveUp()
 				when kc["RIGHT"] then PC.moveRight()

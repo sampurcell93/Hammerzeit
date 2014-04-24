@@ -27,7 +27,6 @@
       _dispatchmenu = new DispatchMenu({
         collection: collection
       });
-      console.log(_dispatchmenu);
       return _dispatchmenu.$el.appendTo($wrapper);
     });
     PlayerDispatch = (function(_super) {
@@ -509,7 +508,7 @@
 
       StatList.prototype.className = 'attribute-list';
 
-      StatList.prototype.template = "<li><span class='key'><%= key %>:</span> <%= val %></li>";
+      StatList.prototype.template = "<li class='stat-item' title='<%= key %>'><%= val %></li>";
 
       StatList.prototype.objTemplate = $("#stat-list-obj").html();
 

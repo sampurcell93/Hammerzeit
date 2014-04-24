@@ -6,7 +6,7 @@ define ["battler", "mapcreator", "utilities", "board", "dialog", "globals", "tas
 	_triggers = {
 		"test": -> alert("you triggered my trap")
 	}
-	PC = player.PC
+	PC = taskrunner.getPC()
 	stage = board.getStage()
 	# This is the bare array of map identifiers, elevation, enterable, trigger IDs, etc
 	_stageObj = {}

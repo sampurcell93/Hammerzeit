@@ -2,12 +2,11 @@
   var __hasProp = {}.hasOwnProperty,
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
-  define(["board", "globals", "utilities", "mapper", "npc", "mapcreator", "player", "cast", "items"], function(board, globals, ut, mapper, NPC, mapcreator, player, cast, items) {
-    var Battle, Dispatcher, Enemy, GridOverlay, GridSquare, InitiativeQueue, NPCArray, PCs, Player, Timer, battle_events, discardDispatch, getActive, getQueue, map, setPotentialMoves, stage, states, virtualMovePossibilities, _active_chars, _activebattle, _activemap, _ref, _ref1, _ref2, _ref3, _shared, _sm, _timer, _ts;
+  define(["board", "globals", "utilities", "taskrunner", "mapper", "npc", "mapcreator", "player", "cast", "items"], function(board, globals, ut, taskrunner, mapper, NPC, mapcreator, player, cast, items) {
+    var Battle, Dispatcher, Enemy, GridOverlay, GridSquare, InitiativeQueue, NPCArray, Player, Timer, battle_events, discardDispatch, getActive, getQueue, map, setPotentialMoves, stage, states, virtualMovePossibilities, _activebattle, _activemap, _ref, _ref1, _ref2, _ref3, _shared, _sm, _timer, _ts;
     window.t = function() {
       return getQueue().next();
     };
-    PCs = player.PCs;
     Player = player.model;
     NPCArray = NPC.NPCArray;
     Enemy = NPC.Enemy;
@@ -18,10 +17,228 @@
     states = ['choosingmoves', 'choosingattacks', 'menuopen'];
     battle_events = _.extend({}, Backbone.Events);
     _activebattle = null;
-    _active_chars = PCs;
     _shared = globals.shared_events;
     _activemap = null;
     _ts = globals.map.tileside;
+    Battle = (function(_super) {
+      __extends(Battle, _super);
+
+      function Battle() {
+        _ref = Battle.__super__.constructor.apply(this, arguments);
+        return _ref;
+      }
+
+      Battle.prototype.states = [];
+
+      Battle.prototype.defaults = function() {
+        var InitQueue, PCs;
+        InitQueue = new InitiativeQueue();
+        PCs = InitQueue.PCs = taskrunner.getParty();
+        return {
+          NPCs: new NPCArray,
+          InitQueue: InitQueue,
+          avglevel: PCs.getAverageLevel(),
+          numenemies: 1,
+          enemyBounds: {
+            min_x: 0,
+            max_x: map.c_width,
+            min_y: 0,
+            max_y: map.c_height
+          }
+        };
+      };
+
+      Battle.prototype.initialize = function() {
+        var PC;
+        this.PC = PC = taskrunner.getPC();
+        this.dispatcher = new Dispatcher(PC.marker.x, PC.marker.y);
+        this.listenTo(this.get("NPCs"), {
+          die: this.checkStillLiving
+        });
+        return this.on({
+          "choosingmoves": function() {
+            return this.clearAttackZone();
+          },
+          "choosingattacks": function() {
+            return this.clearPotentialMoves();
+          }
+        });
+      };
+
+      Battle.prototype.addState = function(newstate) {
+        if (this.hasState(newstate) === false) {
+          return this.states.push(newstate);
+        }
+      };
+
+      Battle.prototype.setState = function(newstate) {
+        this.trigger("newstate");
+        this.states = [newstate];
+        return this;
+      };
+
+      Battle.prototype.removeState = function(removeme) {
+        var index;
+        if (this.states.length > 1) {
+          index = this.states.indexOf(removeme);
+          if (index !== -1) {
+            this.states.splice(index, 1);
+          }
+        } else {
+          throw new Error("The board currently has only one state - you can't remove it. Try adding another state first.");
+        }
+        return this;
+      };
+
+      Battle.prototype.hasState = function(checkstate) {
+        return this.states === checkstate.toUpperCase();
+      };
+
+      Battle.prototype.checkStillLiving = function(model, collection, options) {
+        var flag,
+          _this = this;
+        if (collection) {
+          flag = true;
+          _.each(collection.models, function(character) {
+            if (character.dead === false) {
+              return flag = false;
+            }
+          });
+          return flag;
+        }
+        return false;
+      };
+
+      Battle.prototype.removeTravelPC = function() {
+        stage.removeChild(this.PC.marker);
+        this.PC.leaveSquare();
+        return this.PC.setPos(0, 0);
+      };
+
+      Battle.prototype.begin = function(type, opts) {
+        this.removeTravelPC();
+        this.dispatcher.show().showDispatchMenu();
+        this.grid.activate();
+        if (type === "random") {
+          return this.randomize(opts);
+        } else {
+          return this.load(type, opts);
+        }
+      };
+
+      Battle.prototype.load = function(id) {
+        this.url = this.id || globals.battle_dir + id;
+        return this.fetch({
+          success: function(battle) {
+            return console.log(battle);
+          }
+        });
+      };
+
+      Battle.prototype.randomize = function(o) {
+        var i, n, names, _i, _ref1;
+        if (o == null) {
+          o = {};
+        }
+        o = _.extend(this.defaults(), o);
+        names = ["Steve", "John", "Ken", "Tom", "Bob", "Zeke", "Dan"];
+        for (i = _i = 0, _ref1 = o.numenemies; 0 <= _ref1 ? _i < _ref1 : _i > _ref1; i = 0 <= _ref1 ? ++_i : --_i) {
+          this.get("NPCs").add(n = new Enemy({
+            name: names[i]
+          }, {
+            parse: true
+          }));
+          this.get("InitQueue").add(n);
+          n.addToMap();
+          globals.shared_events.trigger("bindmenu", n);
+        }
+        this.get("InitQueue").sort();
+        return this;
+      };
+
+      Battle.prototype.destroy = function() {
+        this.destructor();
+        return Battle.__super__.destroy.apply(this, arguments);
+      };
+
+      Battle.prototype.destructor = function() {
+        var NPCs, npc;
+        NPCs = this.get("NPCs");
+        while (npc = NPCs.first()) {
+          npc.leaveSquare();
+          stage.removeChild(npc.marker);
+          npc.destroy();
+        }
+        return this;
+      };
+
+      Battle.prototype.clearPotentialMoves = function() {
+        if (this.potential_moves == null) {
+          return this;
+        }
+        _.each(this.potential_moves.models, function(tile) {
+          return tile.removePotentialMovePath();
+        });
+        return this;
+      };
+
+      Battle.prototype.clearAttackZone = function() {
+        if (this.attack_zone == null) {
+          return this;
+        }
+        _.each(this.attack_zone.models, function(tile) {
+          return tile.trigger("removeattackzone");
+        });
+        return this;
+      };
+
+      Battle.prototype.clearAllHighlights = function() {
+        this.clearAttackZone();
+        return this.clearPotentialMoves();
+      };
+
+      Battle.prototype.checkEndOfBattle = function(type) {
+        var NPCArr, PCArr, initiative;
+        initiative = this.get("InitQueue").models;
+        NPCArr = [];
+        PCArr = [];
+        _.each(initiative, function(character) {
+          if (character instanceof Player) {
+            return PCArr.push(character);
+          } else {
+            return NPCArr.push(character);
+          }
+        });
+        if (NPCArr.length === 0) {
+          return alert("you won!");
+        } else if (PCArr.length === 0) {
+          return alert("they won :/");
+        }
+      };
+
+      Battle.prototype.virtualMovePossibilities = function() {
+        return this.grid.virtualMovePossibilities.apply(this.grid, arguments);
+      };
+
+      Battle.prototype.pulseGrid = function() {
+        return this.grid.model.trigger("pulse");
+      };
+
+      Battle.prototype.activateGrid = function() {
+        return this.grid.activate();
+      };
+
+      Battle.prototype.deactivateGrid = function() {
+        return this.grid.deactivate();
+      };
+
+      Battle.prototype.toggleGrid = function() {
+        return this.grid.toggle();
+      };
+
+      return Battle;
+
+    })(Backbone.Model);
     Dispatcher = (function() {
       Dispatcher.prototype.visible = false;
 
@@ -62,7 +279,7 @@
       }
 
       Dispatcher.prototype.showDispatchMenu = function() {
-        battle_events.trigger("showDispatchMenu", player.PCs);
+        battle_events.trigger("showDispatchMenu", taskrunner.getParty());
         return this;
       };
 
@@ -110,8 +327,8 @@
       __extends(InitiativeQueue, _super);
 
       function InitiativeQueue() {
-        _ref = InitiativeQueue.__super__.constructor.apply(this, arguments);
-        return _ref;
+        _ref1 = InitiativeQueue.__super__.constructor.apply(this, arguments);
+        return _ref1;
       }
 
       InitiativeQueue.prototype.current_index = 0;
@@ -275,223 +492,6 @@
 
     })();
     _timer = new Timer($("#turn-progress"), $("#turn-progress-number"));
-    Battle = (function(_super) {
-      __extends(Battle, _super);
-
-      function Battle() {
-        _ref1 = Battle.__super__.constructor.apply(this, arguments);
-        return _ref1;
-      }
-
-      Battle.prototype.states = [];
-
-      Battle.prototype.defaults = function() {
-        var InitQueue;
-        InitQueue = new InitiativeQueue();
-        InitQueue.PCs = PCs;
-        return {
-          NPCs: new NPCArray,
-          InitQueue: InitQueue,
-          avglevel: PCs.getAverageLevel(),
-          numenemies: 1,
-          enemyBounds: {
-            min_x: 0,
-            max_x: map.c_width,
-            min_y: 0,
-            max_y: map.c_height
-          }
-        };
-      };
-
-      Battle.prototype.initialize = function() {
-        this.dispatcher = new Dispatcher(PC.marker.x, PC.marker.y);
-        this.listenTo(this.get("NPCs"), {
-          die: this.checkStillLiving
-        });
-        return this.on({
-          "choosingmoves": function() {
-            return this.clearAttackZone();
-          },
-          "choosingattacks": function() {
-            return this.clearPotentialMoves();
-          }
-        });
-      };
-
-      Battle.prototype.addState = function(newstate) {
-        if (this.hasState(newstate) === false) {
-          return this.states.push(newstate);
-        }
-      };
-
-      Battle.prototype.setState = function(newstate) {
-        this.trigger("newstate");
-        this.states = [newstate];
-        return this;
-      };
-
-      Battle.prototype.removeState = function(removeme) {
-        var index;
-        if (this.states.length > 1) {
-          index = this.states.indexOf(removeme);
-          if (index !== -1) {
-            this.states.splice(index, 1);
-          }
-        } else {
-          throw new Error("The board currently has only one state - you can't remove it. Try adding another state first.");
-        }
-        return this;
-      };
-
-      Battle.prototype.hasState = function(checkstate) {
-        return this.states === checkstate.toUpperCase();
-      };
-
-      Battle.prototype.checkStillLiving = function(model, collection, options) {
-        var flag,
-          _this = this;
-        if (collection) {
-          flag = true;
-          _.each(collection.models, function(character) {
-            if (character.dead === false) {
-              return flag = false;
-            }
-          });
-          return flag;
-        }
-        return false;
-      };
-
-      Battle.prototype.removeTravelPC = function() {
-        stage.removeChild(player.PC.marker);
-        player.PC.leaveSquare();
-        return player.PC.setPos(0, 0);
-      };
-
-      Battle.prototype.begin = function(type, opts) {
-        this.removeTravelPC();
-        this.dispatcher.show().showDispatchMenu();
-        this.grid.activate();
-        if (type === "random") {
-          return this.randomize(opts);
-        } else {
-          return this.load(type, opts);
-        }
-      };
-
-      Battle.prototype.load = function(id) {
-        this.url = this.id || globals.battle_dir + id;
-        return this.fetch({
-          success: function(battle) {
-            return console.log(battle);
-          }
-        });
-      };
-
-      Battle.prototype.randomize = function(o) {
-        var i, n, names, _i, _ref2;
-        if (o == null) {
-          o = {};
-        }
-        o = _.extend(this.defaults(), o);
-        names = ["Steve", "John", "Ken", "Tom", "Bob", "Zeke", "Dan"];
-        for (i = _i = 0, _ref2 = o.numenemies; 0 <= _ref2 ? _i < _ref2 : _i > _ref2; i = 0 <= _ref2 ? ++_i : --_i) {
-          this.get("NPCs").add(n = new Enemy({
-            name: names[i]
-          }, {
-            parse: true
-          }));
-          this.get("InitQueue").add(n);
-          n.addToMap();
-          globals.shared_events.trigger("bindmenu", n);
-        }
-        this.get("InitQueue").sort();
-        return this;
-      };
-
-      Battle.prototype.destroy = function() {
-        this.destructor();
-        return Battle.__super__.destroy.apply(this, arguments);
-      };
-
-      Battle.prototype.destructor = function() {
-        var NPCs, npc;
-        NPCs = this.get("NPCs");
-        while (npc = NPCs.first()) {
-          npc.leaveSquare();
-          stage.removeChild(npc.marker);
-          npc.destroy();
-        }
-        return this;
-      };
-
-      Battle.prototype.clearPotentialMoves = function() {
-        if (this.potential_moves == null) {
-          return this;
-        }
-        _.each(this.potential_moves.models, function(tile) {
-          return tile.removePotentialMovePath();
-        });
-        return this;
-      };
-
-      Battle.prototype.clearAttackZone = function() {
-        if (this.attack_zone == null) {
-          return this;
-        }
-        _.each(this.attack_zone.models, function(tile) {
-          return tile.trigger("removeattackzone");
-        });
-        return this;
-      };
-
-      Battle.prototype.clearAllHighlights = function() {
-        this.clearAttackZone();
-        return this.clearPotentialMoves();
-      };
-
-      Battle.prototype.checkEndOfBattle = function(type) {
-        var NPCArr, PCArr, initiative;
-        initiative = this.get("InitQueue").models;
-        NPCArr = [];
-        PCArr = [];
-        _.each(initiative, function(character) {
-          if (character instanceof Player) {
-            return PCArr.push(character);
-          } else {
-            return NPCArr.push(character);
-          }
-        });
-        if (NPCArr.length === 0) {
-          return alert("you won!");
-        } else if (PCArr.length === 0) {
-          return alert("they won :/");
-        }
-      };
-
-      Battle.prototype.virtualMovePossibilities = function() {
-        return this.grid.virtualMovePossibilities.apply(this.grid, arguments);
-      };
-
-      Battle.prototype.pulseGrid = function() {
-        return this.grid.model.trigger("pulse");
-      };
-
-      Battle.prototype.activateGrid = function() {
-        return this.grid.activate();
-      };
-
-      Battle.prototype.deactivateGrid = function() {
-        return this.grid.deactivate();
-      };
-
-      Battle.prototype.toggleGrid = function() {
-        return this.grid.toggle();
-      };
-
-      return Battle;
-
-    })(Backbone.Model);
     GridOverlay = (function(_super) {
       __extends(GridOverlay, _super);
 
@@ -968,7 +968,7 @@
         return getActive(opts);
       },
       getPlayers: function() {
-        return player.PCs;
+        return taskrunner.getParty();
       },
       getNPCs: function() {
         return _activebattle.get("NPCs");

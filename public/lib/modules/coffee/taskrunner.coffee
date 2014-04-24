@@ -1,22 +1,20 @@
-define ["globals", "utilities", "battler", "board", "npc", "player", "mapper", "mapcreator", "menus"], (globals, ut, battler, board, NPC, player, mapper, mapcreator, menus) ->
-	window.PC = player.PC
+define ["globals", "utilities", "board", "npc", "player", "mapper", "mapcreator"], (globals, ut, board, NPC, player, mapper, mapcreator) ->
 	_user = null
 	globals.shared_events.on "newgame", -> newGame()
+	globals.shared_events.on "savegame", -> saveGame()
 
 
 	class User extends Backbone.Model
-		defaults: 
-			party: new NPC.NPCArray([new player.model])
 		idAttribute: '_id'
 		url: ->
 			if @get("username")
 				return '/users/' + @get("username")
 			else "/users/"
 		parse: (user) ->
-			console.log "parsing shit"
-			user.party = new NPC.NPCArray(user.party, {parse: true})
+			user.party = new player.PCArray(user.party, {parse: true})
 			user
 		initialize: ->
+			@set "party", new player.PCArray([new player.model({path: 'Dragoon'})])
 		clean: (pcs=[])->
 			j = @toJSON()
 			_.each j.party.models, (p) =>
@@ -35,8 +33,7 @@ define ["globals", "utilities", "battler", "board", "npc", "player", "mapper", "
 			"click .js-start-game": ->
 				_user = new User({username: $(".username").val()})
 				_user.fetch
-					success: ->
-						console.log arguments
+					success: -> loadStage 1
 					parse: true
 
 
@@ -53,6 +50,7 @@ define ["globals", "utilities", "battler", "board", "npc", "player", "mapper", "
 					success: (u, resp) => 
 						ut.destroyModal() 
 						localStorage.setItem "username", resp.username
+						loadStage 1
 				}
 
 
@@ -60,6 +58,7 @@ define ["globals", "utilities", "battler", "board", "npc", "player", "mapper", "
 		board.addState "LOADING"
 		# Stage not to be confused with "level": Rename todo
 		require ["lib/modules/js/stage" + module], (level) ->
+			PC = getPC()
 			board.removeState("LOADING")
 			PC.on "change:current_chunk", () ->
 				ut.c "CHUNK CHANGE REGISTERED IN TASKRUNNER"
@@ -69,7 +68,6 @@ define ["globals", "utilities", "battler", "board", "npc", "player", "mapper", "
 				mapcreator.render()
 				full_chunk = level.getBitmap()[newchunk.y][newchunk.x]
 				mapper.renderChunk full_chunk, board.getStage()
-				battler.clearPotentialMoves()
 
 	loadGame = (id) ->
 		loader = new Loader({username: id})
@@ -77,6 +75,11 @@ define ["globals", "utilities", "battler", "board", "npc", "player", "mapper", "
 	newGame = ->
 		signup = new SignUp()
 		ut.launchModal signup.render().el
+
+	saveGame = ->
+		_user.save(_user.clean(), success: -> alert("game saved"))
+	getPC 	 = -> _user.get("party").at(0)
+	getParty = -> _user.get("party")
 				
 
 	t = window.taskrunner = {
@@ -88,5 +91,6 @@ define ["globals", "utilities", "battler", "board", "npc", "player", "mapper", "
 		loadStage: (module) -> loadStage module
 		setUser: (key, val) -> _user.set key, val
 		getUser: -> _user
-
+		getPC: -> getPC()
+		getParty: -> getParty()
 	}

@@ -2,12 +2,14 @@
   var __hasProp = {}.hasOwnProperty,
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
-  define(["globals", "utilities", "battler", "board", "npc", "player", "mapper", "mapcreator", "menus"], function(globals, ut, battler, board, NPC, player, mapper, mapcreator, menus) {
-    var Loader, SignUp, User, loadGame, loadStage, newGame, t, _ref, _ref1, _ref2, _user;
-    window.PC = player.PC;
+  define(["globals", "utilities", "board", "npc", "player", "mapper", "mapcreator"], function(globals, ut, board, NPC, player, mapper, mapcreator) {
+    var Loader, SignUp, User, getPC, getParty, loadGame, loadStage, newGame, saveGame, t, _ref, _ref1, _ref2, _user;
     _user = null;
     globals.shared_events.on("newgame", function() {
       return newGame();
+    });
+    globals.shared_events.on("savegame", function() {
+      return saveGame();
     });
     User = (function(_super) {
       __extends(User, _super);
@@ -16,10 +18,6 @@
         _ref = User.__super__.constructor.apply(this, arguments);
         return _ref;
       }
-
-      User.prototype.defaults = {
-        party: new NPC.NPCArray([new player.model])
-      };
 
       User.prototype.idAttribute = '_id';
 
@@ -32,14 +30,19 @@
       };
 
       User.prototype.parse = function(user) {
-        console.log("parsing shit");
-        user.party = new NPC.NPCArray(user.party, {
+        user.party = new player.PCArray(user.party, {
           parse: true
         });
         return user;
       };
 
-      User.prototype.initialize = function() {};
+      User.prototype.initialize = function() {
+        return this.set("party", new player.PCArray([
+          new player.model({
+            path: 'Dragoon'
+          })
+        ]));
+      };
 
       User.prototype.clean = function(pcs) {
         var j,
@@ -87,7 +90,7 @@
           });
           return _user.fetch({
             success: function() {
-              return console.log(arguments);
+              return loadStage(1);
             },
             parse: true
           });
@@ -125,7 +128,8 @@
             return _user.save(clean, {
               success: function(u, resp) {
                 ut.destroyModal();
-                return localStorage.setItem("username", resp.username);
+                localStorage.setItem("username", resp.username);
+                return loadStage(1);
               }
             });
           }
@@ -138,6 +142,8 @@
     loadStage = function(module) {
       board.addState("LOADING");
       return require(["lib/modules/js/stage" + module], function(level) {
+        var PC;
+        PC = getPC();
         board.removeState("LOADING");
         return PC.on("change:current_chunk", function() {
           var full_chunk, newchunk;
@@ -147,8 +153,7 @@
           mapcreator.loadChunk(level.getBitmap()[newchunk.y][newchunk.x], newchunk.x, newchunk.y);
           mapcreator.render();
           full_chunk = level.getBitmap()[newchunk.y][newchunk.x];
-          mapper.renderChunk(full_chunk, board.getStage());
-          return battler.clearPotentialMoves();
+          return mapper.renderChunk(full_chunk, board.getStage());
         });
       });
     };
@@ -163,6 +168,19 @@
       var signup;
       signup = new SignUp();
       return ut.launchModal(signup.render().el);
+    };
+    saveGame = function() {
+      return _user.save(_user.clean(), {
+        success: function() {
+          return alert("game saved");
+        }
+      });
+    };
+    getPC = function() {
+      return _user.get("party").at(0);
+    };
+    getParty = function() {
+      return _user.get("party");
     };
     return t = window.taskrunner = {
       newGame: function() {
@@ -186,6 +204,12 @@
       },
       getUser: function() {
         return _user;
+      },
+      getPC: function() {
+        return getPC();
+      },
+      getParty: function() {
+        return getParty();
       }
     };
   });

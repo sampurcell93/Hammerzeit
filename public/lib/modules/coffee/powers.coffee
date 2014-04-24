@@ -9,6 +9,9 @@ define ["globals", "utilities", "board", "items"], (globals, utilities, board, i
         }
     }
 
+    Modifier = items.Modifier
+    ModifierCollection = items.ModifierCollection
+
     class Power extends Backbone.Model
         defaults:
             # How much creatine does this cost?
@@ -23,7 +26,9 @@ define ["globals", "utilities", "board", "items"], (globals, utilities, board, i
             # What is the power's base damage?
             damage: 1
             # What type of dice should we roll to augment damage?
-            modifier: 4
+            damage_die: 4
+            # What attributes are applied other than HP?
+            modifiers: new ModifierCollection
             # Action type?
             action: 'standard'
             # What search pattern should we use?
@@ -39,10 +44,10 @@ define ["globals", "utilities", "board", "items"], (globals, utilities, board, i
             if _.isFunction(use) then use.call(@, subject, attacker)
             @set("uses", @get("uses") - 1)
             if @resolve(attacker, subject) is true
-                subject.takeDamage(ut.roll(@get "modifier"), 1, @get("damage"))
+                subject.takeDamage(ut.roll(@get "damage_die"), 1, @get("damage"))
                 attacker.useCreatine(@get "creatine")
+                subject.applyModifiers(@get("modifiers"))
             else subject.drawStatusChange({text: 'MISS'})
-            console.log opts
             attacker.takeAction(@get "action") unless opts.take_action is false
             @
         resolve: (attacker=@belongsTo(), subject) ->

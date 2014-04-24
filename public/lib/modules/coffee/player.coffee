@@ -66,14 +66,14 @@ define ["utilities", "npc", "board", "globals", "mapper", "items", "powers", "ba
 				atk: 3
 			}
 		dispatch: ->
+			console.log "dispatching"
 			globals.shared_events.trigger "bindmenu", @
 			super
 
-	PCs = new NPC.NPCArray
-	# PCs.add new player({path: "Healer"})
+	class PCArray extends NPC.NPCArray
+		model: player
 
 	return {
 		model: player
-		PC: PCs.at(0)
-		PCs: PCs
+		PCArray: PCArray
 	}

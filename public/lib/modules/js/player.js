@@ -3,7 +3,7 @@
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
   define(["utilities", "npc", "board", "globals", "mapper", "items", "powers", "backbone", "easel", "underscore"], function(ut, NPC, board, globals, mapper, items, powers) {
-    var PCs, player, stage, _ref;
+    var PCArray, player, stage, _ref, _ref1;
     stage = board.getStage();
     player = (function(_super) {
       __extends(player, _super);
@@ -119,6 +119,7 @@
       };
 
       player.prototype.dispatch = function() {
+        console.log("dispatching");
         globals.shared_events.trigger("bindmenu", this);
         return player.__super__.dispatch.apply(this, arguments);
       };
@@ -126,11 +127,22 @@
       return player;
 
     })(NPC.NPC);
-    PCs = new NPC.NPCArray;
+    PCArray = (function(_super) {
+      __extends(PCArray, _super);
+
+      function PCArray() {
+        _ref1 = PCArray.__super__.constructor.apply(this, arguments);
+        return _ref1;
+      }
+
+      PCArray.prototype.model = player;
+
+      return PCArray;
+
+    })(NPC.NPCArray);
     return {
       model: player,
-      PC: PCs.at(0),
-      PCs: PCs
+      PCArray: PCArray
     };
   });
 

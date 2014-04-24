@@ -55,6 +55,7 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 				AC: 10
 				atk: 3
 				current_chunk: { x: 0, y: 0 }
+				currentstage: 1
 				creatine: 10
 				max_creatine: 10
 				HP: 10
@@ -93,15 +94,12 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 						[165, 165, 55, 55, 0]]
 				}
 			}
-		initialize: ({frames, spriteimg, path} = {}) ->
-			@setPath path
-			@set "powers", powers.getDefaultPowers({belongsTo: @})
-			@set "inventory",  @get("path").getDefaultInventory({belongsTo: @})
+		initialize: ({pow, frames, spriteimg, path, inventory} = {}) ->
+			unless path instanceof Backbone.Model then @setPath path
+			@setPowers(pow)
+			@setInventory(inventory)
 			@listenToOnce globals.shared_events, "items_loaded", =>
 				@set("inventory", @get("path").getDefaultInventory({belongsTo: @}))
-				i = @get "inventory"
-				hoe = items.get "Hoe"
-				@obtain hoe, 5
 			@listenToOnce globals.shared_events, "powers_loaded", =>
 				@set("powers", pow = powers.getDefaultPowers({belongsTo: @}))
 			_.bind @move_callbacks.done, @
@@ -122,6 +120,14 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 			@createMarker()
 			@on "add", (model, coll) => if coll.type is "InitiativeQueue" then @activity_queue = coll
 			@cursor()
+			@
+		setPowers:(pow=powers.getDefaultPowers({belongsTo: @})) ->
+			_.each pow.models, (p) => p.set("belongsTo", @)
+			@set "powers", pow
+			@
+		setInventory:(inventory=@get("path").getDefaultInventory({belongsTo: @})) ->
+			_.each inventory.models, (i) => i.set("belongsTo", @)
+			@set "inventory", inventory
 			@
 		# Expects either an array of modifiers (found in items.coffee)
 		# or a single modifier. Pass in standard Backbone event options
@@ -351,7 +357,7 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 		# Removes a specific modifier
 		removeModifiers: (modifiers, opts={}) ->
 			if modifiers instanceof Modifier
-				@modifiers.remove modifiers
+				@modifiers.remove modifiers, opts
 			else 
 				_.each modifiers.models, (mod, i) => 
 					if i is 0 then i = 100

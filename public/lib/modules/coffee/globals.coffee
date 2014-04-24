@@ -1,6 +1,6 @@
 define ["underscore", "backbone"], =>
 
-	return {
+	return window.globals = {
 		name: 'Hammerzeit!'
 		version: 0.1
 		author: "Sam Purcell"

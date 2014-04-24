@@ -2,6 +2,7 @@ express = require("express")
 app = do express
 mongo = require('mongodb');
 db = require("mongojs").connect("mongodb://127.0.0.1/Hammerzeit", ["players"]);
+_ = require "underscore"
 # bcrypt = require('bcrypt');
 
 
@@ -22,19 +23,25 @@ app.configure ->
 app.get "/", (req, res) ->
   res.render "index"
 
+app.put "/users/:name", (req, res) ->
+  db.players.update({username: req.params.name}, _.omit(req.body, "_id"), (err, updated) =>
+      if !err
+        res.json success: true
+    )
+
 app.post "/users/:name", (req, res) ->
   password = req.body.password;
   username = req.params.name;
   db.players.findAndModify({
-    query: {username: req.body.username}
+    query: {username: username}
     update: {
       $setOnInsert: req.body
     },
-    new: true,   
+    new: true
     upsert: true 
   }, (err, updated) => 
       if !err
-        res.json username: updated.username
+        res.json updated
   )
 
 app.get "/users/:name", (req, res) ->

@@ -3,7 +3,7 @@
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
   define(["globals", "utilities", "board", "items"], function(globals, utilities, board, items) {
-    var Power, PowerSet, get, getPower, _default, _pathopts, _powers, _ref, _ref1, _useFns;
+    var Modifier, ModifierCollection, Power, PowerSet, get, getPower, _default, _pathopts, _powers, _ref, _ref1, _useFns;
     _powers = null;
     _default = ["Strike", "Arrow", "Whirl"];
     _pathopts = {
@@ -12,6 +12,8 @@
         diagonal: true
       }
     };
+    Modifier = items.Modifier;
+    ModifierCollection = items.ModifierCollection;
     Power = (function(_super) {
       __extends(Power, _super);
 
@@ -27,7 +29,8 @@
         name: 'Basic',
         uses: Infinity,
         damage: 1,
-        modifier: 4,
+        damage_die: 4,
+        modifiers: new ModifierCollection,
         action: 'standard',
         spread: 'range',
         defense: 'AC',
@@ -50,14 +53,14 @@
         }
         this.set("uses", this.get("uses") - 1);
         if (this.resolve(attacker, subject) === true) {
-          subject.takeDamage(ut.roll(this.get("modifier")), 1, this.get("damage"));
+          subject.takeDamage(ut.roll(this.get("damage_die")), 1, this.get("damage"));
           attacker.useCreatine(this.get("creatine"));
+          subject.applyModifiers(this.get("modifiers"));
         } else {
           subject.drawStatusChange({
             text: 'MISS'
           });
         }
-        console.log(opts);
         if (opts.take_action !== false) {
           attacker.takeAction(this.get("action"));
         }

@@ -22,7 +22,6 @@ define ["powers", "globals", "utilities", "dialog", "battler", "board", "jquery-
     battler.events.on "showDispatchMenu", (collection) ->
         closeAll()
         _dispatchmenu = new DispatchMenu collection: collection
-        console.log _dispatchmenu
         _dispatchmenu.$el.appendTo $wrapper
 
 
@@ -251,7 +250,7 @@ define ["powers", "globals", "utilities", "dialog", "battler", "board", "jquery-
     class StatList extends Backbone.View
         tagName: 'ul'
         className: 'attribute-list'
-        template: "<li><span class='key'><%= key %>:</span> <%= val %></li>"
+        template: "<li class='stat-item' title='<%= key %>'><%= val %></li>"
         objTemplate: $("#stat-list-obj").html()
         initialize: ->
             # Lazy. todo: fix

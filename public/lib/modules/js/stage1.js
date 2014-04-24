@@ -8,7 +8,7 @@
         return alert("you triggered my trap");
       }
     };
-    PC = player.PC;
+    PC = taskrunner.getPC();
     stage = board.getStage();
     _stageObj = {};
     _bitmap = [];

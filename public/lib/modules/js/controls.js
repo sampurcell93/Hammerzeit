@@ -1,6 +1,6 @@
 (function() {
   define(["board", "taskrunner", "utilities", "globals", "dialog", "npc", "mapper", "mapcreator", "battler", "menus", "player", "jquery"], function(board, taskrunner, ut, globals, dialog, NPC, mapper, mapcreator, battler, menus, player) {
-    var $c, PC, delegate, generalFns, kc, keysdisabled, stateFns, _priority_queue,
+    var $c, delegate, generalFns, kc, keysdisabled, stateFns, _priority_queue,
       _this = this;
     _priority_queue = ["CUTSCENE", "MENUOPEN", "DIALOG", "BATTLE", "TRAVEL", "INTRO", "WAITING", "DRAWING", "LOADING"];
     kc = {
@@ -24,7 +24,6 @@
       ZOOMIN: 90,
       ZOOMOUT: 79
     };
-    PC = player.PC;
     keysdisabled = false;
     $c = board.$canvas.focus();
     Number.prototype.isStateDependent = function() {
@@ -70,6 +69,8 @@
       },
       CUTSCENE: function(key) {},
       TRAVEL: function(key) {
+        var PC;
+        PC = taskrunner.getPC();
         switch (key) {
           case kc["UP"]:
             return PC.moveUp();
