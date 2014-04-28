@@ -23,6 +23,7 @@ require.config
 		'items'		: 'lib/modules/js/items'
 		'powers'	: 'lib/modules/js/powers'
 		'cast'		: 'lib/modules/js/cast'
+		'console'	: 'lib/modules/js/console'
 
 
 define ['utilities', 'board', 'taskrunner', "controls"], (ut, board, taskrunner) ->

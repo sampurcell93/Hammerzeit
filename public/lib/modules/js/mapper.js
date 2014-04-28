@@ -34,17 +34,20 @@
       };
 
       Tile.prototype.initialize = function() {
-        return this.pathFromStart = {
+        var _this = this;
+        this.pathFromStart = {
           start: {
             x: 0,
             y: 0
           },
           path: []
         };
+        return this.on("change:occupied_by", function(model, value) {});
       };
 
       Tile.prototype.expose = function() {
-        return setTile(this.attributes);
+        setTile(this.attributes);
+        return this;
       };
 
       Tile.prototype.removePotentialMovePath = function() {
@@ -54,16 +57,16 @@
       };
 
       Tile.prototype.isOccupied = function() {
-        return this.bitmap.occupied === true;
+        return this.get("occupied") === true;
       };
 
       Tile.prototype.getOccupant = function() {
-        return this.bitmap.occupiedBy;
+        return this.get("occupied_by");
       };
 
       Tile.prototype.occupy = function(obj) {
-        this.bitmap.occupied = true;
-        this.bitmap.occupiedBy = obj;
+        this.set("occupied", true);
+        this.set("occupied_by", obj);
         return this;
       };
 
@@ -84,6 +87,12 @@
         } else {
           return true;
         }
+      };
+
+      Tile.prototype.leave = function() {
+        this.set("occupied", false);
+        this.set("occupied_by", null);
+        return this;
       };
 
       return Tile;

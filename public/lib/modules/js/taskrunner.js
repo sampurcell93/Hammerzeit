@@ -5,10 +5,13 @@
   define(["globals", "utilities", "board", "npc", "player", "mapper", "mapcreator"], function(globals, ut, board, NPC, player, mapper, mapcreator) {
     var Loader, SignUp, User, getPC, getParty, getPlayer, loadGame, loadStage, newGame, saveGame, t, _ref, _ref1, _ref2, _user;
     _user = null;
-    globals.shared_events.on("newgame", function() {
+    globals.shared_events.on("game:new", function() {
       return newGame();
     });
-    globals.shared_events.on("savegame", function() {
+    globals.shared_events.on("game:load", function() {
+      return loadGame();
+    });
+    globals.shared_events.on("game:save", function() {
       return saveGame();
     });
     User = (function(_super) {

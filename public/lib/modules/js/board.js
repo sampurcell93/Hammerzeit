@@ -121,7 +121,7 @@
         mouseEnabled: true
       });
       newgame.addEventListener("click", function() {
-        return globals.shared_events.trigger("newgame");
+        return globals.shared_events.trigger("game:new");
       });
       loadgame = new createjs.Text("Load Game", "30px Arial", "#f9f9f9");
       _.extend(loadgame, {
@@ -132,7 +132,7 @@
       });
       ut.addEventListeners(loadgame, {
         "click": function() {
-          return taskrunner.loadGame();
+          return globals.shared_events.trigger("game:load");
         },
         "mouseover": function() {
           return loadgame.font = "bold 30px Arial";
@@ -190,7 +190,7 @@
       var fn;
       if (hasState(newstate) === false) {
         state.push(newstate);
-        globals.shared_events.trigger(newstate.toLowerCase());
+        globals.shared_events.trigger("state:" + (newstate.toLowerCase()));
         fn = stateChangeEvents.add[newstate];
         if (fn != null) {
           return fn();
@@ -198,7 +198,8 @@
       }
     };
     setState = function(newstate) {
-      return state = [newstate];
+      state = [newstate];
+      return globals.shared_events.trigger("state:" + (newstate.toLowerCase()));
     };
     removeState = function(removeme) {
       var fn, index;

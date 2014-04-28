@@ -111,13 +111,12 @@ define ['globals', 'utilities', 'jquery', 'underscore', 'easel'], (globals, ut) 
         # Make new game button
         newgame = new createjs.Text("New Game", "30px Arial", "#f9f9f9")
         _.extend newgame, {x: 140, y: 280, shadow: textshadow, cursor: 'pointer', mouseEnabled: true}
-        newgame.addEventListener "click", -> globals.shared_events.trigger "newgame"
+        newgame.addEventListener "click", -> globals.shared_events.trigger "game:new"
         # Make load game button
         loadgame = new createjs.Text("Load Game", "30px Arial", "#f9f9f9")
         _.extend loadgame, {x: 380, y: 280, shadow: textshadow, cursor: 'pointer'}
         ut.addEventListeners loadgame, {
-            "click": ->
-                taskrunner.loadGame()
+            "click": -> globals.shared_events.trigger "game:load"
             "mouseover": ->
                 loadgame.font = "bold 30px Arial"
             "mouseout": ->
@@ -166,12 +165,13 @@ define ['globals', 'utilities', 'jquery', 'underscore', 'easel'], (globals, ut) 
     addState = (newstate) ->
         if hasState(newstate) is false
             state.push newstate
-            globals.shared_events.trigger(newstate.toLowerCase())
+            globals.shared_events.trigger("state:#{newstate.toLowerCase()}")
             fn = stateChangeEvents.add[newstate]
             if fn? then fn()
 
     setState = (newstate) ->
         state = [newstate]
+        globals.shared_events.trigger("state:#{newstate.toLowerCase()}")
 
     removeState = (removeme) ->
         if state.length > 1

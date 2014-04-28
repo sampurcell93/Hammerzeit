@@ -91,7 +91,7 @@
 
       player.prototype.initTurn = function() {
         player.__super__.initTurn.apply(this, arguments);
-        return globals.shared_events.trigger("openmenu");
+        return globals.shared_events.trigger("menu:open", this.menu);
       };
 
       player.prototype.defaults = function() {
@@ -120,7 +120,7 @@
 
       player.prototype.dispatch = function() {
         console.log("dispatching");
-        globals.shared_events.trigger("bindmenu", this);
+        globals.shared_events.trigger("menu:bind", this);
         return player.__super__.dispatch.apply(this, arguments);
       };
 

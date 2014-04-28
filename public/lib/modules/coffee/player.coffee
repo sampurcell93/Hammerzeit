@@ -49,7 +49,7 @@ define ["utilities", "npc", "board", "globals", "mapper", "items", "powers", "ba
 				# console.log "change :)"
 		initTurn: ->
 			super
-			globals.shared_events.trigger "openmenu"
+			globals.shared_events.trigger "menu:open", @menu
 		defaults: ->
 			defaults = super
 			inventory = defaults.inventory
@@ -67,7 +67,7 @@ define ["utilities", "npc", "board", "globals", "mapper", "items", "powers", "ba
 			}
 		dispatch: ->
 			console.log "dispatching"
-			globals.shared_events.trigger "bindmenu", @
+			globals.shared_events.trigger "menu:bind", @
 			super
 
 	class PCArray extends NPC.NPCArray

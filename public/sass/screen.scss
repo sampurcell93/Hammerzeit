@@ -186,7 +186,7 @@ ol {
 
 .enterable-list, .battle-grid-overlay {
     position: absolute;
-    top: 30px;
+    top: 0px;
     max-width: $boardwidth;
     max-height: $boardheight;
     @include no-user-select();
@@ -255,17 +255,17 @@ textarea {
 }
 
 .game-menu {
+    @include border-radius(2px);
+    @include no-user-select();
+    @include box-shadow(0px 0px 4px #111, 0px 3px 7px #000);
+    border-top: 1px solid #888;
     display: none;
     position: absolute;
     right: 0px;
     margin-right: 20px;
     top: 55px;
-    @include border-radius(3px);
-    // border: 1px solid red;
     width: 230px;
-    // border-left: 2px solid #333;
     background: rgba(0,0,0,.6);
-    // outline: none;
 
     &.visible { display: block;}
     
@@ -488,6 +488,7 @@ input {
     @include border-radius(2px);
     @include no-user-select();
     @include box-shadow(0px 0px 4px #111, 0px 3px 7px #000);
+    border-top: 1px solid #888;
     color: #aaa;
     top: 55px;
     left: 15px;
@@ -496,7 +497,6 @@ input {
     display: none;
     background: rgba(0,0,0,.5);
     padding: 5px;
-    border-top: 1px solid #888;
 
 
     &.bottom {
@@ -606,7 +606,6 @@ ul.actions-remaining li {
 .status-bar {
     display: block;
     background: rgba(0,0,0,.55);
-    margin-top: 10px;
 }
 
 .character-list {
@@ -631,7 +630,7 @@ meter {
     @include border-radius(4px);
     width: 100%;
     position: relative;
-    margin: 5px auto;
+    margin: 7px auto;
 
     &::-webkit-meter-inner-element {
         -webkit-user-modify: read-only !important;
@@ -682,6 +681,55 @@ meter {
         position: absolute;
         white-space: nowrap;
     }
+}
 
+.game-console {
+    position: absolute;
+    bottom: 0;
+    height: 60px;
+    width: 100%;
+    background: rgba(0,0,0,.5);
+    border-top: 1px solid #777;
+    color: #ccc;
+    padding: 1px 4px;
+    font-size: .8em;
+    @include transition(height .3s ease-in-out);
 
+    ol {
+        @include transition(height .3s ease-in-out);
+        overflow: auto;
+        list-style: decimal;
+        height: 60px;
+    }
+
+    li {
+        @include border-radius(2px);
+        margin: 3px 5px;
+        padding: 1px 3px;
+        background: rgba(0,0,0,.3);
+        border-top: 1px solid #333;
+    }
+
+    .button {
+        @include transition(top .3s ease-in-out);
+        position: absolute;
+        right: 10px;
+        top: 3px;
+        color: #fff;
+        text-shadow: 0px 1px 3px #222;
+    }
+
+    &.hidden { 
+        height: 0;
+        overflow: visible;
+
+        ol {
+            height: 0;
+            overflow: hidden;
+        }
+
+        .button {
+            top: -25px
+        }
+    }
 }

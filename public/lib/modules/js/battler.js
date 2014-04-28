@@ -2,7 +2,7 @@
   var __hasProp = {}.hasOwnProperty,
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
-  define(["board", "globals", "utilities", "taskrunner", "mapper", "npc", "mapcreator", "player", "cast", "items"], function(board, globals, ut, taskrunner, mapper, NPC, mapcreator, player, cast, items) {
+  define(["console", "board", "globals", "utilities", "taskrunner", "mapper", "npc", "mapcreator", "player", "cast", "items"], function(activity, board, globals, ut, taskrunner, mapper, NPC, mapcreator, player, cast, items) {
     var Battle, Dispatcher, Enemy, GridOverlay, GridSquare, InitiativeQueue, NPCArray, Player, Timer, battle_events, discardDispatch, getActive, getQueue, map, setPotentialMoves, stage, states, virtualMovePossibilities, _activebattle, _activemap, _ref, _ref1, _ref2, _ref3, _shared, _sm, _timer, _ts;
     window.t = function() {
       return getQueue().next();
@@ -72,7 +72,7 @@
       };
 
       Battle.prototype.setState = function(newstate) {
-        this.trigger("newstate");
+        this.trigger("battle:state", newstate);
         this.states = [newstate];
         return this;
       };
@@ -150,7 +150,7 @@
           }));
           this.get("InitQueue").add(n);
           n.addToMap();
-          globals.shared_events.trigger("bindmenu", n);
+          globals.shared_events.trigger("menu:bind", n);
         }
         this.get("InitQueue").sort();
         return this;
@@ -457,7 +457,7 @@
           }
           if (value >= totaltime) {
             clearInterval(_this.interval);
-            globals.shared_events.trigger("timerdone");
+            globals.shared_events.trigger("battle:timerdone", getActive());
             if ((done != null) && _.isFunction(done)) {
               return done();
             }
@@ -723,18 +723,20 @@
 
       GridSquare.prototype.move_fns = {
         clickHandler: function(e, data) {
-          var active_player, moveInterval, path,
+          var active_player, len, moveInterval, path,
             _this = this;
           if (this.moving === true) {
             return this;
           }
           active_player = getActive();
           path = this.model.pathFromStart.path;
+          len = path.length;
           _timer.stop();
           this.moving = true;
           moveInterval = function() {
             var deltas;
             if (_.isEmpty(path)) {
+              activity.emit("" + (active_player.get('type')) + " \"" + (active_player.get('name')) + "\" moved " + len + " squares");
               _this.stopListening(active_player, "donemoving");
               _this.moving = false;
               _activebattle.clearPotentialMoves();
@@ -949,7 +951,7 @@
     getQueue = function() {
       return _activebattle.get("InitQueue");
     };
-    _shared.on("battle", function() {
+    _shared.on("state:battle", function() {
       var grid;
       if (_activebattle) {
         _activebattle.destructor().destroy();

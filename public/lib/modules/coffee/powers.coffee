@@ -98,7 +98,7 @@ define ["globals", "utilities", "board", "items"], (globals, utilities, board, i
             _.each _powers.models, (power) ->
                 use = _useFns[power.get("name")]
                 if use then power.set("use" , use)
-            globals.shared_events.trigger "powers_loaded"
+            globals.shared_events.trigger "powers:loaded"
     # _powers.fetch 
     #     success: ->
     #         console.log _powers

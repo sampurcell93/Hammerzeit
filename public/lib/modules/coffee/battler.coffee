@@ -1,5 +1,4 @@
-define ["board", "globals", "utilities", "taskrunner", "mapper", "npc", "mapcreator", "player", "cast", "items"], (board, globals, ut, taskrunner, mapper, NPC, mapcreator, player, cast, items) ->
-
+define ["console", "board", "globals", "utilities", "taskrunner", "mapper", "npc", "mapcreator", "player", "cast", "items"], (activity, board, globals, ut, taskrunner, mapper, NPC, mapcreator, player, cast, items) ->
     window.t = ->
         getQueue().next()
 
@@ -48,7 +47,7 @@ define ["board", "globals", "utilities", "taskrunner", "mapper", "npc", "mapcrea
             if @hasState(newstate) is false
                 @states.push newstate
         setState: (newstate) ->
-            @trigger "newstate"
+            @trigger "battle:state", newstate
             @states = [newstate]
             @
         removeState: (removeme) ->
@@ -88,7 +87,7 @@ define ["board", "globals", "utilities", "taskrunner", "mapper", "npc", "mapcrea
                 @get("NPCs").add(n = new Enemy({name: names[i]}, {parse: true}))
                 @get("InitQueue").add n
                 n.addToMap()
-                globals.shared_events.trigger "bindmenu", n
+                globals.shared_events.trigger "menu:bind", n
             @get("InitQueue").sort()
             @
         destroy: ->
@@ -270,7 +269,7 @@ define ["board", "globals", "utilities", "taskrunner", "mapper", "npc", "mapcrea
                     @number.css("right", numpos + "%")
                 if value >= totaltime
                     clearInterval @interval
-                    globals.shared_events.trigger "timerdone"
+                    globals.shared_events.trigger "battle:timerdone", getActive()
                     if done? and _.isFunction(done) then done()
             , 50
         reset: -> 
@@ -452,11 +451,13 @@ define ["board", "globals", "utilities", "taskrunner", "mapper", "npc", "mapcrea
                 if @moving is true then return @
                 active_player = getActive()
                 path = @model.pathFromStart.path
+                len = path.length
                 # Stop the timer while moving - player not punished for animation
                 _timer.stop()
                 @moving = true
                 moveInterval = =>
                     if _.isEmpty(path)
+                        activity.emit "#{active_player.get('type')} \"#{active_player.get('name')}\" moved #{len} squares"
                         @stopListening active_player, "donemoving"
                         @moving = false
                         _activebattle.clearPotentialMoves()
@@ -586,7 +587,7 @@ define ["board", "globals", "utilities", "taskrunner", "mapper", "npc", "mapcrea
 
     getQueue = -> _activebattle.get("InitQueue")
 
-    _shared.on "battle", ->
+    _shared.on "state:battle", ->
         if _activebattle then _activebattle.destructor().destroy()
         _activebattle = new Battle()
         grid = new GridOverlay model: _activemap, child: GridSquare, battle: _activebattle

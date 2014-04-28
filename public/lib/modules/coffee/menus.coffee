@@ -9,17 +9,17 @@ define ["taskrunner", "powers", "globals", "utilities", "dialog", "battler", "bo
     _activemenu = null
     _dispatchmenu = null
     # Close all menus
-    globals.shared_events.on "closemenus", ->
+    globals.shared_events.on "menu:close", ->
         closeAll()
 
-    globals.shared_events.on "openmenu", ->
+    globals.shared_events.on "menu:open", ->
         _activemenu.open()
 
-    globals.shared_events.on "bindmenu", (character) ->
+    globals.shared_events.on "menu:bind", (character) ->
         _activemenu = character.menu = new Menu model: character, type: 'battle'
         _menus.push _activemenu
 
-    globals.shared_events.on "travel", ->
+    globals.shared_events.on "state:travel", ->
         _activemenu = new Menu model: taskrunner.getPC(), template: $("#travel-menu").html(), type: 'travel'
 
     battler.events.on "showDispatchMenu", (collection) ->
@@ -431,10 +431,13 @@ define ["taskrunner", "powers", "globals", "utilities", "dialog", "battler", "bo
             @selectThis @$el.children(".selected").prev()
         events:
             "click .js-close-menu": -> @close()
-            "click .js-save-game": -> globals.shared_events.trigger("savegame")
+            "click .js-save-game": -> globals.shared_events.trigger("game:save")
             "click .js-show-inventory": (e) ->
                 e.stopPropagation()
             "click .js-show-party": 'renderParty'
+            "click .js-show-enemies": ->
+                @enemylist = new CharacterList({collection: battler.getEnemies()})
+                ut.launchModal ["<h2>Enemies:</h2>", @enemylist.render().el]
             "click li": (e) ->
                 $t = $(e.currentTarget)
                 if $t.hasClass "disabled"
@@ -459,9 +462,6 @@ define ["taskrunner", "powers", "globals", "utilities", "dialog", "battler", "bo
             "click .js-defend": ->
                 if @model.can("move") then @model.defend()
             "click .js-end-turn": -> @model.endTurn()
-            "click .js-show-enemies": ->
-                @enemylist = new CharacterList({collection: battler.getEnemies()})
-                ut.launchModal ["<h2>Enemies:</h2>", @enemylist.render().el]
 
             # "click": -> board.$canvas.focus()
         clickActiveItem: ->

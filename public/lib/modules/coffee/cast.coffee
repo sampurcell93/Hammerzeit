@@ -51,70 +51,79 @@ define ["utilities", "globals", "items"], (ut, globals, items) ->
     class Class extends Backbone.Model
         defaults: ->
             default_items: ["Tattered Cloak", "Bread", "Rusted Knife"]
+            level: 1
+            level_xp_requirements: [null, 100, 500, 1000, 2000, 4000, 80000]
         getDefaultInventory: (opts) ->
             items.get @get("default_items"), opts
+        # Accepts a number XP value, and returns if this value is enough for a 
+        # new level, given the current level
+        isNewLevel: (XP) ->
+            level = @get "level"
+            next_XP = @get("level_xp_requirements")[level+1]
+            if XP >= next_XP then return level + 1
+            else false
 
     class Archer     extends Class
         defaults: ->
             d = super
             default_items = ["Wooden Bow"].concat(d.default_items)
-            return {
+            return _.extend d, {
                 default_items: default_items
             }
     class Dragoon    extends Class
         defaults: ->
             d = super
             default_items = ["Iron Lance"].concat(d.default_items)
-            return {
+            return _.extend d, {
                 default_items: default_items
             }
     class Fighter    extends Class
         defaults: ->
             d = super
             default_items = ["Rusted Sword"].concat(d.default_items)
-            return {
+            return _.extend d, {
                 default_items: default_items
             }
     class Healer     extends Class
         defaults: ->
             d = super
             default_items = ["Phoenix Down", {id: 'Bread', q: 17}].concat(d.default_items)
-            return {
+            return _.extend d, {
                 default_items: default_items
             }
     class Knave      extends Class
         defaults: ->
             d = super
             default_items = ["Charming Silks"].concat(d.default_items)
-            return {
+            return _.extend d, {
                 default_items: default_items
             }
     class Mage       extends Class
         defaults: ->
             d = super
             default_items = ["Wood Staff"].concat(d.default_items)
-            return {
+            return _.extend d, {
                 default_items: default_items
             }
     class Peasant    extends Class
         defaults: ->
             d = super
             default_items = ["Hoe"].concat(d.default_items)
-            return {
+            return _.extend d, {
                 default_items: default_items
             }
     class Scholar    extends Class
         defaults: ->
             d = super
             default_items = ["Ink", "Paper"].concat(d.default_items)
-            return {
+            return _.extend d, {
                 default_items: default_items
             }
     class Thief      extends Class
         defaults: ->
             d = super
             default_items = ["Iron Dagger"].concat(d.default_items)
-            return {
+            return _.extend d, {
                 default_items: default_items
             }
 

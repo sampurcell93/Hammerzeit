@@ -166,7 +166,7 @@ define ["globals", "utilities", "underscore", "backbone"], (globals, ut) ->
     _items.url = "lib/json_packs/items.json"
     _items.fetch 
         success: (coll, resp) -> 
-            globals.shared_events.trigger "items_loaded"
+            globals.shared_events.trigger "items:loaded"
         error: (coll, resp) ->
             console.error resp
         parse: true
@@ -198,7 +198,7 @@ define ["globals", "utilities", "underscore", "backbone"], (globals, ut) ->
     return window.items = {
         Item: (construction) -> new Item(construction)
         Slots: (construction, opts) -> new Slots construction, opts
-        Inventory: Inventory
+        Inventory: (construction, opts) -> new Inventory construction, opts
         ModifierCollection: ModifierCollection
         Modifier: Modifier
         # Inventory: (construction) -> new Inventory(construction)

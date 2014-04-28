@@ -10,20 +10,20 @@
     $wrapper = $(".wrapper");
     _activemenu = null;
     _dispatchmenu = null;
-    globals.shared_events.on("closemenus", function() {
+    globals.shared_events.on("menu:close", function() {
       return closeAll();
     });
-    globals.shared_events.on("openmenu", function() {
+    globals.shared_events.on("menu:open", function() {
       return _activemenu.open();
     });
-    globals.shared_events.on("bindmenu", function(character) {
+    globals.shared_events.on("menu:bind", function(character) {
       _activemenu = character.menu = new Menu({
         model: character,
         type: 'battle'
       });
       return _menus.push(_activemenu);
     });
-    globals.shared_events.on("travel", function() {
+    globals.shared_events.on("state:travel", function() {
       return _activemenu = new Menu({
         model: taskrunner.getPC(),
         template: $("#travel-menu").html(),
@@ -872,12 +872,18 @@
           return this.close();
         },
         "click .js-save-game": function() {
-          return globals.shared_events.trigger("savegame");
+          return globals.shared_events.trigger("game:save");
         },
         "click .js-show-inventory": function(e) {
           return e.stopPropagation();
         },
         "click .js-show-party": 'renderParty',
+        "click .js-show-enemies": function() {
+          this.enemylist = new CharacterList({
+            collection: battler.getEnemies()
+          });
+          return ut.launchModal(["<h2>Enemies:</h2>", this.enemylist.render().el]);
+        },
         "click li": function(e) {
           var $t;
           $t = $(e.currentTarget);
@@ -920,12 +926,6 @@
         },
         "click .js-end-turn": function() {
           return this.model.endTurn();
-        },
-        "click .js-show-enemies": function() {
-          this.enemylist = new CharacterList({
-            collection: battler.getEnemies()
-          });
-          return ut.launchModal(["<h2>Enemies:</h2>", this.enemylist.render().el]);
         }
       };
 

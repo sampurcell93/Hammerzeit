@@ -31,12 +31,25 @@
 
       Class.prototype.defaults = function() {
         return {
-          default_items: ["Tattered Cloak", "Bread", "Rusted Knife"]
+          default_items: ["Tattered Cloak", "Bread", "Rusted Knife"],
+          level: 1,
+          level_xp_requirements: [null, 100, 500, 1000, 2000, 4000, 80000]
         };
       };
 
       Class.prototype.getDefaultInventory = function(opts) {
         return items.get(this.get("default_items"), opts);
+      };
+
+      Class.prototype.isNewLevel = function(XP) {
+        var level, next_XP;
+        level = this.get("level");
+        next_XP = this.get("level_xp_requirements")[level + 1];
+        if (XP >= next_XP) {
+          return level + 1;
+        } else {
+          return false;
+        }
       };
 
       return Class;
@@ -54,9 +67,9 @@
         var d, default_items;
         d = Archer.__super__.defaults.apply(this, arguments);
         default_items = ["Wooden Bow"].concat(d.default_items);
-        return {
+        return _.extend(d, {
           default_items: default_items
-        };
+        });
       };
 
       return Archer;
@@ -74,9 +87,9 @@
         var d, default_items;
         d = Dragoon.__super__.defaults.apply(this, arguments);
         default_items = ["Iron Lance"].concat(d.default_items);
-        return {
+        return _.extend(d, {
           default_items: default_items
-        };
+        });
       };
 
       return Dragoon;
@@ -94,9 +107,9 @@
         var d, default_items;
         d = Fighter.__super__.defaults.apply(this, arguments);
         default_items = ["Rusted Sword"].concat(d.default_items);
-        return {
+        return _.extend(d, {
           default_items: default_items
-        };
+        });
       };
 
       return Fighter;
@@ -119,9 +132,9 @@
             q: 17
           }
         ].concat(d.default_items);
-        return {
+        return _.extend(d, {
           default_items: default_items
-        };
+        });
       };
 
       return Healer;
@@ -139,9 +152,9 @@
         var d, default_items;
         d = Knave.__super__.defaults.apply(this, arguments);
         default_items = ["Charming Silks"].concat(d.default_items);
-        return {
+        return _.extend(d, {
           default_items: default_items
-        };
+        });
       };
 
       return Knave;
@@ -159,9 +172,9 @@
         var d, default_items;
         d = Mage.__super__.defaults.apply(this, arguments);
         default_items = ["Wood Staff"].concat(d.default_items);
-        return {
+        return _.extend(d, {
           default_items: default_items
-        };
+        });
       };
 
       return Mage;
@@ -179,9 +192,9 @@
         var d, default_items;
         d = Peasant.__super__.defaults.apply(this, arguments);
         default_items = ["Hoe"].concat(d.default_items);
-        return {
+        return _.extend(d, {
           default_items: default_items
-        };
+        });
       };
 
       return Peasant;
@@ -199,9 +212,9 @@
         var d, default_items;
         d = Scholar.__super__.defaults.apply(this, arguments);
         default_items = ["Ink", "Paper"].concat(d.default_items);
-        return {
+        return _.extend(d, {
           default_items: default_items
-        };
+        });
       };
 
       return Scholar;
@@ -219,9 +232,9 @@
         var d, default_items;
         d = Thief.__super__.defaults.apply(this, arguments);
         default_items = ["Iron Dagger"].concat(d.default_items);
-        return {
+        return _.extend(d, {
           default_items: default_items
-        };
+        });
       };
 
       return Thief;

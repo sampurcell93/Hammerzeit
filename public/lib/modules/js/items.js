@@ -328,7 +328,7 @@
     _items.url = "lib/json_packs/items.json";
     _items.fetch({
       success: function(coll, resp) {
-        return globals.shared_events.trigger("items_loaded");
+        return globals.shared_events.trigger("items:loaded");
       },
       error: function(coll, resp) {
         return console.error(resp);
@@ -377,7 +377,9 @@
       Slots: function(construction, opts) {
         return new Slots(construction, opts);
       },
-      Inventory: Inventory,
+      Inventory: function(construction, opts) {
+        return new Inventory(construction, opts);
+      },
       ModifierCollection: ModifierCollection,
       Modifier: Modifier,
       get: function(name, opts) {

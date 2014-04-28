@@ -161,7 +161,7 @@
             return power.set("use", use);
           }
         });
-        return globals.shared_events.trigger("powers_loaded");
+        return globals.shared_events.trigger("powers:loaded");
       }
     });
     getPower = function(name, opts) {

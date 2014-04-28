@@ -23,10 +23,11 @@
       'menus': 'lib/modules/js/menus',
       'items': 'lib/modules/js/items',
       'powers': 'lib/modules/js/powers',
-      'cast': 'lib/modules/js/cast'
+      'cast': 'lib/modules/js/cast',
+      'console': 'lib/modules/js/console'
     }
   });
 
-  define(['utilities', 'board', 'taskrunner', "controls"], function(ut, board, taskrunner) {});
+  define(['utilities', 'board', 'taskrunner', "controls", "console"], function(ut, board, taskrunner) {});
 
 }).call(this);

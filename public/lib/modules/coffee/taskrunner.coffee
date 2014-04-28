@@ -1,7 +1,8 @@
 define ["globals", "utilities", "board", "npc", "player", "mapper", "mapcreator"], (globals, ut, board, NPC, player, mapper, mapcreator) ->
 	_user = null
-	globals.shared_events.on "newgame", -> newGame()
-	globals.shared_events.on "savegame", -> saveGame()
+	globals.shared_events.on "game:new", -> newGame()
+	globals.shared_events.on "game:load", -> loadGame()
+	globals.shared_events.on "game:save", -> saveGame()
 
 
 	class User extends Backbone.Model

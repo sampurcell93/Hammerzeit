@@ -51,11 +51,12 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 				current_chunk: { x: 0, y: 0 }
 				currentstage: 1
 				creatine: 10
+				eco: 10
 				max_creatine: 10
 				HP: 100
 				max_HP: 100
 				init: 1
-				inventory: new items.Inventory
+				inventory: items.Inventory()
 				modifiers: new ModifierCollection()
 				statuses: new ModifierCollection()
 				jmp: 2
@@ -70,6 +71,7 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 				slots: items.Slots()
 				spd: 10
 				spriteimg: "images/sprites/hero.png"
+				XP: 0
 				frames: {
 					# The in place animation frames for the default NPC
 					down: [[0, 0, 55, 55, 0]
@@ -91,13 +93,13 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 				}
 			}
 		initialize: ({pow, frames, spriteimg, path, inventory} = {}) ->
-			unless path instanceof Backbone.Model then @setPath path
+			unless path instanceof Backbone.Model then @setPath path, @get "level"
 			@resetActions()
 			@setPowers(pow)
 			@setInventory(inventory)
-			@listenToOnce globals.shared_events, "items_loaded", =>
+			@listenToOnce globals.shared_events, "items:loaded", =>
 				@set("inventory", @get("path").getDefaultInventory({belongsTo: @}))
-			@listenToOnce globals.shared_events, "powers_loaded", =>
+			@listenToOnce globals.shared_events, "powers:loaded", =>
 				@set("powers", pow = powers.getDefaultPowers({belongsTo: @}))
 			_.bind @move_callbacks.done, @
 			_.bind @move_callbacks.change, @
@@ -111,6 +113,9 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 			}
 			@onTurnFunctions = []
 			@listenToStatusChanges()
+			@on "change:XP", (model, XP) -> 
+				level = @get("path").isNewLevel(XP)
+				if level then alert "new level!! #{level}"
 			# Powers load async, so when loaded we need to bind defaults to an unequipped NPC
 			# then stop listening
 			@createMarker()
@@ -148,10 +153,12 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 		canOccupy: (t) ->
 			if t.end is false then return false
 			if t.e is "f" then return false
-			if t.occupied is true then return false
+			if t.tileModel.isOccupied() is true then return false
 			true
 		clean: ->
-			o = _.omit @toJSON(), "creatine", "HP", "max_HP", "max_creatine", "current_chunk", "regY", "spriteimg", "frames"
+			o = _.omit @toJSON(), 
+				"creatine", "HP", "max_HP", "max_creatine",
+				"current_chunk", "regY", "spriteimg", "frames", "modifiers", "statuses"
 			o.path = o.path.get("name")
 			o
 		createMarker: ->
@@ -214,8 +221,9 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 			@
 		equip: (item, opts={}) ->
 			if @canEquip(item)
+				slot = item.get("slot")
 				item.set("equipped", true, opts)
-				@get("slots").set(item.get("slot"), item, opts)
+				@get("slots").set(slot, item, opts)
 			else @drawStatusChange {text: "#{slot} already equipped!", color: "red"}
 			@
 		# Pass in a tile DisplayObject, and link it to this NPC
@@ -254,8 +262,7 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 		# The square that the NPC was previously in should be cleared when left
 		# Should be called in conjunction with "entersquare"
 		leaveSquare: ->
-			@currentspace.occupied = false
-			@currentspace.occupiedBy = null
+			@currentspace.tileModel.leave()
 			@
 		# Binds listeners to updates to status (AC, HP, creatine)
 		# and draws the corresponding figures on the board
@@ -321,7 +328,7 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 				if count < 10
 					@marker.x += 5*dx
 					@marker.y += 5*dy
-					if @c.isVisible() then @c.move @marker
+					# if @c.isVisible() then @c.move @marker
 					cbs.change.call(@, dx, dy)
 				else 
 					clearInterval m_i
@@ -394,13 +401,14 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 			@set "current_chunk", chunk, {silent: true}
 			@trigger "change:current_chunk"
 			@
-		setPath: (path="Peasant") ->
+		setPath: (path="Peasant", level=1) ->
 			if _.isString(path)
 				@set "path", cast.getClassInst(path)
 			else if path instanceof Backbone.Model
 				return @
 			else if _.isObject(path) 
 				@set "path", cast.getClassInst(path.name)
+			@get("path").set("level", level)
 			@
 		setInventory:(inventory=@get("path").getDefaultInventory({belongsTo: @})) ->
 			@removeModifiers null, {type: "Item", silent: true}
@@ -529,7 +537,7 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 			@executeTurnFunctions()
 			@indicateActive()
 			@active = true
-			globals.shared_events.trigger "closemenus"
+			globals.shared_events.trigger "menu:close"
 			@menu.open()
 			@nextPhase()
 		isActive: -> @active

@@ -87,11 +87,12 @@
           },
           currentstage: 1,
           creatine: 10,
+          eco: 10,
           max_creatine: 10,
           HP: 100,
           max_HP: 100,
           init: 1,
-          inventory: new items.Inventory,
+          inventory: items.Inventory(),
           modifiers: new ModifierCollection(),
           statuses: new ModifierCollection(),
           jmp: 2,
@@ -106,6 +107,7 @@
           slots: items.Slots(),
           spd: 10,
           spriteimg: "images/sprites/hero.png",
+          XP: 0,
           frames: {
             down: [[0, 0, 55, 55, 0], [55, 0, 55, 55, 0], [110, 0, 55, 55, 0], [165, 0, 55, 55, 0]],
             left: [[0, 55, 55, 55, 0], [55, 55, 55, 55, 0], [110, 55, 55, 55, 0], [165, 55, 55, 55, 0]],
@@ -120,17 +122,17 @@
           _this = this;
         _ref1 = _arg != null ? _arg : {}, pow = _ref1.pow, frames = _ref1.frames, spriteimg = _ref1.spriteimg, path = _ref1.path, inventory = _ref1.inventory;
         if (!(path instanceof Backbone.Model)) {
-          this.setPath(path);
+          this.setPath(path, this.get("level"));
         }
         this.resetActions();
         this.setPowers(pow);
         this.setInventory(inventory);
-        this.listenToOnce(globals.shared_events, "items_loaded", function() {
+        this.listenToOnce(globals.shared_events, "items:loaded", function() {
           return _this.set("inventory", _this.get("path").getDefaultInventory({
             belongsTo: _this
           }));
         });
-        this.listenToOnce(globals.shared_events, "powers_loaded", function() {
+        this.listenToOnce(globals.shared_events, "powers:loaded", function() {
           return _this.set("powers", pow = powers.getDefaultPowers({
             belongsTo: _this
           }));
@@ -157,6 +159,13 @@
         };
         this.onTurnFunctions = [];
         this.listenToStatusChanges();
+        this.on("change:XP", function(model, XP) {
+          var level;
+          level = this.get("path").isNewLevel(XP);
+          if (level) {
+            return alert("new level!! " + level);
+          }
+        });
         this.createMarker();
         this.on("add", function(model, coll) {
           if (coll.type === "InitiativeQueue") {
@@ -214,7 +223,7 @@
         if (t.e === "f") {
           return false;
         }
-        if (t.occupied === true) {
+        if (t.tileModel.isOccupied() === true) {
           return false;
         }
         return true;
@@ -222,7 +231,7 @@
 
       NPC.prototype.clean = function() {
         var o;
-        o = _.omit(this.toJSON(), "creatine", "HP", "max_HP", "max_creatine", "current_chunk", "regY", "spriteimg", "frames");
+        o = _.omit(this.toJSON(), "creatine", "HP", "max_HP", "max_creatine", "current_chunk", "regY", "spriteimg", "frames", "modifiers", "statuses");
         o.path = o.path.get("name");
         return o;
       };
@@ -320,12 +329,14 @@
       };
 
       NPC.prototype.equip = function(item, opts) {
+        var slot;
         if (opts == null) {
           opts = {};
         }
         if (this.canEquip(item)) {
+          slot = item.get("slot");
           item.set("equipped", true, opts);
-          this.get("slots").set(item.get("slot"), item, opts);
+          this.get("slots").set(slot, item, opts);
         } else {
           this.drawStatusChange({
             text: "" + slot + " already equipped!",
@@ -398,8 +409,7 @@
       };
 
       NPC.prototype.leaveSquare = function() {
-        this.currentspace.occupied = false;
-        this.currentspace.occupiedBy = null;
+        this.currentspace.tileModel.leave();
         return this;
       };
 
@@ -512,9 +522,6 @@
           if (count < 10) {
             _this.marker.x += 5 * dx;
             _this.marker.y += 5 * dy;
-            if (_this.c.isVisible()) {
-              _this.c.move(_this.marker);
-            }
             cbs.change.call(_this, dx, dy);
           } else {
             clearInterval(m_i);
@@ -640,9 +647,12 @@
         return this;
       };
 
-      NPC.prototype.setPath = function(path) {
+      NPC.prototype.setPath = function(path, level) {
         if (path == null) {
           path = "Peasant";
+        }
+        if (level == null) {
+          level = 1;
         }
         if (_.isString(path)) {
           this.set("path", cast.getClassInst(path));
@@ -651,6 +661,7 @@
         } else if (_.isObject(path)) {
           this.set("path", cast.getClassInst(path.name));
         }
+        this.get("path").set("level", level);
         return this;
       };
 
@@ -860,7 +871,7 @@
         this.executeTurnFunctions();
         this.indicateActive();
         this.active = true;
-        globals.shared_events.trigger("closemenus");
+        globals.shared_events.trigger("menu:close");
         this.menu.open();
         return this.nextPhase();
       };

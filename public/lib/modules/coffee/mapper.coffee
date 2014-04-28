@@ -31,17 +31,20 @@ define ["globals", "utilities", "board", "mapper", "underscore", "backbone", "ea
                     x: 0
                     y: 0
                 path: []
+            @on "change:occupied_by", (model, value) =>
+                
         expose: ->
             setTile @attributes
+            @
         removePotentialMovePath: ->
             @pathFromStart.path = []
             @trigger "removemove"
             @
-        isOccupied: -> @bitmap.occupied is true
-        getOccupant: -> @bitmap.occupiedBy
+        isOccupied: -> @get("occupied") is true
+        getOccupant: -> @get("occupied_by")
         occupy: (obj) ->
-            @bitmap.occupied = true
-            @bitmap.occupiedBy = obj
+            @set "occupied", true
+            @set "occupied_by", obj
             @
         # Pass in the target tile and the move deltas, and the NPC will use the current 
         # active chunk to determine if the spot is enterable.
@@ -55,6 +58,10 @@ define ["globals", "utilities", "board", "mapper", "underscore", "backbone", "ea
             else if _.isString(e) and !opts.ignoreDeltas
                 return _checkEntry[e](dx, dy)
             else true
+        leave: ->
+            @set "occupied", false
+            @set "occupied_by", null
+            @
 
     class Row extends Backbone.Collection
         model: Tile

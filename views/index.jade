@@ -13,7 +13,7 @@ html
          <h1>Hammerzeit: A tale of glory and intrigue!</h1> 
       span#turn-progress-number
       progress#turn-progress(value='0', min='0')
-      ol.horiz-letters
+      //- ol.horiz-letters
         li 0
         li 1
         li 2
@@ -34,7 +34,7 @@ html
         li 17
         li 18
         li 19
-      ol.vert-numbers
+      //- ol.vert-numbers
         li 0
         li 1
         li 2
@@ -52,6 +52,11 @@ html
       ul.battle-grid-overlay
       ul.enterable-list
       canvas#game-board(tabindex=1, width='1000', height='697')
+      .game-console
+        .button.js-toggle
+          | Toggle Console 
+          i.icon-arrow-down
+        ol
       include includes/templates
 
 
