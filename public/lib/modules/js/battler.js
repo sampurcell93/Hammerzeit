@@ -38,7 +38,7 @@
           NPCs: new NPCArray,
           InitQueue: InitQueue,
           avglevel: PCs.getAverageLevel(),
-          numenemies: 1,
+          numenemies: 5,
           enemyBounds: {
             min_x: 0,
             max_x: map.c_width,
@@ -973,6 +973,9 @@
       getNPCs: function() {
         return _activebattle.get("NPCs");
       },
+      getEnemies: function() {
+        return _activebattle.get("NPCs");
+      },
       toggleGrid: function() {
         _activemap = mapcreator.getChunk();
         if (_activebattle) {
@@ -1029,7 +1032,9 @@
         a = getActive().initTurn();
         return setTimeout(this.stopTimer(), 1000);
       },
-      stop: function() {},
+      stop: function() {
+        return board.removeState("battle").addState("travel");
+      },
       randomBattle: function() {
         var b;
         if (_activebattle) {

@@ -81,13 +81,19 @@
       };
     }
     launchModal = function(content, options) {
-      var defaults, modal;
-      destroyModal(true);
+      var defaults, modal,
+        _this = this;
       defaults = {
         close: true,
-        destroyHash: false
+        destroyHash: false,
+        destroyOthers: true,
+        className: "",
+        closeIn: null
       };
       options = $.extend(defaults, options);
+      if (options.destroyOthers !== false) {
+        destroyModal(true);
+      }
       modal = $("<div />").addClass("modal");
       try {
         if ($.isArray(content)) {
@@ -111,15 +117,22 @@
           }
         });
       }
+      if (options.closeIn) {
+        setTimeout(function() {
+          return destroyModal();
+        }, options.closeIn);
+      }
       $(document.body).addClass("active-modal").append(modal);
-      modal.fadeIn("slow");
+      modal.addClass(options.className).attr("tabindex", 0).fadeIn("fast").focus();
       return modal;
     };
     destroyModal = function(existing, options) {
       options = $.extend({
         destroyHash: false
       }, options);
-      $(".modal").remove();
+      $(".modal").fadeOut("fast", function() {
+        return $(this).remove();
+      });
       $(document.body).removeClass("active-modal");
       return $("#game-board").focus();
     };
@@ -169,7 +182,6 @@
       c: function() {
         return _c.call(_c, arguments);
       },
-      create: Object.create,
       addEventListeners: function(obj, events) {
         return _.each(events, function(fn, name) {
           obj.addEventListener(name, fn);

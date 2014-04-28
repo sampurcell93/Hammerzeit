@@ -191,7 +191,11 @@ define ["taskrunner", "powers", "globals", "utilities", "dialog", "battler", "bo
             battler.setAttacks battler.virtualMovePossibilities(user.getCurrentSpace(), handler, opts)
             battler.setState("choosingattacks")
         events: 
-            "click": "chooseTargets"
+            "click": (e) ->
+                @$el.parent().hide()
+                @chooseTargets()
+                e.stopPropagation()
+                e.stopImmediatePropagation()
             "click .attribute-list": (e) ->
                 e.stopPropagation()
                 e.stopImmediatePropagation()
@@ -254,8 +258,11 @@ define ["taskrunner", "powers", "globals", "utilities", "dialog", "battler", "bo
     class StatList extends Backbone.View
         tagName: 'ul'
         className: 'attribute-list'
-        template: "<li class='stat-item' title='<%= key %>'><%= val %></li>"
+        template: "<li class='stat-item'><%= key %>: <%= val %></li>"
         objTemplate: $("#stat-list-obj").html()
+        launchOpts: {
+            destroyOthers: false
+        }
         initialize: ->
             # Lazy. todo: fix
             @listenTo @model, "change", @render
@@ -265,7 +272,7 @@ define ["taskrunner", "powers", "globals", "utilities", "dialog", "battler", "bo
             objects = []
             _.each Object.keys(model).sort(), (key) =>
                 val = model[key]
-                key = key.capitalize()
+                key = key.capitalize().replace("_"," ")
                 if _.isObject(val)
                     objects.push({key: key, val: val})
                 else
@@ -277,12 +284,10 @@ define ["taskrunner", "powers", "globals", "utilities", "dialog", "battler", "bo
         events: ->
             "click .js-show-Inventory": ->
                 l = new InventoryList collection: @model.get("inventory")
-                ut.launchModal l.render().el
+                ut.launchModal l.render().el, @launchOpts
             "click .js-show-Powers": ->
                 l = new PowerList collection: @model.get("powers")
-                ut.launchModal l.render().el
-
-
+                ut.launchModal l.render().el, @launchOpts
 
     # Displays all states on a character, including HP, creatine, actions remaining, 
     # statistics, temporary effects, etc
@@ -300,7 +305,7 @@ define ["taskrunner", "powers", "globals", "utilities", "dialog", "battler", "bo
             @
         render: ->
             @$el.html(_.template @template, _.extend(@model.toJSON(), {actions: @model.actions}))
-            @$(".full-attributes").html(@attrlist.render().el)
+            @$el.append @attrlist.render().el
         hide: ->
             @visible = false
             @$el.slideUp "fast"
@@ -322,12 +327,12 @@ define ["taskrunner", "powers", "globals", "utilities", "dialog", "battler", "bo
         showFullView: ->
             @fullViewOpen = true
             @$(".js-toggle-full").text("Less")
-            @$(".full-attributes").slideDown "fast"
+            @$(".attribute-list").slideDown "fast"
             @
         hideFullView: ->
             @fullViewOpen = false
             @$(".js-toggle-full").text("More")
-            @$(".full-attributes").slideUp "fast"
+            @$(".attribute-list").slideUp "fast"
             @
         toggleFullView: (e) ->
             if @fullViewOpen is true 
@@ -337,6 +342,21 @@ define ["taskrunner", "powers", "globals", "utilities", "dialog", "battler", "bo
             @
         events: 
             "click .js-toggle-full": "toggleFullView"
+
+    class CharacterList extends Backbone.View
+        tagName: 'ul'
+        className: 'character-list'
+        initialize: ->
+            _.bindAll @, "render"
+        render: ->
+            _.each @collection.models, (char) =>
+                display = new CharacterListItem({model: char})
+                @$el.append(display.el)
+            @
+
+    class CharacterListItem extends CharacterStateDisplay
+        tagName: 'li'
+
 
     # Contains template for rendering a battle menu with action options
     # Contains subclasses, including Meters and CharacterStateDisplay
@@ -356,6 +376,9 @@ define ["taskrunner", "powers", "globals", "utilities", "dialog", "battler", "bo
                     if collection.length is 0 then @$(".js-show-inventory").addClass("disabled")
                 "remove add": (model, collection) =>
                     @$(".inventory-length").text(collection.getTotalItems())
+                "change:quantity": (model, value, options) ->
+                    @$(".inventory-length").text(@model.get("inventory").getTotalItems())
+
 
             _.bindAll @, "close", "open", "toggle", "selectNext", "selectThis", "selectPrev"
             @close()
@@ -369,8 +392,9 @@ define ["taskrunner", "powers", "globals", "utilities", "dialog", "battler", "bo
             @updateActions @model.actions
             @$(".inventory-length").text(@model.get("inventory").getTotalItems())
             @
+        # Get the quadrant of the selected model, then render this in another quadrant
         setPosition: (quadrant = @model.getQuadrant())->
-            @$el.attr("quadrant", quadrant)            
+            @$el.attr("quadrant", quadrant)
         isBattleMenu: -> @type is "battle"
         setupMeters: ->
             container = @container = new CharacterStateDisplay model: @model
@@ -385,12 +409,8 @@ define ["taskrunner", "powers", "globals", "utilities", "dialog", "battler", "bo
                 if !model.can(needed)
                     $t.addClass("disabled")
         renderParty: ->
-            frag = document.createDocumentFragment()
-            _.each taskrunner.getParty().models, (char) =>
-                display = new CharacterStateDisplay({model: char})
-                frag.appendChild(display.el)
-            @party = frag
-            @
+            @partylist = new CharacterList({collection: taskrunner.getParty()})
+            ut.launchModal ["<h2>Party:</h2>", @partylist.render().el], {className: 'character-modal'}
         renderInventory: ->
             @inventorylist = list = new InventoryList collection: @model.get "inventory"
             @$(".inventory-list").html(list.render().el)
@@ -401,22 +421,20 @@ define ["taskrunner", "powers", "globals", "utilities", "dialog", "battler", "bo
             @
         selectThis: ($item) ->
             $item.addClass("selected").
-            siblings(".selected").removeClass("selected")
+            siblings(".selected").removeClass("selected").
+            find(".nested-menu > ul").hide()
+            $item.find(".nested-menu > ul").show()
             @
         selectNext: ->
             @selectThis @$el.children(".selected").next()
         selectPrev: ->
             @selectThis @$el.children(".selected").prev()
         events:
-            "click": ->
-                console.log @model.get "name"
             "click .js-close-menu": -> @close()
             "click .js-save-game": -> globals.shared_events.trigger("savegame")
             "click .js-show-inventory": (e) ->
                 e.stopPropagation()
-            "click .js-show-party": ->
-                @renderParty()
-                ut.launchModal @party
+            "click .js-show-party": 'renderParty'
             "click li": (e) ->
                 $t = $(e.currentTarget)
                 if $t.hasClass "disabled"
@@ -441,12 +459,17 @@ define ["taskrunner", "powers", "globals", "utilities", "dialog", "battler", "bo
             "click .js-defend": ->
                 if @model.can("move") then @model.defend()
             "click .js-end-turn": -> @model.endTurn()
+            "click .js-show-enemies": ->
+                @enemylist = new CharacterList({collection: battler.getEnemies()})
+                ut.launchModal ["<h2>Enemies:</h2>", @enemylist.render().el]
+
             # "click": -> board.$canvas.focus()
         clickActiveItem: ->
             @$el.children(".selected").trigger "click"
         close: ->
             @showing = false
             @$el.effect "slide", _.extend({mode: 'hide'}, {direction: 'right', easing: 'easeInOutQuart'}), 300
+            ut.destroyModal()
             board.unpause().focus()
             if @isBattleMenu()
                 battler.removeHighlighting()

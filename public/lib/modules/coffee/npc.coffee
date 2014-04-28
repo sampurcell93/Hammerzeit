@@ -18,14 +18,6 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 		dead: false
 		defending: false
 		dispatched: false
-		# Default action values. Can be reset with initTurn or augmented with items
-		actions: _.extend {
-				standard: 1
-				move: 2
-				minor: 2
-				change: -> 
-					@trigger "change", _.pick @, "standard", "move", "minor"
-			}, Backbone.Events
 		# What phase of the user's turn are they at? Max 3
 		turnPhase: 0
 		type: 'npc'
@@ -46,9 +38,11 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 			change: ->
 		prepareForSave: ->
 			attrs = @toJSON()
-			_.extend attrs, {
+			a = _.extend attrs, {
 				inventory: attrs.inventory.toJSON(true)
 				powers: attrs.powers.toJSON(true)
+				path: attrs.path.get "name"
+				slots: attrs.slots.toJSON(true)
 			}
 		defaults: ->
 			return {
@@ -62,7 +56,8 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 				max_HP: 100
 				init: 1
 				inventory: new items.Inventory
-				modifiers: new ModifierCollection
+				modifiers: new ModifierCollection()
+				statuses: new ModifierCollection()
 				jmp: 2
 				level: 1
 				name: "NPC"
@@ -97,6 +92,7 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 			}
 		initialize: ({pow, frames, spriteimg, path, inventory} = {}) ->
 			unless path instanceof Backbone.Model then @setPath path
+			@resetActions()
 			@setPowers(pow)
 			@setInventory(inventory)
 			@listenToOnce globals.shared_events, "items_loaded", =>
@@ -126,7 +122,6 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 		# Adds the modifiers to the collection, effectively linking items 
 		# to their effects
 		applyModifiers: (modifiers, opts={}) ->
-			num = 0
 			if modifiers instanceof Modifier
 				@get("modifiers").add modifiers
 				if opts.donetext
@@ -145,7 +140,7 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 					if num is len - 1 and opts.donetext
 						setTimeout =>
 							@drawStatusChange text: opts.donetext
-						, 1.6*i
+						, 1.6*(i+1)
 
 			
 			@
@@ -176,7 +171,7 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 			c.hide().move @marker
 			c
 		canEquip: (item) =>
-			item.isEquipped() is false and @get("slots").get(item.get("slot")) is null
+			@get("slots").get(item.get("slot")) is null
 		canMoveOffChunk: (x, y) -> 
 			!(board.hasState("battle")) and board.inBounds(x) and board.inBounds(y)
 		# Pass in the tile the NPC will move to - if the diff in elevations exceeds the jump
@@ -217,11 +212,10 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 					opts.done()
 			, 100
 			@
-		equip: (item) ->
-			slot = item.get("slot")
+		equip: (item, opts={}) ->
 			if @canEquip(item)
-				item.set("equipped", true)
-				@get("slots").set(slot, item)
+				item.set("equipped", true, opts)
+				@get("slots").set(item.get("slot"), item, opts)
 			else @drawStatusChange {text: "#{slot} already equipped!", color: "red"}
 			@
 		# Pass in a tile DisplayObject, and link it to this NPC
@@ -275,6 +269,7 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 			_.each ["HP", "creatine", "AC", "atk", "range"], (attr) =>
 				@on "change:#{attr}", (model, val) =>
 					handleChange @getAttrDifference(attr), attr
+			console.log @
 			@listenTo @get("modifiers"), 
 				"add": (modifier, collection) =>
 					currentval = @get modifier.get "prop"
@@ -355,20 +350,21 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 		oppositeDir: (dir) ->
 			if dir is "x" then "y" else if dir is "y" then "x" else ""
 		# Removes a specific modifier. Cleanup todo
-		removeModifiers: (modifiers, opts={}) ->
+		removeModifiers: (modifiers=@get("modifiers"), opts={}) ->
 			num = 0
+			filter = -> true
 			if modifiers instanceof Modifier
 				@get("modifiers").remove modifiers, opts
 				if opts.donetext
 					setTimeout =>
 						@drawStatusChange text: opts.donetext
-					, 100
+					, 1000
 			else 
+				if opts.type then filter = (model) -> model.get("type") is opts.type
 				len = modifiers.length
 				_.each modifiers.models, (mod, i) => 
+					if filter(mod) is false then return
 					num = i
-					console.log i, len
-					debugger
 					if i is 0 then i = 100
 					else i = 700*i
 					setTimeout =>
@@ -379,6 +375,7 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 							console.loh 
 							@drawStatusChange text: opts.donetext
 						, 1.6*i
+
 			@
 		# Reset an animation's properties
 		reanimate: (animation, speed, next) ->
@@ -406,7 +403,12 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 				@set "path", cast.getClassInst(path.name)
 			@
 		setInventory:(inventory=@get("path").getDefaultInventory({belongsTo: @})) ->
-			_.each inventory.models, (i) => i.set("belongsTo", @)
+			@removeModifiers null, {type: "Item", silent: true}
+			_.each inventory.models, (i) => 
+				i.set("belongsTo", @)
+				if i.isEquipped()
+					i.set("equipped", false, {silent: true})
+					@equip i, {silent: true}
 			@set "inventory", inventory
 			@
 		# Expects pixel multiples, IE 500, 700
@@ -541,7 +543,6 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 				return @endTurn()
 			battler.resetTimer().startTimer @i || @get("init"), => 
 				@burnAction()
-				console.log @actions
 				# @takeMove(
 				@nextPhase()
 			@trigger "beginphase", @turnPhase
@@ -550,11 +551,13 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 		# one standard, two minor OR
 		# Two moves one minor
 		resetActions: ->
-			@actions = _.extend @actions, {
+			@actions = _.extend {
 				standard: 1
 				move: 2
 				minor: 2
-			}
+				change: -> 
+					@trigger "change", _.pick @, "standard", "move", "minor"
+			}, Backbone.Events
 			@actions.change()
 			@
 		# Take a standard action and adjust the other actions.
@@ -604,6 +607,13 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 		useCreatine: (creatine) ->
 			@applyModifiers(new Modifier({prop: "creatine", mod: -creatine, perm: true}))
 			@
+		parse: (m) ->
+			m.inventory = new items.Inventory(m.inventory, {parse: true})
+			m.powers = powers.PowerSet(m.powers, {parse: true})
+			m.slots = items.Slots(m.slots)
+			m.modifiers = new ModifierCollection m.modifiers, {parse: true}
+			m
+
 
 	# A basic collection of NPCs
 	class CharacterArray extends Backbone.Collection
@@ -618,12 +628,6 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 		comparator: (model) -> model.i
 		# Returns true if any PCs have been dispatched. Make faster todo
 		anyDispatched: -> (_.filter @models, (model) -> model.dispatched is true).length > 0
-		parse: (resp) ->
-			_.each resp, (m) =>
-				m.inventory = new items.Inventory(m.inventory, {parse: true})
-				m.powers = powers.PowerSet(m.powers, {parse: true})
-				m.slots = items.Slots(m.slots)
-			resp
 
 
 
@@ -635,7 +639,6 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 			@
 
 	class Enemy extends NPC
-		type: 'enemy'
 		defaults: ->
 			defaults = super
 			_.extend defaults, {type: 'enemy'}

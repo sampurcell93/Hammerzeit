@@ -153,7 +153,6 @@ define ['globals', 'utilities', 'jquery', 'underscore', 'easel'], (globals, ut) 
                 ut.c "the state has changed to battle. get it son"
                 flashStateChange()
             "LOADING": =>
-                ut.c "the state has changed to loading. spinny wheel brah"
         }
         remove: {
             "BATTLE": =>
@@ -161,7 +160,6 @@ define ['globals', 'utilities', 'jquery', 'underscore', 'easel'], (globals, ut) 
             "TRAVEL": =>
                 ut.c "travel done"
             "LOADING": =>
-                ut.c "loading over"
         }
     }
 

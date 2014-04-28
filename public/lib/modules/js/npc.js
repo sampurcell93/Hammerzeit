@@ -41,15 +41,6 @@
 
       NPC.prototype.dispatched = false;
 
-      NPC.prototype.actions = _.extend({
-        standard: 1,
-        move: 2,
-        minor: 2,
-        change: function() {
-          return this.trigger("change", _.pick(this, "standard", "move", "minor"));
-        }
-      }, Backbone.Events);
-
       NPC.prototype.turnPhase = 0;
 
       NPC.prototype.type = 'npc';
@@ -76,11 +67,13 @@
       };
 
       NPC.prototype.prepareForSave = function() {
-        var attrs;
+        var a, attrs;
         attrs = this.toJSON();
-        return _.extend(attrs, {
+        return a = _.extend(attrs, {
           inventory: attrs.inventory.toJSON(true),
-          powers: attrs.powers.toJSON(true)
+          powers: attrs.powers.toJSON(true),
+          path: attrs.path.get("name"),
+          slots: attrs.slots.toJSON(true)
         });
       };
 
@@ -99,7 +92,8 @@
           max_HP: 100,
           init: 1,
           inventory: new items.Inventory,
-          modifiers: new ModifierCollection,
+          modifiers: new ModifierCollection(),
+          statuses: new ModifierCollection(),
           jmp: 2,
           level: 1,
           name: "NPC",
@@ -128,6 +122,7 @@
         if (!(path instanceof Backbone.Model)) {
           this.setPath(path);
         }
+        this.resetActions();
         this.setPowers(pow);
         this.setInventory(inventory);
         this.listenToOnce(globals.shared_events, "items_loaded", function() {
@@ -173,12 +168,11 @@
       };
 
       NPC.prototype.applyModifiers = function(modifiers, opts) {
-        var len, num,
+        var len,
           _this = this;
         if (opts == null) {
           opts = {};
         }
-        num = 0;
         if (modifiers instanceof Modifier) {
           this.get("modifiers").add(modifiers);
           if (opts.donetext) {
@@ -191,6 +185,7 @@
         } else {
           len = modifiers.length;
           _.each(modifiers.models, function(mod, i) {
+            var num;
             num = i;
             if (i === 0) {
               i = 100;
@@ -205,7 +200,7 @@
                 return _this.drawStatusChange({
                   text: opts.donetext
                 });
-              }, 1.6 * i);
+              }, 1.6 * (i + 1));
             }
           });
         }
@@ -258,7 +253,7 @@
       };
 
       NPC.prototype.canEquip = function(item) {
-        return item.isEquipped() === false && this.get("slots").get(item.get("slot")) === null;
+        return this.get("slots").get(item.get("slot")) === null;
       };
 
       NPC.prototype.canMoveOffChunk = function(x, y) {
@@ -324,12 +319,13 @@
         return this;
       };
 
-      NPC.prototype.equip = function(item) {
-        var slot;
-        slot = item.get("slot");
+      NPC.prototype.equip = function(item, opts) {
+        if (opts == null) {
+          opts = {};
+        }
         if (this.canEquip(item)) {
-          item.set("equipped", true);
-          this.get("slots").set(slot, item);
+          item.set("equipped", true, opts);
+          this.get("slots").set(item.get("slot"), item, opts);
         } else {
           this.drawStatusChange({
             text: "" + slot + " already equipped!",
@@ -423,6 +419,7 @@
             return handleChange(_this.getAttrDifference(attr), attr);
           });
         });
+        console.log(this);
         return this.listenTo(this.get("modifiers"), {
           "add": function(modifier, collection) {
             var currentval, max, mod, newval;
@@ -563,12 +560,18 @@
       };
 
       NPC.prototype.removeModifiers = function(modifiers, opts) {
-        var len, num,
+        var filter, len, num,
           _this = this;
+        if (modifiers == null) {
+          modifiers = this.get("modifiers");
+        }
         if (opts == null) {
           opts = {};
         }
         num = 0;
+        filter = function() {
+          return true;
+        };
         if (modifiers instanceof Modifier) {
           this.get("modifiers").remove(modifiers, opts);
           if (opts.donetext) {
@@ -576,14 +579,20 @@
               return _this.drawStatusChange({
                 text: opts.donetext
               });
-            }, 100);
+            }, 1000);
           }
         } else {
+          if (opts.type) {
+            filter = function(model) {
+              return model.get("type") === opts.type;
+            };
+          }
           len = modifiers.length;
           _.each(modifiers.models, function(mod, i) {
+            if (filter(mod) === false) {
+              return;
+            }
             num = i;
-            console.log(i, len);
-            debugger;
             if (i === 0) {
               i = 100;
             } else {
@@ -652,8 +661,20 @@
             belongsTo: this
           });
         }
+        this.removeModifiers(null, {
+          type: "Item",
+          silent: true
+        });
         _.each(inventory.models, function(i) {
-          return i.set("belongsTo", _this);
+          i.set("belongsTo", _this);
+          if (i.isEquipped()) {
+            i.set("equipped", false, {
+              silent: true
+            });
+            return _this.equip(i, {
+              silent: true
+            });
+          }
         });
         this.set("inventory", inventory);
         return this;
@@ -865,7 +886,6 @@
         }
         battler.resetTimer().startTimer(this.i || this.get("init"), function() {
           _this.burnAction();
-          console.log(_this.actions);
           return _this.nextPhase();
         });
         this.trigger("beginphase", this.turnPhase);
@@ -873,11 +893,14 @@
       };
 
       NPC.prototype.resetActions = function() {
-        this.actions = _.extend(this.actions, {
+        this.actions = _.extend({
           standard: 1,
           move: 2,
-          minor: 2
-        });
+          minor: 2,
+          change: function() {
+            return this.trigger("change", _.pick(this, "standard", "move", "minor"));
+          }
+        }, Backbone.Events);
         this.actions.change();
         return this;
       };
@@ -976,6 +999,20 @@
         return this;
       };
 
+      NPC.prototype.parse = function(m) {
+        m.inventory = new items.Inventory(m.inventory, {
+          parse: true
+        });
+        m.powers = powers.PowerSet(m.powers, {
+          parse: true
+        });
+        m.slots = items.Slots(m.slots);
+        m.modifiers = new ModifierCollection(m.modifiers, {
+          parse: true
+        });
+        return m;
+      };
+
       return NPC;
 
     })(Backbone.Model);
@@ -1013,20 +1050,6 @@
         })).length > 0;
       };
 
-      CharacterArray.prototype.parse = function(resp) {
-        var _this = this;
-        _.each(resp, function(m) {
-          m.inventory = new items.Inventory(m.inventory, {
-            parse: true
-          });
-          m.powers = powers.PowerSet(m.powers, {
-            parse: true
-          });
-          return m.slots = items.Slots(m.slots);
-        });
-        return resp;
-      };
-
       return CharacterArray;
 
     })(Backbone.Collection);
@@ -1055,8 +1078,6 @@
         _ref3 = Enemy.__super__.constructor.apply(this, arguments);
         return _ref3;
       }
-
-      Enemy.prototype.type = 'enemy';
 
       Enemy.prototype.defaults = function() {
         var defaults;

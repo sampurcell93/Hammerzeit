@@ -28,7 +28,7 @@ define ["board", "globals", "utilities", "taskrunner", "mapper", "npc", "mapcrea
                 NPCs: new NPCArray
                 InitQueue: InitQueue
                 avglevel: PCs.getAverageLevel()
-                numenemies: 1#Math.ceil(Math.random() * PCs.length * 2 + 1)
+                numenemies: 5#Math.ceil(Math.random() * PCs.length * 2 + 1)
                 enemyBounds: {
                     min_x: 0
                     max_x: map.c_width
@@ -599,8 +599,11 @@ define ["board", "globals", "utilities", "taskrunner", "mapper", "npc", "mapcrea
         getActive: (opts) -> getActive opts
         # Returns only players. Even dead ones.
         getPlayers: -> taskrunner.getParty()
+        # Get all NPCs - even allies
         getNPCs: -> _activebattle.get("NPCs")
-
+        # Get only enemies todo
+        getEnemies: -> 
+            _activebattle.get("NPCs")
         toggleGrid: ->
             _activemap = mapcreator.getChunk()
             if _activebattle
@@ -644,7 +647,7 @@ define ["board", "globals", "utilities", "taskrunner", "mapper", "npc", "mapcrea
             a = getActive().initTurn()
             setTimeout @stopTimer(), 1000
         stop: ->
-
+            board.removeState("battle").addState("travel")
         randomBattle: ->
             if _activebattle then _activebattle.destroy()
             _activebattle = b = new Battle()

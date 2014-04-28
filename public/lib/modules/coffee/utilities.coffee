@@ -62,11 +62,15 @@ define  ["jquery", "underscore"], ->
 	    new F()
 
 	launchModal = (content, options) ->
-		destroyModal true
 		defaults = 
 		    close: true
 		    destroyHash: false
+		    destroyOthers: true
+		    className: ""
+		    closeIn: null
 		options = $.extend defaults, options
+		unless options.destroyOthers is false
+			destroyModal true
 		modal = $("<div />").addClass("modal")
 		try
 		    if $.isArray(content)
@@ -81,13 +85,17 @@ define  ["jquery", "underscore"], ->
 		    	key = e.keyCode || e.which
 		    	if key == 27 then destroyModal()
 		    )
+		if options.closeIn
+			setTimeout =>
+				destroyModal()
+			, options.closeIn
 		$(document.body).addClass("active-modal").append(modal)
-		modal.fadeIn("slow")
+		modal.addClass(options.className).attr("tabindex",0).fadeIn("fast").focus()
 		modal
 
 	destroyModal = (existing, options) ->
 		options = $.extend {destroyHash: false}, options
-		$(".modal").remove()
+		$(".modal").fadeOut("fast", -> $(@).remove())
 			# unless existing == true
 		$(document.body).removeClass("active-modal")
 		$("#game-board").focus()
@@ -125,7 +133,6 @@ define  ["jquery", "underscore"], ->
 	return window.ut =  {
 		# Quick logger, saves keystrokes
 		c: -> _c.call(_c, arguments)
-		create: Object.create
 		# Bind multiple events to an object at once.... this is probably native and I'm missing it.
 		addEventListeners: (obj, events) -> 
 			_.each events, (fn, name) -> 

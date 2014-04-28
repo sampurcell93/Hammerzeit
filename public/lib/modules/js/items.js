@@ -50,7 +50,8 @@
         mod: 0,
         turns: null,
         timing: 0,
-        perm: false
+        perm: false,
+        type: 'Item'
       };
 
       Modifier.prototype.prop = function() {
@@ -94,6 +95,21 @@
           return obj[slot] = null;
         });
         return obj;
+      };
+
+      Slots.prototype.toJSON = function(clean) {
+        var d;
+        if (clean == null) {
+          clean = false;
+        }
+        if (!clean) {
+          return Slots.__super__.toJSON.apply(this, arguments);
+        }
+        d = Slots.__super__.toJSON.apply(this, arguments);
+        _.each(d, function(slot) {
+          return slot = void 0;
+        });
+        return this.defaults();
       };
 
       return Slots;

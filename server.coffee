@@ -25,13 +25,15 @@ app.get "/", (req, res) ->
 
 app.put "/users/:name", (req, res) ->
   db.players.update({username: req.params.name}, _.omit(req.body, "_id"), (err, updated) =>
-      if !err
-        res.json success: true
+    console.log req.body
+    if !err
+      res.json req.body
     )
 
 app.post "/users/:name", (req, res) ->
   password = req.body.password;
   username = req.params.name;
+  console.log req.body
   db.players.findAndModify({
     query: {username: username}
     update: {

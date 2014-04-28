@@ -38,11 +38,14 @@ define ["globals", "utilities", "underscore", "backbone"], (globals, ut) ->
             timing: 0
             # Is this effect permanant?
             perm: false
+            # From where does the modifier originate? Should be a class name string.
+            type: 'Item'
         prop: -> @get "prop"
         mod:  -> @get "mod"
 
     class ModifierCollection extends Backbone.Collection
         model: Modifier
+
 
     class Slots extends Backbone.Model
         defaults: ->
@@ -51,6 +54,12 @@ define ["globals", "utilities", "underscore", "backbone"], (globals, ut) ->
             _.each slots, (slot) =>
                 obj[slot] = null
             obj
+        toJSON: (clean=false) ->
+            return super unless clean
+            d = super
+            _.each d, (slot) -> slot = undefined
+            @defaults()
+
 
     class Item extends Backbone.Model
         idAttribute: 'name'

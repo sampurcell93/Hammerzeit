@@ -174,9 +174,7 @@
           ut.c("the state has changed to battle. get it son");
           return flashStateChange();
         },
-        "LOADING": function() {
-          return ut.c("the state has changed to loading. spinny wheel brah");
-        }
+        "LOADING": function() {}
       },
       remove: {
         "BATTLE": function() {
@@ -185,9 +183,7 @@
         "TRAVEL": function() {
           return ut.c("travel done");
         },
-        "LOADING": function() {
-          return ut.c("loading over");
-        }
+        "LOADING": function() {}
       }
     };
     addState = function(newstate) {

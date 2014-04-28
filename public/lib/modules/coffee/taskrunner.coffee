@@ -13,8 +13,10 @@ define ["globals", "utilities", "board", "npc", "player", "mapper", "mapcreator"
 		parse: (user) ->
 			user.party = new player.PCArray(user.party, {parse: true})
 			user
-		initialize: ->
-			@set "party", new player.PCArray([new player.model({path: 'Dragoon'})])
+		defaults:
+			party: new player.PCArray([
+				new player.model({path: 'Dragoon'}), 
+				new player.model({path: 'Healer', name: 'Jack', HP: 57})])
 		clean: (pcs=[])->
 			j = @toJSON()
 			_.each j.party.models, (p) =>
@@ -48,10 +50,9 @@ define ["globals", "utilities", "board", "npc", "player", "mapper", "mapcreator"
 		events: ->
 			"click .js-start-game": -> 
 				_user = new User username: 'Sams', password: 'Sampass'
-				clean = _user.clean()
-				console.log clean
-				debugger
-				_user.save clean, { 
+				# clean = _user.clean()
+				# console.log clean
+				_user.save _user.clean(), { 
 					success: (u, resp) => 
 						ut.destroyModal() 
 						localStorage.setItem "username", resp.username
@@ -66,7 +67,6 @@ define ["globals", "utilities", "board", "npc", "player", "mapper", "mapcreator"
 			PC = getPC()
 			board.removeState("LOADING")
 			PC.on "change:current_chunk", () ->
-				ut.c "CHUNK CHANGE REGISTERED IN TASKRUNNER"
 				newchunk = PC.get "current_chunk"
 				board.setBackground(level.getBackground())
 				mapcreator.loadChunk(level.getBitmap()[newchunk.y][newchunk.x], newchunk.x, newchunk.y)
@@ -82,11 +82,16 @@ define ["globals", "utilities", "board", "npc", "player", "mapper", "mapcreator"
 		ut.launchModal signup.render().el
 
 	saveGame = ->
-		_user.save(_user.clean(), success: -> alert("game saved"))
-	getPC 	 = -> _user.get("party").at(0)
-	getParty = -> _user.get("party")
+		savedparty = _user.get("party")
+		_user.save(_user.clean(), 
+			success: -> 
+				_user.set "party", savedparty
+				alert("game saved")
+		)
+	getParty  = -> _user.get("party")
+	getPlayer = (index) -> getParty().at index
+	getPC 	  = -> getPlayer 0
 				
-
 	t = window.taskrunner = {
 		newGame: -> newGame()
 		loadGame: (userid=null) ->
@@ -98,4 +103,5 @@ define ["globals", "utilities", "board", "npc", "player", "mapper", "mapcreator"
 		getUser: -> _user
 		getPC: -> getPC()
 		getParty: -> getParty()
+		getPlayerAt: (index) -> getPlayer index
 	}

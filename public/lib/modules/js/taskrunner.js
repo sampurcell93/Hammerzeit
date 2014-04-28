@@ -3,7 +3,7 @@
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
   define(["globals", "utilities", "board", "npc", "player", "mapper", "mapcreator"], function(globals, ut, board, NPC, player, mapper, mapcreator) {
-    var Loader, SignUp, User, getPC, getParty, loadGame, loadStage, newGame, saveGame, t, _ref, _ref1, _ref2, _user;
+    var Loader, SignUp, User, getPC, getParty, getPlayer, loadGame, loadStage, newGame, saveGame, t, _ref, _ref1, _ref2, _user;
     _user = null;
     globals.shared_events.on("newgame", function() {
       return newGame();
@@ -36,12 +36,16 @@
         return user;
       };
 
-      User.prototype.initialize = function() {
-        return this.set("party", new player.PCArray([
+      User.prototype.defaults = {
+        party: new player.PCArray([
           new player.model({
             path: 'Dragoon'
+          }), new player.model({
+            path: 'Healer',
+            name: 'Jack',
+            HP: 57
           })
-        ]));
+        ])
       };
 
       User.prototype.clean = function(pcs) {
@@ -120,16 +124,12 @@
       SignUp.prototype.events = function() {
         return {
           "click .js-start-game": function() {
-            var clean,
-              _this = this;
+            var _this = this;
             _user = new User({
               username: 'Sams',
               password: 'Sampass'
             });
-            clean = _user.clean();
-            console.log(clean);
-            debugger;
-            return _user.save(clean, {
+            return _user.save(_user.clean(), {
               success: function(u, resp) {
                 ut.destroyModal();
                 localStorage.setItem("username", resp.username);
@@ -151,7 +151,6 @@
         board.removeState("LOADING");
         return PC.on("change:current_chunk", function() {
           var full_chunk, newchunk;
-          ut.c("CHUNK CHANGE REGISTERED IN TASKRUNNER");
           newchunk = PC.get("current_chunk");
           board.setBackground(level.getBackground());
           mapcreator.loadChunk(level.getBitmap()[newchunk.y][newchunk.x], newchunk.x, newchunk.y);
@@ -174,17 +173,23 @@
       return ut.launchModal(signup.render().el);
     };
     saveGame = function() {
+      var savedparty;
+      savedparty = _user.get("party");
       return _user.save(_user.clean(), {
         success: function() {
+          _user.set("party", savedparty);
           return alert("game saved");
         }
       });
     };
-    getPC = function() {
-      return _user.get("party").at(0);
-    };
     getParty = function() {
       return _user.get("party");
+    };
+    getPlayer = function(index) {
+      return getParty().at(index);
+    };
+    getPC = function() {
+      return getPlayer(0);
     };
     return t = window.taskrunner = {
       newGame: function() {
@@ -214,6 +219,9 @@
       },
       getParty: function() {
         return getParty();
+      },
+      getPlayerAt: function(index) {
+        return getPlayer(index);
       }
     };
   });

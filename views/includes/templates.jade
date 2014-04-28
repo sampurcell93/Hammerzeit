@@ -48,9 +48,6 @@ script#mapcreate-item(type='text/template')
     <span class='elevation'><%= elv %></span>
     <span class='type'><%= t !== "e" ? t : "" %></span>
 
-script#character-view(type='text/template')
-    | This is a character template
-
 script#power-item(type='text/template')
     <i class='js-show-more icon-arrow-down'></i>
     <span class='name <%= uses <= 0 ? " disabled" : "" %>'> <%= name %> </span>
@@ -68,6 +65,12 @@ script#menu(type='text/template')
             |Move
         li(tabindex=2).js-attack Attack
             div.power-list.nested-menu
+        li(tabindex=2).js-show-party
+            i.icon-info
+            | Party
+        li(tabindex=2).js-show-enemies
+            i.icon-info
+            | Enemies
         li(tabindex=2).js-show-inventory 
             i.icon-lab
             |Inventory
@@ -79,6 +82,9 @@ script#menu(type='text/template')
         li(tabindex=2).js-end-turn 
             i.icon-blocked
             | End Turn
+        li(tabindex=2).js-close-menu
+            i.icon-cross
+            | Close 
 
 script#travel-menu(type='text/template')
     h2 <%= name %>
@@ -96,28 +102,26 @@ script#travel-menu(type='text/template')
             i.icon-cw
             | Save Game 
         li(tabindex=2).js-close-menu
-            | Close 
-
-    
+            i.icon-cross
+            | Close     
 
 
 script#attribute-container(type='text/template')
     .meterwrap
         meter.HP(linker='HP')
         meter.creatine(linker='creatine')
-    h2 <%= name %>
+    .other-info-wrap
+        h2 <%= name %>
+        ul.actions-remaining
+            li(title='std')
+                span.standard <%= actions.standard %>
+            li(title='mov') 
+                span.move <%= actions.move %>
+            li(title='min')
+                span.minor <%= actions.minor %>
     .clear
-    ul.actions-remaining
-        li(title='std')
-            span.standard <%= actions.standard %>
-        li(title='mov') 
-            span.move <%= actions.move %>
-        li(title='min')
-            span.minor <%= actions.minor %>
-        li
-            span.js-toggle-full.button More
-    div.full-attributes
-        | These are suome full attributes
+    ul.status-bar
+        li.js-toggle-full.button More
 
 script#dispatch-menu-item(type='text/template')
     li

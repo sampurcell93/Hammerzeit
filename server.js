@@ -38,10 +38,9 @@
     return db.players.update({
       username: req.params.name
     }, _.omit(req.body, "_id"), function(err, updated) {
+      console.log(req.body);
       if (!err) {
-        return res.json({
-          success: true
-        });
+        return res.json(req.body);
       }
     });
   });
@@ -51,6 +50,7 @@
       _this = this;
     password = req.body.password;
     username = req.params.name;
+    console.log(req.body);
     return db.players.findAndModify({
       query: {
         username: username

@@ -3,7 +3,7 @@
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
   define(["taskrunner", "powers", "globals", "utilities", "dialog", "battler", "board", "jquery-ui"], function(taskrunner, powers, globals, ut, dialog, battler, board) {
-    var $wrapper, CharacterStateDisplay, DispatchMenu, InventoryList, ItemView, Menu, Meter, PlayerDispatch, PowerList, PowerListItem, StatList, closeAll, stage, toggleMenu, _activemenu, _dispatchmenu, _menus, _potential_moves, _ref, _ref1, _ref2, _ref3, _ref4, _ref5, _ref6, _ref7, _ref8, _ref9;
+    var $wrapper, CharacterList, CharacterListItem, CharacterStateDisplay, DispatchMenu, InventoryList, ItemView, Menu, Meter, PlayerDispatch, PowerList, PowerListItem, StatList, closeAll, stage, toggleMenu, _activemenu, _dispatchmenu, _menus, _potential_moves, _ref, _ref1, _ref10, _ref11, _ref2, _ref3, _ref4, _ref5, _ref6, _ref7, _ref8, _ref9;
     board.focus();
     stage = board.getStage();
     _menus = [];
@@ -392,7 +392,12 @@
       };
 
       PowerListItem.prototype.events = {
-        "click": "chooseTargets",
+        "click": function(e) {
+          this.$el.parent().hide();
+          this.chooseTargets();
+          e.stopPropagation();
+          return e.stopImmediatePropagation();
+        },
         "click .attribute-list": function(e) {
           e.stopPropagation();
           return e.stopImmediatePropagation();
@@ -517,9 +522,13 @@
 
       StatList.prototype.className = 'attribute-list';
 
-      StatList.prototype.template = "<li class='stat-item' title='<%= key %>'><%= val %></li>";
+      StatList.prototype.template = "<li class='stat-item'><%= key %>: <%= val %></li>";
 
       StatList.prototype.objTemplate = $("#stat-list-obj").html();
+
+      StatList.prototype.launchOpts = {
+        destroyOthers: false
+      };
 
       StatList.prototype.initialize = function() {
         return this.listenTo(this.model, "change", this.render);
@@ -534,7 +543,7 @@
         _.each(Object.keys(model).sort(), function(key) {
           var val;
           val = model[key];
-          key = key.capitalize();
+          key = key.capitalize().replace("_", " ");
           if (_.isObject(val)) {
             return objects.push({
               key: key,
@@ -565,14 +574,14 @@
             l = new InventoryList({
               collection: this.model.get("inventory")
             });
-            return ut.launchModal(l.render().el);
+            return ut.launchModal(l.render().el, this.launchOpts);
           },
           "click .js-show-Powers": function() {
             var l;
             l = new PowerList({
               collection: this.model.get("powers")
             });
-            return ut.launchModal(l.render().el);
+            return ut.launchModal(l.render().el, this.launchOpts);
           }
         };
       };
@@ -619,7 +628,7 @@
         this.$el.html(_.template(this.template, _.extend(this.model.toJSON(), {
           actions: this.model.actions
         })));
-        return this.$(".full-attributes").html(this.attrlist.render().el);
+        return this.$el.append(this.attrlist.render().el);
       };
 
       CharacterStateDisplay.prototype.hide = function() {
@@ -651,14 +660,14 @@
       CharacterStateDisplay.prototype.showFullView = function() {
         this.fullViewOpen = true;
         this.$(".js-toggle-full").text("Less");
-        this.$(".full-attributes").slideDown("fast");
+        this.$(".attribute-list").slideDown("fast");
         return this;
       };
 
       CharacterStateDisplay.prototype.hideFullView = function() {
         this.fullViewOpen = false;
         this.$(".js-toggle-full").text("More");
-        this.$(".full-attributes").slideUp("fast");
+        this.$(".attribute-list").slideUp("fast");
         return this;
       };
 
@@ -678,12 +687,56 @@
       return CharacterStateDisplay;
 
     })(Backbone.View);
+    CharacterList = (function(_super) {
+      __extends(CharacterList, _super);
+
+      function CharacterList() {
+        _ref9 = CharacterList.__super__.constructor.apply(this, arguments);
+        return _ref9;
+      }
+
+      CharacterList.prototype.tagName = 'ul';
+
+      CharacterList.prototype.className = 'character-list';
+
+      CharacterList.prototype.initialize = function() {
+        return _.bindAll(this, "render");
+      };
+
+      CharacterList.prototype.render = function() {
+        var _this = this;
+        _.each(this.collection.models, function(char) {
+          var display;
+          display = new CharacterListItem({
+            model: char
+          });
+          return _this.$el.append(display.el);
+        });
+        return this;
+      };
+
+      return CharacterList;
+
+    })(Backbone.View);
+    CharacterListItem = (function(_super) {
+      __extends(CharacterListItem, _super);
+
+      function CharacterListItem() {
+        _ref10 = CharacterListItem.__super__.constructor.apply(this, arguments);
+        return _ref10;
+      }
+
+      CharacterListItem.prototype.tagName = 'li';
+
+      return CharacterListItem;
+
+    })(CharacterStateDisplay);
     Menu = (function(_super) {
       __extends(Menu, _super);
 
       function Menu() {
-        _ref9 = Menu.__super__.constructor.apply(this, arguments);
-        return _ref9;
+        _ref11 = Menu.__super__.constructor.apply(this, arguments);
+        return _ref11;
       }
 
       Menu.prototype.className = 'game-menu';
@@ -716,6 +769,9 @@
           },
           "remove add": function(model, collection) {
             return _this.$(".inventory-length").text(collection.getTotalItems());
+          },
+          "change:quantity": function(model, value, options) {
+            return this.$(".inventory-length").text(this.model.get("inventory").getTotalItems());
           }
         });
         _.bindAll(this, "close", "open", "toggle", "selectNext", "selectThis", "selectPrev");
@@ -771,18 +827,12 @@
       };
 
       Menu.prototype.renderParty = function() {
-        var frag,
-          _this = this;
-        frag = document.createDocumentFragment();
-        _.each(taskrunner.getParty().models, function(char) {
-          var display;
-          display = new CharacterStateDisplay({
-            model: char
-          });
-          return frag.appendChild(display.el);
+        this.partylist = new CharacterList({
+          collection: taskrunner.getParty()
         });
-        this.party = frag;
-        return this;
+        return ut.launchModal(["<h2>Party:</h2>", this.partylist.render().el], {
+          className: 'character-modal'
+        });
       };
 
       Menu.prototype.renderInventory = function() {
@@ -804,7 +854,8 @@
       };
 
       Menu.prototype.selectThis = function($item) {
-        $item.addClass("selected").siblings(".selected").removeClass("selected");
+        $item.addClass("selected").siblings(".selected").removeClass("selected").find(".nested-menu > ul").hide();
+        $item.find(".nested-menu > ul").show();
         return this;
       };
 
@@ -817,9 +868,6 @@
       };
 
       Menu.prototype.events = {
-        "click": function() {
-          return console.log(this.model.get("name"));
-        },
         "click .js-close-menu": function() {
           return this.close();
         },
@@ -829,10 +877,7 @@
         "click .js-show-inventory": function(e) {
           return e.stopPropagation();
         },
-        "click .js-show-party": function() {
-          this.renderParty();
-          return ut.launchModal(this.party);
-        },
+        "click .js-show-party": 'renderParty',
         "click li": function(e) {
           var $t;
           $t = $(e.currentTarget);
@@ -875,6 +920,12 @@
         },
         "click .js-end-turn": function() {
           return this.model.endTurn();
+        },
+        "click .js-show-enemies": function() {
+          this.enemylist = new CharacterList({
+            collection: battler.getEnemies()
+          });
+          return ut.launchModal(["<h2>Enemies:</h2>", this.enemylist.render().el]);
         }
       };
 
@@ -890,6 +941,7 @@
           direction: 'right',
           easing: 'easeInOutQuart'
         }), 300);
+        ut.destroyModal();
         board.unpause().focus();
         if (this.isBattleMenu()) {
           battler.removeHighlighting();
