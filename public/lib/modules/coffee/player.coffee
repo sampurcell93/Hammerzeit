@@ -14,7 +14,6 @@ define ["utilities", "npc", "board", "globals", "mapper", "items", "powers", "ba
 			{x:x, y:y}
 		# Expects x, y deltas, and the previous coords
 		insideChunkBounds: (chunk) ->	
-			ut.c "before check:", chunk
 			flag = false
 			if chunk.x < 0
 				chunk.x = 0

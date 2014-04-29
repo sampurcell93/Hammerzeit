@@ -39,7 +39,6 @@
 
       player.prototype.insideChunkBounds = function(chunk) {
         var flag;
-        ut.c("before check:", chunk);
         flag = false;
         if (chunk.x < 0) {
           chunk.x = 0;

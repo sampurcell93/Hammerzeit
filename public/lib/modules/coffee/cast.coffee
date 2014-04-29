@@ -45,6 +45,64 @@ define ["utilities", "globals", "items"], (ut, globals, items) ->
         spriteimg: _spritepath + 'testsheet.png'
         regY: 25
 
+    # Model which contains a player's skill levels
+    class Skillset extends Backbone.Model
+        defaults: ->
+            skills = ["alchemy", "cooking", "charisma", "strength", "agility", "toughness", "intelligence"]
+            obj = {}
+            _.each skills, (skill) ->  obj[skill] = 0
+            obj
+
+    class SkillTree extends Backbone.View
+        className: 'skill-tree'
+        tagName: 'li'
+        template: "<canvas height='490' width='580'></canvas>"
+        visible: true
+        initialize: ->
+            @listenTo @model, "show", @show
+        render: ->
+            @$el.html(_.template @template, _.extend(@model.toJSON(), {skills: @model.get("skills").toJSON()}))
+            @
+        show: -> 
+            @visible = true
+            $("li.skill-tree").trigger "hide"
+            @$el.fadeIn("fast")
+        hide: ->
+            @visible = false
+            @$el.fadeOut("fast")
+        events:
+            "hide": "hide"
+
+
+    # Viewfor choosing which player to level up
+    class ChoosePlayer extends Backbone.View
+        template: $("#choose-player-for-leveling").html()
+        tagName: 'li'
+        initialize: ({@leveler}) ->
+        render: ->
+            @$el.html(_.template @template, @model.toJSON() )
+            @
+        events:
+            click: -> @leveler.focus(@$el.index())
+
+
+    # The view of all players in the party and their respective skill trees
+    class LevelerView extends Backbone.View
+        className: 'leveler'
+        template: $("#leveler").html()
+        render: ->
+            @$el.html(_.template @template)
+            # @collection.models = _.sortBy @collection.models, (m) -> -m.get("XP")
+            _.each @collection.models, (player) =>
+                choose_view = new ChoosePlayer({model: player, leveler: @})
+                @$(".PC-list").append choose_view.render().el
+                skilltree = new SkillTree model: player
+                @$(".skill-trees").append skilltree.render().el
+            @focus()
+            @
+        focus: (index=0) ->
+            @collection.at(index).trigger("show")
+            @
     # Here we define a behavioral class for the NPC.
     # Did not want to subclass the NPC totally, because most of 
     # its behavior is class-independent.
@@ -58,9 +116,11 @@ define ["utilities", "globals", "items"], (ut, globals, items) ->
         # Accepts a number XP value, and returns if this value is enough for a 
         # new level, given the current level
         isNewLevel: (XP) ->
-            level = @get "level"
+            level = @get("character").get "level"
             next_XP = @get("level_xp_requirements")[level+1]
-            if XP >= next_XP then return level + 1
+            if XP >= next_XP 
+                @get("character").set("level", level + 1)
+                level + 1
             else false
 
     class Archer     extends Class
@@ -143,5 +203,7 @@ define ["utilities", "globals", "items"], (ut, globals, items) ->
         # Returns the toJSON() object for the person
         getPerson: (name) -> test
         getClassInst: (classname=null) -> new _classes[classname]({name: classname})
+        LevelerView: LevelerView
+        Skillset: (c,o) -> new Skillset c, o
 
     }

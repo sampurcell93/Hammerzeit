@@ -1,4 +1,4 @@
-define ["taskrunner", "powers", "globals", "utilities", "dialog", "battler", "board", "jquery-ui"], (taskrunner, powers, globals, ut, dialog, battler, board) ->
+define ["cast", "taskrunner", "powers", "globals", "utilities", "dialog", "battler", "board", "jquery-ui"], (cast, taskrunner, powers, globals, ut, dialog, battler, board) ->
 
     board.focus()
     stage = board.getStage()
@@ -37,19 +37,19 @@ define ["taskrunner", "powers", "globals", "utilities", "dialog", "battler", "bo
             character = @model
             @$el.html _.template @template, _.extend(character.toJSON(), {d: character.dispatched, i: character.i})
             if character.isDead() then @$el.addClass("dead")
-            else @$el.removeClass("dead")
-            if character.dispatched then @$el.addClass "disabled"
-            else @$el.removeClass("dead")
             @
         events: 
-            "mouseover": -> battler.potentialDispatch @model
-            "mouseleave": -> battler.discardDispatch()
-            "click": -> battler.confirmDispatch()
-            "click .js-view-attrs": (e) ->
-                display = new CharacterStateDisplay model: @model
-                ut.launchModal display.$el.show()
+            "mouseover": (e) -> 
+                display = new CharacterList collection: new Backbone.Collection([@model])
+                ut.launchModal display.render().$el
                 e.stopPropagation()
                 e.stopImmediatePropagation()
+                if @model.isDispatched() is false
+                    battler.potentialDispatch @model
+            "mouseleave": -> battler.discardDispatch()
+            "click": -> 
+                battler.confirmDispatch()
+                @$el.fadeOut "fast", => @remove()
 
 
     class DispatchMenu extends Backbone.View
@@ -60,6 +60,7 @@ define ["taskrunner", "powers", "globals", "utilities", "dialog", "battler", "bo
             @$el.empty()
             @collection.sort()
             _.each @collection.models, (character) =>
+                if character.isDispatched() then return
                 player = new PlayerDispatch model: character
                 @$el.append player.render().el
             @
@@ -320,8 +321,7 @@ define ["taskrunner", "powers", "globals", "utilities", "dialog", "battler", "bo
             # else @$el.removeClass "" Context switch weirds me out :/
             @$el.slideDown "fast"
             @
-        updateActions: (actions) ->
-            actions = _.pick @model.actions, "move", "minor", "standard"
+        updateActions: (actions=_.pick @model.actions, "move", "minor", "standard") ->
             _.each actions, (val, action) =>
                 @$(".#{action}").text(val)
         showFullView: ->
@@ -456,12 +456,18 @@ define ["taskrunner", "powers", "globals", "utilities", "dialog", "battler", "bo
                     when 13 then @$el.children(".selected").trigger "click"
             "click .js-virtual-move": -> 
                 battler.removeHighlighting()
-                _potential_moves = battler.virtualMovePossibilities @model.getCurrentSpace(), null, {range: @model.get("spd")}
+                console.log @model.getCurrentSpace()
+                _potential_moves = battler.virtualMovePossibilities @model.getCurrentSpace(), null, 
+                    {range: @model.get("spd"), jump: @model.get("jmp")}
                 battler.setPotentialMoves _potential_moves
                 battler.setState("choosingmoves")
             "click .js-defend": ->
                 if @model.can("move") then @model.defend()
             "click .js-end-turn": -> @model.endTurn()
+            "click .js-close-modals": -> ut.destroyModal()
+            "click .js-upgrade": ->
+                leveler = new cast.LevelerView( collection: taskrunner.getParty() )
+                ut.launchModal leveler.render().el, {isolate: true, className: 'large'}
 
             # "click": -> board.$canvas.focus()
         clickActiveItem: ->

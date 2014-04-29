@@ -2,7 +2,7 @@
   var __hasProp = {}.hasOwnProperty,
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
-  define(["globals", "utilities", "underscore", "backbone"], function(globals, ut) {
+  define(["globals", "utilities", "board", "underscore", "backbone"], function(globals, ut, board) {
     var Inventory, Item, Modifier, ModifierCollection, Slots, get, getItem, _items, _mods, _ref, _ref1, _ref2, _ref3, _ref4, _usefns, _wearfns;
     _usefns = {
       "Phoenix Down": function(target) {
@@ -181,7 +181,10 @@
         }
         target.applyModifiers(this.get("modifiers"), {
           donetext: 'Equipped ' + this.get("name")
-        }).takeAction(this.get("action"));
+        });
+        if (board.hasState("battle")) {
+          target.takeAction(this.get("action"));
+        }
         return this;
       };
 

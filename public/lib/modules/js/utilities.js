@@ -88,11 +88,12 @@
         destroyHash: false,
         destroyOthers: true,
         className: "",
-        closeIn: null
+        closeIn: null,
+        isolate: false
       };
       options = $.extend(defaults, options);
       if (options.destroyOthers !== false) {
-        destroyModal(true);
+        destroyModal();
       }
       modal = $("<div />").addClass("modal");
       try {
@@ -105,15 +106,15 @@
         }
       } catch (_error) {}
       if (options.close !== false) {
-        modal.prepend("<i class='close-modal'>X</i>");
+        modal.prepend("<i class='close-modal icon-cross'></i>");
         modal.find(".close-modal").on("click", function() {
-          return destroyModal(null, options);
+          return destroyModal(modal, options);
         });
         modal.on("keydown keyup", function(e) {
           var key;
           key = e.keyCode || e.which;
           if (key === 27) {
-            return destroyModal();
+            return destroyModal(modal);
           }
         });
       }
@@ -123,15 +124,22 @@
         }, options.closeIn);
       }
       $(document.body).addClass("active-modal").append(modal);
+      if (options.isolate === true) {
+        $(".modal-background").fadeIn("fast");
+      }
       modal.addClass(options.className).attr("tabindex", 0).fadeIn("fast").focus();
       return modal;
     };
     destroyModal = function(existing, options) {
+      if (existing == null) {
+        existing = $(".modal");
+      }
       options = $.extend({
         destroyHash: false
       }, options);
-      $(".modal").fadeOut("fast", function() {
-        return $(this).remove();
+      existing.fadeOut("fast", function() {
+        $(this).remove();
+        return $(".modal-background").fadeOut("fast");
       });
       $(document.body).removeClass("active-modal");
       return $("#game-board").focus();

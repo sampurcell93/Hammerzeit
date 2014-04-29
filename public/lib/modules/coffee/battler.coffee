@@ -16,6 +16,7 @@ define ["console", "board", "globals", "utilities", "taskrunner", "mapper", "npc
     _shared = globals.shared_events
     _activemap = null
     _ts = globals.map.tileside
+    hit_template = "<%=attacker.get('name')%> hit <%=subject.get('name')%> for <%=hit_details.damage%> damage and <%=hit_details.modifiers%> effects"
 
     # Handler for battle state functions. Respnsible for battle state (a subset of board state)
     class Battle extends Backbone.Model
@@ -54,15 +55,15 @@ define ["console", "board", "globals", "utilities", "taskrunner", "mapper", "npc
             if @states.length > 1
                 index = @states.indexOf removeme
                 @states.splice(index, 1) unless index == -1
-            else throw new Error("The board currently has only one state - you can't remove it. Try adding another state first.")
+            else throw new Error("The battle currently has only one state - you can't remove it. Try adding another state first.")
             @
         hasState: (checkstate) ->
-            @states == checkstate.toUpperCase()
+            @states is checkstate.toUpperCase()
         checkStillLiving: (model, collection, options) ->
             if collection
                 flag = true
                 _.each collection.models, (character) =>
-                    if character.dead is false then flag = false
+                    if character.isDead() is false then flag = false
                 return flag
             false
         removeTravelPC: -> 
@@ -309,8 +310,7 @@ define ["console", "board", "globals", "utilities", "taskrunner", "mapper", "npc
             @showing = false
         # Like move, but lightweight and with no transitions - simple arithmetic check
         # Because we're not updating marker, we can pass in a start object (x:,y:) to be virtualized from
-        virtualMove: (dx, dy, start, opts) ->
-            opts || opts = {}
+        virtualMove: (dx, dy, start, opts={}) ->
             if board.isPaused() then return false
             target = mapper.getTargetTile dx, dy, start
             if _.isEmpty(target) 
@@ -319,6 +319,7 @@ define ["console", "board", "globals", "utilities", "taskrunner", "mapper", "npc
                 return false
             if !target.tileModel.checkEnterable(dx, dy, start, opts) 
                 return false
+            if !target.tileModel.tooHigh(start, opts.jump) then return false
             target
         # Runs through the currently visible tiles in a battle and determines which moves are possible
         # Returns array of tiles. If true, silent prevents observation 
@@ -345,6 +346,8 @@ define ["console", "board", "globals", "utilities", "taskrunner", "mapper", "npc
                 range: 6
                 # The context to call the handler in
                 handlerContext: @
+                # How much elevation is acceptable?
+                jump: 2
             opts = _.extend path_defaults, opts
             checkQueue = []
             movable = new mapper.Row
@@ -458,6 +461,7 @@ define ["console", "board", "globals", "utilities", "taskrunner", "mapper", "npc
                 moveInterval = =>
                     if _.isEmpty(path)
                         activity.emit "#{active_player.get('type')} \"#{active_player.get('name')}\" moved #{len} squares"
+                        active_player.cursor().show()
                         @stopListening active_player, "donemoving"
                         @moving = false
                         _activebattle.clearPotentialMoves()
@@ -482,10 +486,16 @@ define ["console", "board", "globals", "utilities", "taskrunner", "mapper", "npc
                 power = @model.boundPower
                 attacker = power.belongsTo()
                 if data.type is "burst"
-                    _.each _activebattle.attack_zone.getOccupied(
+                    targets = _activebattle.attack_zone.getOccupied(
                         {reject: (subj) -> _.isEqual(subj.getOccupant(), attacker)}).models
-                    , (square, i) =>
-                        @handleAttack attacker, square.getOccupant(), power
+                    len = targets.length
+                    _.each targets, (square, i) =>
+                        if i is len - 1 then act = {take_action: true}
+                        else
+                            act = {take_action: false}
+                        setTimeout =>
+                            @handleAttack attacker, square.getOccupant(), power, act
+                        , (i+1)*700
                 else subject = @model.getOccupant()
                 if !subject? then return false
                 else @handleAttack(attacker, subject, power)
@@ -505,7 +515,8 @@ define ["console", "board", "globals", "utilities", "taskrunner", "mapper", "npc
         # Calls the power's use function and performing the default actions
         handleAttack: (attacker, subject, power, opts={take_action: true}) ->
             if !attacker.can(power.get "action") then return @
-            power.use.call(power, subject, {take_action: opts.take_action})
+            if hit_details = power.use.call(power, subject, {take_action: opts.take_action})
+                activity.emit _.template(hit_template, {attacker: attacker, subject: subject, hit_details: hit_details})
             # Some powers cost magic 
             _activebattle.clearAttackZone()
             @
@@ -587,12 +598,16 @@ define ["console", "board", "globals", "utilities", "taskrunner", "mapper", "npc
 
     getQueue = -> _activebattle.get("InitQueue")
 
-    _shared.on "state:battle", ->
-        if _activebattle then _activebattle.destructor().destroy()
-        _activebattle = new Battle()
-        grid = new GridOverlay model: _activemap, child: GridSquare, battle: _activebattle
-        _activebattle.grid = grid
-        _activebattle.begin "random"
+    _shared.on 
+        "state:battle": ->
+            if _activebattle then _activebattle.destructor().destroy()
+            _activebattle = new Battle()
+            grid = new GridOverlay model: _activemap, child: GridSquare, battle: _activebattle
+            _activebattle.grid = grid
+            _activebattle.begin "random"
+            _timer.show()
+        "map:change": (map) ->
+            _activemap = map
 
     # Expose
     window.battler = {

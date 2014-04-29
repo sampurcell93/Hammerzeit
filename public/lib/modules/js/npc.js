@@ -95,6 +95,7 @@
           inventory: items.Inventory(),
           modifiers: new ModifierCollection(),
           statuses: new ModifierCollection(),
+          skills: cast.Skillset(),
           jmp: 2,
           level: 1,
           name: "NPC",
@@ -124,6 +125,7 @@
         if (!(path instanceof Backbone.Model)) {
           this.setPath(path, this.get("level"));
         }
+        this.actions = _.extend({}, Backbone.Events);
         this.resetActions();
         this.setPowers(pow);
         this.setInventory(inventory);
@@ -269,11 +271,6 @@
         return !(board.hasState("battle")) && board.inBounds(x) && board.inBounds(y);
       };
 
-      NPC.prototype.checkElevation = function(target, start) {
-        start || (start = this.currentspace);
-        return !(Math.abs(start.elv - target.elv) > this.get('jmp'));
-      };
-
       NPC.prototype.checkTrigger = function(target) {
         if (target.trigger != null) {
           return setTimeout(function() {
@@ -333,8 +330,8 @@
         if (opts == null) {
           opts = {};
         }
+        slot = item.get("slot");
         if (this.canEquip(item)) {
-          slot = item.get("slot");
           item.set("equipped", true, opts);
           this.get("slots").set(slot, item, opts);
         } else {
@@ -347,7 +344,15 @@
       };
 
       NPC.prototype.enterSquare = function(target, dx, dy) {
-        target || (target = mapper.getTargetTile(0, 0, this.marker));
+        if (target == null) {
+          target = mapper.getTargetTile(0, 0, this.marker);
+        }
+        if (dx == null) {
+          dx = 0;
+        }
+        if (dy == null) {
+          dy = 0;
+        }
         target.tileModel.occupy(this);
         this.currentspace = target;
         if (target.end === false || target.end === "false" && (dx !== 0 && dy !== 0)) {
@@ -494,9 +499,20 @@
           return false;
         }
         sheet = this.turn(dx, dy);
+        if (_.isEmpty(target)) {
+          if (dx < 0) {
+            this.changeChunk(-1);
+          } else {
+            this.changeChunk(null, -1);
+          }
+          return true;
+        }
         if (!target.tileModel.checkEnterable(dx, dy, null, {
           character: this
         })) {
+          return false;
+        }
+        if (!target.tileModel.tooHigh(this.currentspace, this.get("jmp"))) {
           return false;
         }
         if (!this.stage || !marker) {
@@ -513,7 +529,6 @@
         if (walkspeed == null) {
           walkspeed = this.walkspeed;
         }
-        this.cursor();
         this.turn(dx, dy);
         target = mapper.getTargetTile(dx, dy, this.currentspace);
         count = 0;
@@ -528,7 +543,6 @@
             _this.moving = false;
             _this.checkTrigger(target);
             _this.leaveSquare();
-            _this.c.move(_this.marker).show();
             _this.enterSquare(target, dx, dy);
             _this.reanimate("run", .13, "run");
             _this.trigger("donemoving");
@@ -635,15 +649,28 @@
         };
       };
 
-      NPC.prototype.setChunk = function(y, x) {
+      NPC.prototype.changeChunk = function(x, y) {
         var chunk;
+        if (x == null) {
+          x = 0;
+        }
+        if (y == null) {
+          y = 0;
+        }
         chunk = this.get("current_chunk");
-        chunk.x = x;
-        chunk.y = y;
+        chunk.x += x;
+        chunk.y += y;
+        if (y === -1) {
+          this.setPos(null, globals.map.c_height);
+        }
+        if (x === -1) {
+          this.setPos(globals.map.c_width);
+        }
         this.set("current_chunk", chunk, {
           silent: true
         });
         this.trigger("change:current_chunk");
+        this.enterSquare();
         return this;
       };
 
@@ -661,7 +688,10 @@
         } else if (_.isObject(path)) {
           this.set("path", cast.getClassInst(path.name));
         }
-        this.get("path").set("level", level);
+        this.get("path").set({
+          level: level,
+          character: this
+        });
         return this;
       };
 
@@ -692,6 +722,12 @@
       };
 
       NPC.prototype.setPos = function(x, y) {
+        if (x == null) {
+          x = this.marker.x;
+        }
+        if (y == null) {
+          y = this.marker.y;
+        }
         this.marker.x = x;
         this.marker.y = y;
         return this;
@@ -888,6 +924,10 @@
         return this.defending;
       };
 
+      NPC.prototype.isDispatched = function() {
+        return this.dispatched;
+      };
+
       NPC.prototype.nextPhase = function() {
         var t,
           _this = this;
@@ -904,14 +944,14 @@
       };
 
       NPC.prototype.resetActions = function() {
-        this.actions = _.extend({
+        this.actions = _.extend(this.actions, {
           standard: 1,
           move: 2,
           minor: 2,
           change: function() {
             return this.trigger("change", _.pick(this, "standard", "move", "minor"));
           }
-        }, Backbone.Events);
+        });
         this.actions.change();
         return this;
       };
@@ -937,6 +977,7 @@
 
       NPC.prototype.takeMove = function(burn) {
         var actions;
+        console.log("moving?");
         actions = this.actions;
         if (actions.move > 0) {
           actions.move--;

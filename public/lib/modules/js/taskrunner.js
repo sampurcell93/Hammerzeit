@@ -2,7 +2,7 @@
   var __hasProp = {}.hasOwnProperty,
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
-  define(["globals", "utilities", "board", "npc", "player", "mapper", "mapcreator"], function(globals, ut, board, NPC, player, mapper, mapcreator) {
+  define(["globals", "utilities", "board", "player", "mapper", "mapcreator"], function(globals, ut, board, player, mapper, mapcreator) {
     var Loader, SignUp, User, getPC, getParty, getPlayer, loadGame, loadStage, newGame, saveGame, t, _ref, _ref1, _ref2, _user;
     _user = null;
     globals.shared_events.on("game:new", function() {
@@ -42,11 +42,24 @@
       User.prototype.defaults = {
         party: new player.PCArray([
           new player.model({
-            path: 'Dragoon'
+            path: 'Dragoon',
+            XP: 200
           }), new player.model({
             path: 'Healer',
             name: 'Jack',
-            HP: 57
+            HP: 57,
+            XP: 100
+          }), new player.model({
+            path: 'Fighter',
+            name: 'Braun',
+            HP: 83,
+            XP: 101
+          }), new player.model({
+            path: 'Thief',
+            name: 'Lidda',
+            HP: 11,
+            max_HP: 20,
+            XP: 300
           })
         ])
       };
@@ -158,6 +171,7 @@
           board.setBackground(level.getBackground());
           mapcreator.loadChunk(level.getBitmap()[newchunk.y][newchunk.x], newchunk.x, newchunk.y);
           mapcreator.render();
+          globals.shared_events.trigger("map:change", mapcreator.getChunk());
           full_chunk = level.getBitmap()[newchunk.y][newchunk.x];
           return mapper.renderChunk(full_chunk, board.getStage());
         });
@@ -168,12 +182,16 @@
       loader = new Loader({
         username: id
       });
-      return ut.launchModal(loader.render().el);
+      return ut.launchModal(loader.render().el, {
+        isolate: true
+      });
     };
     newGame = function() {
       var signup;
       signup = new SignUp();
-      return ut.launchModal(signup.render().el);
+      return ut.launchModal(signup.render().el, {
+        isolate: true
+      });
     };
     saveGame = function() {
       var savedparty;

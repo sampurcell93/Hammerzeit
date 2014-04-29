@@ -146,15 +146,13 @@ define ["globals", "utilities", "mapper", "backbone", "jquery", "jquery-ui", "un
     toggleOverlay = ->
         if !_overlay
             _overlay = new Overlay model: _chunk
+            _overlay.render()
             _overlay.showing = true
         else 
             _overlay.showing = false
             _overlay.$el.empty()
             _overlay = null
     exportMap = ->
-        _.each _chunk.get("rows"), (row) ->
-            _.each row.models, (tile) ->
-                if !tile.get("elv") then tile.set "elv" , 0
         m = ut.launchModal("<textarea>" + _chunk.export() + "</textarea>")
         # ut.c _chunk
         m.find("textarea").select()

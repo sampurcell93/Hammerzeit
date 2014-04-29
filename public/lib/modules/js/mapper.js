@@ -95,6 +95,10 @@
         return this;
       };
 
+      Tile.prototype.tooHigh = function(start, jump) {
+        return !(Math.abs(start.elv - this.get("elv")) > jump);
+      };
+
       return Tile;
 
     })(Backbone.Model);

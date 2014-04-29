@@ -1,4 +1,4 @@
-define ["globals", "utilities", "board", "npc", "player", "mapper", "mapcreator"], (globals, ut, board, NPC, player, mapper, mapcreator) ->
+define ["globals", "utilities", "board", "player", "mapper", "mapcreator"], (globals, ut, board, player, mapper, mapcreator) ->
 	_user = null
 	globals.shared_events.on "game:new", -> newGame()
 	globals.shared_events.on "game:load", -> loadGame()
@@ -16,8 +16,10 @@ define ["globals", "utilities", "board", "npc", "player", "mapper", "mapcreator"
 			user
 		defaults:
 			party: new player.PCArray([
-				new player.model({path: 'Dragoon'}), 
-				new player.model({path: 'Healer', name: 'Jack', HP: 57})])
+				new player.model({path: 'Dragoon', XP: 200}), 
+				new player.model({path: 'Healer', name: 'Jack', HP: 57, XP: 100})
+				new player.model({path: 'Fighter', name: 'Braun', HP: 83, XP: 101})
+				new player.model({path: 'Thief', name: 'Lidda', HP: 11, max_HP: 20, XP: 300})])
 		clean: (pcs=[])->
 			j = @toJSON()
 			_.each j.party.models, (p) =>
@@ -72,15 +74,16 @@ define ["globals", "utilities", "board", "npc", "player", "mapper", "mapcreator"
 				board.setBackground(level.getBackground())
 				mapcreator.loadChunk(level.getBitmap()[newchunk.y][newchunk.x], newchunk.x, newchunk.y)
 				mapcreator.render()
+				globals.shared_events.trigger "map:change", mapcreator.getChunk()
 				full_chunk = level.getBitmap()[newchunk.y][newchunk.x]
 				mapper.renderChunk full_chunk, board.getStage()
 
 	loadGame = (id) ->
 		loader = new Loader({username: id})
-		ut.launchModal loader.render().el
+		ut.launchModal loader.render().el, {isolate: true}
 	newGame = ->
 		signup = new SignUp()
-		ut.launchModal signup.render().el
+		ut.launchModal signup.render().el, {isolate: true}
 
 	saveGame = ->
 		savedparty = _user.get("party")

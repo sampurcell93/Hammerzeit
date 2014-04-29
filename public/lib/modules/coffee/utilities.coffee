@@ -68,9 +68,10 @@ define  ["jquery", "underscore"], ->
 		    destroyOthers: true
 		    className: ""
 		    closeIn: null
+		    isolate: false
 		options = $.extend defaults, options
 		unless options.destroyOthers is false
-			destroyModal true
+			destroyModal()
 		modal = $("<div />").addClass("modal")
 		try
 		    if $.isArray(content)
@@ -78,26 +79,32 @@ define  ["jquery", "underscore"], ->
 		          modal.append(item)
 		    else modal.html(content)
 		unless options.close is false
-		    modal.prepend("<i class='close-modal'>X</i>")
+		    modal.prepend("<i class='close-modal icon-cross'></i>")
 		    modal.find(".close-modal").on "click", ->
-		        destroyModal(null, options)
+		        destroyModal(modal, options)
 		    modal.on("keydown keyup", (e) ->
 		    	key = e.keyCode || e.which
-		    	if key == 27 then destroyModal()
+		    	if key == 27 then destroyModal(modal)
 		    )
 		if options.closeIn
 			setTimeout =>
 				destroyModal()
 			, options.closeIn
 		$(document.body).addClass("active-modal").append(modal)
+		if options.isolate is true 
+			$(".modal-background").fadeIn("fast")
 		modal.addClass(options.className).attr("tabindex",0).fadeIn("fast").focus()
 		modal
 
-	destroyModal = (existing, options) ->
+	destroyModal = (existing=$(".modal"), options) ->
 		options = $.extend {destroyHash: false}, options
-		$(".modal").fadeOut("fast", -> $(@).remove())
+		existing.fadeOut("fast", -> 
+			$(@).remove()
+			$(".modal-background").fadeOut("fast")
+		)
 			# unless existing == true
 		$(document.body).removeClass("active-modal")
+
 		$("#game-board").focus()
 				# if options.destroyHash == true
 					# window.location.hash = ""

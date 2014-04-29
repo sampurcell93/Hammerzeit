@@ -16,6 +16,7 @@ define ["globals", "utilities", "board", "items"], (globals, utilities, board, i
         defaults:
             # How much creatine does this cost?
             creatine: 0
+            # How likely is this to hit?
             power: 1
             # How many squares away can we look?
             range: 1
@@ -38,18 +39,25 @@ define ["globals", "utilities", "board", "items"], (globals, utilities, board, i
             # Which NPC is using this power
             belongsTo: null
         idAttribute: 'name'
+        # Accepts the subject of the attack and options. Returns true on hit, false on miss
         use: (subject, opts={take_action: true}) ->
             attacker = @belongsTo()
             use = @get "use"
             if _.isFunction(use) then use.call(@, subject, attacker)
             @set("uses", @get("uses") - 1)
+            unless opts.take_action is false or board.hasState("battle") is false
+                attacker.takeAction(@get "action") 
             if @resolve(attacker, subject) is true
-                subject.takeDamage(ut.roll(@get "damage_die"), 1, @get("damage"))
+                subject.takeDamage(damage = ut.roll(@get "damage_die"), 1, @get("damage"))
                 attacker.useCreatine(@get "creatine")
                 subject.applyModifiers(@get("modifiers"))
-            else subject.drawStatusChange({text: 'MISS'})
-            attacker.takeAction(@get "action") unless opts.take_action is false
-            @
+                return {
+                    modifiers: @get("modifiers").length
+                    damage: damage
+                }
+            else 
+                subject.drawStatusChange({text: 'MISS'})
+                return null
         resolve: (attacker=@belongsTo(), subject) ->
             mod = @get("power") + attacker.get("atk") + ut.roll()
             mod >= subject.get(@get("defense"))

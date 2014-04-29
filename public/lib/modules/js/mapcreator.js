@@ -228,6 +228,7 @@
         _overlay = new Overlay({
           model: _chunk
         });
+        _overlay.render();
         return _overlay.showing = true;
       } else {
         _overlay.showing = false;
@@ -237,13 +238,6 @@
     };
     exportMap = function() {
       var m;
-      _.each(_chunk.get("rows"), function(row) {
-        return _.each(row.models, function(tile) {
-          if (!tile.get("elv")) {
-            return tile.set("elv", 0);
-          }
-        });
-      });
       m = ut.launchModal("<textarea>" + _chunk["export"]() + "</textarea>");
       return m.find("textarea").select();
     };

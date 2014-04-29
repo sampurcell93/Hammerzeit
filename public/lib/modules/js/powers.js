@@ -40,7 +40,7 @@
       Power.prototype.idAttribute = 'name';
 
       Power.prototype.use = function(subject, opts) {
-        var attacker, use;
+        var attacker, damage, use;
         if (opts == null) {
           opts = {
             take_action: true
@@ -52,19 +52,23 @@
           use.call(this, subject, attacker);
         }
         this.set("uses", this.get("uses") - 1);
+        if (!(opts.take_action === false || board.hasState("battle") === false)) {
+          attacker.takeAction(this.get("action"));
+        }
         if (this.resolve(attacker, subject) === true) {
-          subject.takeDamage(ut.roll(this.get("damage_die")), 1, this.get("damage"));
+          subject.takeDamage(damage = ut.roll(this.get("damage_die")), 1, this.get("damage"));
           attacker.useCreatine(this.get("creatine"));
           subject.applyModifiers(this.get("modifiers"));
+          return {
+            modifiers: this.get("modifiers").length,
+            damage: damage
+          };
         } else {
           subject.drawStatusChange({
             text: 'MISS'
           });
+          return null;
         }
-        if (opts.take_action !== false) {
-          attacker.takeAction(this.get("action"));
-        }
-        return this;
       };
 
       Power.prototype.resolve = function(attacker, subject) {

@@ -2,7 +2,7 @@
   var __hasProp = {}.hasOwnProperty,
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
-  define(["taskrunner", "powers", "globals", "utilities", "dialog", "battler", "board", "jquery-ui"], function(taskrunner, powers, globals, ut, dialog, battler, board) {
+  define(["cast", "taskrunner", "powers", "globals", "utilities", "dialog", "battler", "board", "jquery-ui"], function(cast, taskrunner, powers, globals, ut, dialog, battler, board) {
     var $wrapper, CharacterList, CharacterListItem, CharacterStateDisplay, DispatchMenu, InventoryList, ItemView, Menu, Meter, PlayerDispatch, PowerList, PowerListItem, StatList, closeAll, stage, toggleMenu, _activemenu, _dispatchmenu, _menus, _potential_moves, _ref, _ref1, _ref10, _ref11, _ref2, _ref3, _ref4, _ref5, _ref6, _ref7, _ref8, _ref9;
     board.focus();
     stage = board.getStage();
@@ -62,35 +62,32 @@
         })));
         if (character.isDead()) {
           this.$el.addClass("dead");
-        } else {
-          this.$el.removeClass("dead");
-        }
-        if (character.dispatched) {
-          this.$el.addClass("disabled");
-        } else {
-          this.$el.removeClass("dead");
         }
         return this;
       };
 
       PlayerDispatch.prototype.events = {
-        "mouseover": function() {
-          return battler.potentialDispatch(this.model);
+        "mouseover": function(e) {
+          var display;
+          display = new CharacterList({
+            collection: new Backbone.Collection([this.model])
+          });
+          ut.launchModal(display.render().$el);
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+          if (this.model.isDispatched() === false) {
+            return battler.potentialDispatch(this.model);
+          }
         },
         "mouseleave": function() {
           return battler.discardDispatch();
         },
         "click": function() {
-          return battler.confirmDispatch();
-        },
-        "click .js-view-attrs": function(e) {
-          var display;
-          display = new CharacterStateDisplay({
-            model: this.model
+          var _this = this;
+          battler.confirmDispatch();
+          return this.$el.fadeOut("fast", function() {
+            return _this.remove();
           });
-          ut.launchModal(display.$el.show());
-          e.stopPropagation();
-          return e.stopImmediatePropagation();
         }
       };
 
@@ -119,6 +116,9 @@
         this.collection.sort();
         _.each(this.collection.models, function(character) {
           var player;
+          if (character.isDispatched()) {
+            return;
+          }
           player = new PlayerDispatch({
             model: character
           });
@@ -651,7 +651,9 @@
 
       CharacterStateDisplay.prototype.updateActions = function(actions) {
         var _this = this;
-        actions = _.pick(this.model.actions, "move", "minor", "standard");
+        if (actions == null) {
+          actions = _.pick(this.model.actions, "move", "minor", "standard");
+        }
         return _.each(actions, function(val, action) {
           return _this.$("." + action).text(val);
         });
@@ -913,8 +915,10 @@
         },
         "click .js-virtual-move": function() {
           battler.removeHighlighting();
+          console.log(this.model.getCurrentSpace());
           _potential_moves = battler.virtualMovePossibilities(this.model.getCurrentSpace(), null, {
-            range: this.model.get("spd")
+            range: this.model.get("spd"),
+            jump: this.model.get("jmp")
           });
           battler.setPotentialMoves(_potential_moves);
           return battler.setState("choosingmoves");
@@ -926,6 +930,19 @@
         },
         "click .js-end-turn": function() {
           return this.model.endTurn();
+        },
+        "click .js-close-modals": function() {
+          return ut.destroyModal();
+        },
+        "click .js-upgrade": function() {
+          var leveler;
+          leveler = new cast.LevelerView({
+            collection: taskrunner.getParty()
+          });
+          return ut.launchModal(leveler.render().el, {
+            isolate: true,
+            className: 'large'
+          });
         }
       };
 

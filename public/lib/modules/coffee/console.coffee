@@ -19,6 +19,7 @@ define ["utilities", "globals"], (ut, globals) ->
     class Console extends Backbone.View
         el: '.game-console'
         msgLen: 50
+        visible: true
         initialize: ->
             @listenTo @collection, 
                 "add": @emit
@@ -29,16 +30,29 @@ define ["utilities", "globals"], (ut, globals) ->
                 while to_prune.length
                     to_prune.shift().destroy()
             @
+        scrollToBottom: (speed="slow") ->
+            @$el.animate {scrollTop: @$el[0].scrollHeight}, speed
         emit: (model) ->
             line = new Line model: model
             $el = @$el
             @$("ol").append(line.render().el)
-            $el.animate {scrollTop: $el[0].scrollHeight}, "slow"
             @trimOldMessages()
+            @scrollToBottom()
+        show: ->
+            @visible = true
+            @$el.removeClass("hidden")
+            @scrollToBottom(0)
+            @
+        hide: ->
+            @visible = false
+            @$el.addClass("hidden")
+            @
+        toggle: ->
+            if @visible then @hide()
+            else @show()
         events: 
-            "click .js-toggle": ->
-                @$el.toggleClass("hidden")
-
+            "click .js-toggle": "toggle"
+            "dblclick": "hide"
 
     _console = new Console({collection: new Messages})
 
@@ -61,10 +75,13 @@ define ["utilities", "globals"], (ut, globals) ->
             else 
                 activity.emit type.join(":")
 
-    activity = {
-        emit: (message, opts) => _console.collection.add new Message(_.extend {text: message}, opts)
-    }
-
     _events.on "all", handleEvent
 
-    activity
+    activity = {
+        emit: (message, opts) => _console.collection.add new Message(_.extend {text: message}, opts)
+        hide: -> _console.hide()
+        show: -> _console.show()
+        toggle: -> _console.toggle()
+    }
+
+

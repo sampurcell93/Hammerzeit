@@ -40,21 +40,7 @@ body {
     overflow: hidden;
     font-family: 'Myriad Pro Light',"Ubuntu", sans-serif;
     font-weight: 300;
-	
-	&:after {
-		content: '';
-		position: fixed;
-		top: 0;
-		left: 0;
-		width: 100%;
-		height: 100%;
-		background: rgba(0,0,0,.7);
-		display: none;
-	}
 
-	&.active-modal::after  {
-		// display: block;
-	}
 }
 
 h2 {
@@ -74,7 +60,7 @@ h2 {
     max-height: 94%;
     overflow: auto;
     background: rgba(0,0,0,.7);
-    padding:  0 20px 10px;
+    padding:  20px 20px 10px;
     outline: none;
     color: #ccc;
     @include box-shadow(0px 0px 7px #111);
@@ -87,8 +73,25 @@ h2 {
         cursor: pointer;
         color: #f9f9f9;
         z-index: 999;
+        font-size: 1.7em;
     }
 
+    &.large {
+        width: 900px;
+        margin-left: -450px;
+    }
+
+}
+
+.modal-background {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255,255,255,.4);
+    display: none;
+    z-index: 999;
 }
 
 canvas {
@@ -419,9 +422,10 @@ input {
 
 #turn-progress-number {
     // @include border-radius(3px);
+    @include no-user-select();
     width: 5%;
     position: absolute;
-    display: block;
+    display: none;
     text-align: center;
     line-height: 2.45;
     font-size: .8em;
@@ -438,13 +442,15 @@ input {
     position: absolute;
     bottom: -16px;
     left: 0;
+    display: none;
     width: 100%;
     padding: 0;
-    @include border-radius(0px);
+    @include border-radius(3px);
 
     &::-webkit-progress-bar {
-        background-color: #333;
+        background-color: rgba(0,0,0,.3);
         padding: 3px;
+        @include border-radius(3px);
     }
 
     // Thanks to chris coyier for the gradients
@@ -460,6 +466,7 @@ input {
 
         background-size: 35px 20px, 100% 100%, 100% 100%;
         @include border-radius(2px);
+        @include box-shadow(inset 0px 0px 2px rgba(255,255,255,.6));
     }
 }
 
@@ -694,6 +701,7 @@ meter {
     padding: 1px 4px;
     font-size: .8em;
     @include transition(height .3s ease-in-out);
+    @include no-user-select();
 
     ol {
         @include transition(height .3s ease-in-out);
@@ -730,6 +738,45 @@ meter {
 
         .button {
             top: -25px
+        }
+    }
+}
+
+.leveler {
+    .PC-list {
+        float: left;
+        width: 30%;
+
+        li {
+            line-height: 2em;
+            text-align: center;
+            border-top: 1px solid #444;
+            border-bottom: 1px solid #111;
+            cursor: pointer;
+
+            &:last-of-type { border-bottom: none; }
+
+            &:first-of-type { border-top: none; }
+
+            &:hover {
+                background: rgba(0,0,0,.3);
+            }
+        }
+    }
+
+    .skill-trees {
+        float: right;
+        width: 67%;
+        height: 500px;
+        position: relative;
+    }
+
+    .skill-trees li {
+        height: 100%;
+        position: absolute;
+        width: 100%;
+
+        canvas {
         }
     }
 }

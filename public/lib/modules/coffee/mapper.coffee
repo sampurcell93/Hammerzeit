@@ -62,6 +62,9 @@ define ["globals", "utilities", "board", "mapper", "underscore", "backbone", "ea
             @set "occupied", false
             @set "occupied_by", null
             @
+        # Returns if a square is too high to enter
+        tooHigh: (start, jump) ->
+            !(Math.abs(start.elv - @get("elv")) > jump)
 
     class Row extends Backbone.Collection
         model: Tile

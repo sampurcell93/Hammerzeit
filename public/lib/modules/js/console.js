@@ -76,6 +76,8 @@
 
       Console.prototype.msgLen = 50;
 
+      Console.prototype.visible = true;
+
       Console.prototype.initialize = function() {
         return this.listenTo(this.collection, {
           "add": this.emit
@@ -94,6 +96,15 @@
         return this;
       };
 
+      Console.prototype.scrollToBottom = function(speed) {
+        if (speed == null) {
+          speed = "slow";
+        }
+        return this.$el.animate({
+          scrollTop: this.$el[0].scrollHeight
+        }, speed);
+      };
+
       Console.prototype.emit = function(model) {
         var $el, line;
         line = new Line({
@@ -101,16 +112,34 @@
         });
         $el = this.$el;
         this.$("ol").append(line.render().el);
-        $el.animate({
-          scrollTop: $el[0].scrollHeight
-        }, "slow");
-        return this.trimOldMessages();
+        this.trimOldMessages();
+        return this.scrollToBottom();
+      };
+
+      Console.prototype.show = function() {
+        this.visible = true;
+        this.$el.removeClass("hidden");
+        this.scrollToBottom(0);
+        return this;
+      };
+
+      Console.prototype.hide = function() {
+        this.visible = false;
+        this.$el.addClass("hidden");
+        return this;
+      };
+
+      Console.prototype.toggle = function() {
+        if (this.visible) {
+          return this.hide();
+        } else {
+          return this.show();
+        }
       };
 
       Console.prototype.events = {
-        "click .js-toggle": function() {
-          return this.$el.toggleClass("hidden");
-        }
+        "click .js-toggle": "toggle",
+        "dblclick": "hide"
       };
 
       return Console;
@@ -141,15 +170,23 @@
           return activity.emit(type.join(":"));
       }
     };
-    activity = {
+    _events.on("all", handleEvent);
+    return activity = {
       emit: function(message, opts) {
         return _console.collection.add(new Message(_.extend({
           text: message
         }, opts)));
+      },
+      hide: function() {
+        return _console.hide();
+      },
+      show: function() {
+        return _console.show();
+      },
+      toggle: function() {
+        return _console.toggle();
       }
     };
-    _events.on("all", handleEvent);
-    return activity;
   });
 
 }).call(this);

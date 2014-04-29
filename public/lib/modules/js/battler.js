@@ -3,7 +3,7 @@
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
   define(["console", "board", "globals", "utilities", "taskrunner", "mapper", "npc", "mapcreator", "player", "cast", "items"], function(activity, board, globals, ut, taskrunner, mapper, NPC, mapcreator, player, cast, items) {
-    var Battle, Dispatcher, Enemy, GridOverlay, GridSquare, InitiativeQueue, NPCArray, Player, Timer, battle_events, discardDispatch, getActive, getQueue, map, setPotentialMoves, stage, states, virtualMovePossibilities, _activebattle, _activemap, _ref, _ref1, _ref2, _ref3, _shared, _sm, _timer, _ts;
+    var Battle, Dispatcher, Enemy, GridOverlay, GridSquare, InitiativeQueue, NPCArray, Player, Timer, battle_events, discardDispatch, getActive, getQueue, hit_template, map, setPotentialMoves, stage, states, virtualMovePossibilities, _activebattle, _activemap, _ref, _ref1, _ref2, _ref3, _shared, _sm, _timer, _ts;
     window.t = function() {
       return getQueue().next();
     };
@@ -20,6 +20,7 @@
     _shared = globals.shared_events;
     _activemap = null;
     _ts = globals.map.tileside;
+    hit_template = "<%=attacker.get('name')%> hit <%=subject.get('name')%> for <%=hit_details.damage%> damage and <%=hit_details.modifiers%> effects";
     Battle = (function(_super) {
       __extends(Battle, _super);
 
@@ -85,7 +86,7 @@
             this.states.splice(index, 1);
           }
         } else {
-          throw new Error("The board currently has only one state - you can't remove it. Try adding another state first.");
+          throw new Error("The battle currently has only one state - you can't remove it. Try adding another state first.");
         }
         return this;
       };
@@ -100,7 +101,7 @@
         if (collection) {
           flag = true;
           _.each(collection.models, function(character) {
-            if (character.dead === false) {
+            if (character.isDead() === false) {
               return flag = false;
             }
           });
@@ -540,7 +541,9 @@
 
       GridOverlay.prototype.virtualMove = function(dx, dy, start, opts) {
         var target;
-        opts || (opts = {});
+        if (opts == null) {
+          opts = {};
+        }
         if (board.isPaused()) {
           return false;
         }
@@ -552,6 +555,9 @@
           return false;
         }
         if (!target.tileModel.checkEnterable(dx, dy, start, opts)) {
+          return false;
+        }
+        if (!target.tileModel.tooHigh(start, opts.jump)) {
           return false;
         }
         return target;
@@ -574,7 +580,8 @@
           storePath: true,
           ignoreDeltas: false,
           range: 6,
-          handlerContext: this
+          handlerContext: this,
+          jump: 2
         };
         opts = _.extend(path_defaults, opts);
         checkQueue = [];
@@ -737,6 +744,7 @@
             var deltas;
             if (_.isEmpty(path)) {
               activity.emit("" + (active_player.get('type')) + " \"" + (active_player.get('name')) + "\" moved " + len + " squares");
+              active_player.cursor().show();
               _this.stopListening(active_player, "donemoving");
               _this.moving = false;
               _activebattle.clearPotentialMoves();
@@ -766,17 +774,31 @@
 
       GridSquare.prototype.attack_fns = {
         clickHandler: function(e, data) {
-          var attacker, power, subject,
+          var attacker, len, power, subject, targets,
             _this = this;
           power = this.model.boundPower;
           attacker = power.belongsTo();
           if (data.type === "burst") {
-            _.each(_activebattle.attack_zone.getOccupied({
+            targets = _activebattle.attack_zone.getOccupied({
               reject: function(subj) {
                 return _.isEqual(subj.getOccupant(), attacker);
               }
-            }).models, function(square, i) {
-              return _this.handleAttack(attacker, square.getOccupant(), power);
+            }).models;
+            len = targets.length;
+            _.each(targets, function(square, i) {
+              var act;
+              if (i === len - 1) {
+                act = {
+                  take_action: true
+                };
+              } else {
+                act = {
+                  take_action: false
+                };
+              }
+              return setTimeout(function() {
+                return _this.handleAttack(attacker, square.getOccupant(), power, act);
+              }, (i + 1) * 700);
             });
           } else {
             subject = this.model.getOccupant();
@@ -804,6 +826,7 @@
       };
 
       GridSquare.prototype.handleAttack = function(attacker, subject, power, opts) {
+        var hit_details;
         if (opts == null) {
           opts = {
             take_action: true
@@ -812,9 +835,15 @@
         if (!attacker.can(power.get("action"))) {
           return this;
         }
-        power.use.call(power, subject, {
+        if (hit_details = power.use.call(power, subject, {
           take_action: opts.take_action
-        });
+        })) {
+          activity.emit(_.template(hit_template, {
+            attacker: attacker,
+            subject: subject,
+            hit_details: hit_details
+          }));
+        }
         _activebattle.clearAttackZone();
         return this;
       };
@@ -951,19 +980,25 @@
     getQueue = function() {
       return _activebattle.get("InitQueue");
     };
-    _shared.on("state:battle", function() {
-      var grid;
-      if (_activebattle) {
-        _activebattle.destructor().destroy();
+    _shared.on({
+      "state:battle": function() {
+        var grid;
+        if (_activebattle) {
+          _activebattle.destructor().destroy();
+        }
+        _activebattle = new Battle();
+        grid = new GridOverlay({
+          model: _activemap,
+          child: GridSquare,
+          battle: _activebattle
+        });
+        _activebattle.grid = grid;
+        _activebattle.begin("random");
+        return _timer.show();
+      },
+      "map:change": function(map) {
+        return _activemap = map;
       }
-      _activebattle = new Battle();
-      grid = new GridOverlay({
-        model: _activemap,
-        child: GridSquare,
-        battle: _activebattle
-      });
-      _activebattle.grid = grid;
-      return _activebattle.begin("random");
     });
     return window.battler = {
       getActive: function(opts) {

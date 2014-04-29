@@ -60,10 +60,10 @@ script#menu(type='text/template')
     h2 <%= name %>
         span.phase-number(data-tooltip='Phase number') <%= phase %>/3
     ul
-        li(tabindex=2, actiontype="move").js-virtual-move.selected 
+        li(tabindex=2, actiontype="move").js-virtual-move.selected.js-close-modals 
             i.icon-directions
             |Move
-        li(tabindex=2).js-attack Attack
+        li(tabindex=2).js-attack.js-close-modals Attack
             div.power-list.nested-menu
         li(tabindex=2).js-show-party
             i.icon-info
@@ -71,7 +71,7 @@ script#menu(type='text/template')
         li(tabindex=2).js-show-enemies
             i.icon-info
             | Enemies
-        li(tabindex=2).js-show-inventory 
+        li(tabindex=2).js-show-inventory.js-close-modals
             i.icon-lab
             |Inventory
             span.inventory-length.list-descriptor-small(data-tooltip='Items in Inventory')
@@ -79,7 +79,7 @@ script#menu(type='text/template')
         li(tabindex=2, actiontype="move", data-tooltip='+2AC for one round').js-defend 
             i.icon-shield
             | Defend
-        li(tabindex=2).js-end-turn 
+        li(tabindex=2).js-end-turn
             i.icon-blocked
             | End Turn
         li(tabindex=2).js-close-menu
@@ -129,8 +129,6 @@ script#attribute-container(type='text/template')
 script#dispatch-menu-item(type='text/template')
     li
         <%= name %>
-        | <%= d ? "Dispatched" : "" %>
-        span.js-view-attrs View
 
 script#stat-list-obj(type='text/template')
     <li class='obj-caller js-show-<%= key %> icon-arrow-right'>
@@ -138,5 +136,12 @@ script#stat-list-obj(type='text/template')
     </li>
 
 
+script#leveler(type='text/template')
+    h2 Level Up!
+    ul.PC-list
+    ul.skill-trees
 
-
+script#choose-player-for-leveling(type='text/template')
+    | <%= name %> -
+    | XP: <%= XP %>
+    | Level: <%= level %>

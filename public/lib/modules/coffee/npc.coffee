@@ -59,6 +59,7 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 				inventory: items.Inventory()
 				modifiers: new ModifierCollection()
 				statuses: new ModifierCollection()
+				skills: cast.Skillset()
 				jmp: 2
 				level: 1
 				name: "NPC"
@@ -94,6 +95,7 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 			}
 		initialize: ({pow, frames, spriteimg, path, inventory} = {}) ->
 			unless path instanceof Backbone.Model then @setPath path, @get "level"
+			@actions = _.extend {}, Backbone.Events
 			@resetActions()
 			@setPowers(pow)
 			@setInventory(inventory)
@@ -181,11 +183,6 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 			@get("slots").get(item.get("slot")) is null
 		canMoveOffChunk: (x, y) -> 
 			!(board.hasState("battle")) and board.inBounds(x) and board.inBounds(y)
-		# Pass in the tile the NPC will move to - if the diff in elevations exceeds the jump
-		# score of the NPC, it is unenterable.
-		checkElevation: (target, start) -> 
-			start || start = @currentspace
-			!(Math.abs(start.elv - target.elv) > @get('jmp'))
 		# Takes in a tile DisplayObject (bitmap) and calls a trigger function if it exists
 		# Triggers stored in the trigger module
 		checkTrigger: (target) ->
@@ -220,15 +217,14 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 			, 100
 			@
 		equip: (item, opts={}) ->
+			slot = item.get("slot")
 			if @canEquip(item)
-				slot = item.get("slot")
 				item.set("equipped", true, opts)
 				@get("slots").set(slot, item, opts)
 			else @drawStatusChange {text: "#{slot} already equipped!", color: "red"}
 			@
 		# Pass in a tile DisplayObject, and link it to this NPC
-		enterSquare: (target, dx, dy) ->
-			target || target = mapper.getTargetTile(0,0,@marker)
+		enterSquare: (target=mapper.getTargetTile(0,0,@marker), dx=0, dy=0) ->
 			target.tileModel.occupy @
 			@currentspace = target
 			if target.end is false or target.end is "false" and (dx isnt 0 and dy isnt 0)
@@ -311,7 +307,12 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 			target = mapper.getTargetTile dx, dy, @currentspace
 			if @moving is true then return false
 			sheet = @turn dx, dy
+			if _.isEmpty(target)
+				if dx < 0 then @changeChunk -1
+				else @changeChunk null, -1
+				return true
 			if !target.tileModel.checkEnterable(dx, dy, null, {character: @}) then return false
+			if !target.tileModel.tooHigh(@currentspace, @get("jmp")) then return false
 			if !@stage or !marker
 				throw new Error("There is no stage or marker assigned to this NPC!")
 			# if !@canMoveOffChunk() then return false
@@ -319,7 +320,6 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 			@moveInterval dx, dy
 			true
 		moveInterval: (dx, dy, walkspeed=@walkspeed) ->
-			@cursor()
 			@turn dx, dy
 			target = mapper.getTargetTile dx, dy, @currentspace
 			count = 0
@@ -335,7 +335,6 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 					@moving = false
 					@checkTrigger target
 					do @leaveSquare
-					@c.move(@marker).show()
 					@enterSquare target, dx, dy
 					@reanimate "run", .13, "run"
 					@trigger "donemoving"
@@ -394,12 +393,17 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 		roundToNearestTile: (x, y, dx, dy) ->
 			{x: (Math.ceil(x/_ts)*_ts), y: (Math.ceil(y/_ts)*_ts) }
 		# Note the argument order - reflects 2D array notation
-		setChunk: (y,x) ->
+		changeChunk: (x=0,y=0) ->
 			chunk = @get "current_chunk"
-			chunk.x = x
-			chunk.y = y
+			chunk.x += x
+			chunk.y += y
+			if y is -1
+				@setPos null, globals.map.c_height
+			if x is -1
+				@setPos globals.map.c_width
 			@set "current_chunk", chunk, {silent: true}
 			@trigger "change:current_chunk"
+			@enterSquare()
 			@
 		setPath: (path="Peasant", level=1) ->
 			if _.isString(path)
@@ -408,7 +412,7 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 				return @
 			else if _.isObject(path) 
 				@set "path", cast.getClassInst(path.name)
-			@get("path").set("level", level)
+			@get("path").set({level: level, character: @})
 			@
 		setInventory:(inventory=@get("path").getDefaultInventory({belongsTo: @})) ->
 			@removeModifiers null, {type: "Item", silent: true}
@@ -420,7 +424,7 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 			@set "inventory", inventory
 			@
 		# Expects pixel multiples, IE 500, 700
-		setPos: (x,y) ->
+		setPos: (x=@marker.x,y=@marker.y) ->
 			@marker.x = x
 			@marker.y = y
 			@
@@ -543,6 +547,7 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 		isActive: -> @active
 		isDead: -> @dead
 		isDefending: -> @defending
+		isDispatched: -> @dispatched
 		# Increments the phase counter and sets the game timer according to the 
 		# NPC's initiative roll
 		nextPhase: ->
@@ -559,13 +564,13 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 		# one standard, two minor OR
 		# Two moves one minor
 		resetActions: ->
-			@actions = _.extend {
+			@actions = _.extend @actions, {
 				standard: 1
 				move: 2
 				minor: 2
 				change: -> 
 					@trigger "change", _.pick @, "standard", "move", "minor"
-			}, Backbone.Events
+			}
 			@actions.change()
 			@
 		# Take a standard action and adjust the other actions.
@@ -580,6 +585,7 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 			@
 		# Take a move action
 		takeMove: (burn) ->
+			console.log "moving?"
 			actions = @actions
 			if actions.move > 0
 				actions.move--

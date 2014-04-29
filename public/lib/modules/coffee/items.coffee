@@ -1,4 +1,4 @@
-define ["globals", "utilities", "underscore", "backbone"], (globals, ut) ->
+define ["globals", "utilities", "board", "underscore", "backbone"], (globals, ut, board) ->
 
     # Since we're storing items in a json dictionary, 
     # functions need to be assignmed at runtime.
@@ -95,7 +95,9 @@ define ["globals", "utilities", "underscore", "backbone"], (globals, ut) ->
         isEquipped: -> @get "equipped"
         isEquippable: -> @get "canEquip"
         onEquip: (target = @belongsTo())->
-            target.applyModifiers(@get("modifiers"), {donetext: 'Equipped ' + @get("name")}).takeAction(@get("action"))
+            target.applyModifiers(@get("modifiers"), {donetext: 'Equipped ' + @get("name")})
+            if board.hasState("battle")
+                target.takeAction(@get("action"))
             @
         onUnEquip: (target = @belongsTo()) ->
             target.removeModifiers(@get("modifiers"), {donetext: 'Unequipped ' + @get("name")})
