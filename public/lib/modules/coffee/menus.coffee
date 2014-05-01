@@ -1,4 +1,4 @@
-define ["cast", "taskrunner", "powers", "globals", "utilities", "dialog", "battler", "board", "jquery-ui"], (cast, taskrunner, powers, globals, ut, dialog, battler, board) ->
+define ["cast", "taskrunner", "powers", "globals", "utilities", "battler", "board", "jquery-ui"], (cast, taskrunner, powers, globals, ut, battler, board) ->
 
     board.focus()
     stage = board.getStage()
@@ -189,7 +189,7 @@ define ["cast", "taskrunner", "powers", "globals", "utilities", "dialog", "battl
             handler = @model.getHandler()
             opts = {ignoreNPCs: true, storePath: false, ignoreDifficult: true, ignoreDeltas: true, range: @model.get("range"), handlerContext: @model}
             opts = _.extend opts, @model.getPathOptions()
-            battler.setAttacks battler.virtualMovePossibilities(user.getCurrentSpace(), handler, opts)
+            battler.setAttacks m = battler.virtualMovePossibilities(user.getCurrentSpace(), handler, opts)
             battler.setState("choosingattacks")
         events: 
             "click": (e) ->

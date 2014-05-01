@@ -1,4 +1,4 @@
-define ["console", "board", "globals", "utilities", "taskrunner", "mapper", "npc", "mapcreator", "player", "cast", "items"], (activity, board, globals, ut, taskrunner, mapper, NPC, mapcreator, player, cast, items) ->
+define ["console", "board", "globals", "utilities", "taskrunner", "mapper", "npc", "player", "cast", "items"], (activity, board, globals, ut, taskrunner, mapper, NPC, player, cast, items) ->
     window.t = ->
         getQueue().next()
 
@@ -16,7 +16,7 @@ define ["console", "board", "globals", "utilities", "taskrunner", "mapper", "npc
     _shared = globals.shared_events
     _activemap = null
     _ts = globals.map.tileside
-    hit_template = "<%=attacker.get('name')%> hit <%=subject.get('name')%> for <%=hit_details.damage%> damage and <%=hit_details.modifiers%> effects"
+    hit_template = "<%=attacker.get('name')%> hit <%=subject.get('name')%> for <%=hit_details.damage%> damage and <%=hit_details.modifiers%> effects with <%= power.get('name') %>"
 
     # Handler for battle state functions. Respnsible for battle state (a subset of board state)
     class Battle extends Backbone.Model
@@ -290,18 +290,25 @@ define ["console", "board", "globals", "utilities", "taskrunner", "mapper", "npc
  
     _timer = new Timer($("#turn-progress"),$("#turn-progress-number"))
 
-    class GridOverlay extends mapcreator.Overlay
+    class GridOverlay extends Backbone.View
         show: -> @$el.fadeIn  "fast"
         hide: -> @$el.fadeOut "fast"
         el: ".battle-grid-overlay"
         showing: false
         initialize: ({@battle, @child, @model})->
-        modifyAllTiles: ->
+            super
+        render: ->
+            @$el.empty()
+            _.each @model.children, (row) =>
+                _.each row.children, (tile) =>
+                    item = new GridSquare model: tile.tileModel
+                    item.parent = @
+                    tile.modifier = item
+                    @$el.append(item.render().el)
         toggle: ->
             if @showing is false then @activate()
             else @deactivate()
         activate:  ->
-            @model = _activemap
             @render()
             @show()
             @showing = true
@@ -384,8 +391,6 @@ define ["console", "board", "globals", "utilities", "taskrunner", "mapper", "npc
                     if opts.diagonal is true
                         enqueue(i, i, square.tileModel, @virtualMove i, i, square, opts)
                         enqueue(-i, i, square.tileModel, @virtualMove -i, i, square, opts)
-            # Remove the original square from the results
-            # movable.shift()
             _.each movable.models, (tile) ->
                 tile.discovered = false
             movable
@@ -412,9 +417,6 @@ define ["console", "board", "globals", "utilities", "taskrunner", "mapper", "npc
                 generalhighlight: @highlight
                 rangeattack: @attackrange
                 burstattack: @burstattack
-            @listenTo @model.collection.chunk, 
-                pulse: @pulse
-                stopPulsing: @stopPulsing
             @setUpHitArea()
         stopPulsing: ->
             @pulsing = false
@@ -499,7 +501,6 @@ define ["console", "board", "globals", "utilities", "taskrunner", "mapper", "npc
                 else subject = @model.getOccupant()
                 if !subject? then return false
                 else @handleAttack(attacker, subject, power)
-
             mouseoverHandler: (e, data) ->
                 @drawHitAreaSquare @colors.selected_move
                 board.mainCursor().show().move @model.bitmap
@@ -516,9 +517,9 @@ define ["console", "board", "globals", "utilities", "taskrunner", "mapper", "npc
         handleAttack: (attacker, subject, power, opts={take_action: true}) ->
             if !attacker.can(power.get "action") then return @
             if hit_details = power.use.call(power, subject, {take_action: opts.take_action})
-                activity.emit _.template(hit_template, {attacker: attacker, subject: subject, hit_details: hit_details})
+                activity.emit _.template(hit_template, {power: power, attacker: attacker, subject: subject, hit_details: hit_details})
             # Some powers cost magic 
-            _activebattle.clearAttackZone()
+            @parent.battle.clearAttackZone()
             @
         bindMoveFns: ->
             area = @model.bitmap.hitArea
@@ -526,17 +527,18 @@ define ["console", "board", "globals", "utilities", "taskrunner", "mapper", "npc
             area.on "click" , m.clickHandler, @, false, area: area
             area.on "mouseover", m.mouseoverHandler, @, false, area: area
             area.on "mouseout", m.mouseoutHandler, @, false, area: area
+            @
         bindAttackFns: (type) ->
             area = @model.bitmap.hitArea
             a = @attack_fns
             area.on "click" , a.clickHandler, @, false, area: area, type: type
             area.on "mouseover", a.mouseoverHandler, @, false, area: area, type: type
             area.on "mouseout", a.mouseoutHandler, @, false, area: area, type: type
+            @
         highlight: ->
             bitmap = @model.bitmap
             area = bitmap.hitArea
             g = area.graphics
-
         # Pass in a stringto identify why a grid square should be highlighted
         potentialmoves: ->
             # @haspotentialmoves = true
@@ -558,6 +560,7 @@ define ["console", "board", "globals", "utilities", "taskrunner", "mapper", "npc
             area.drawn = false
             area.alpha = 0
             # stage.removeChild bitmaphit
+            @
         attackrange: ->
             area = @model.bitmap.hitArea
             @drawHitAreaSquare @colors.general
@@ -602,7 +605,9 @@ define ["console", "board", "globals", "utilities", "taskrunner", "mapper", "npc
         "state:battle": ->
             if _activebattle then _activebattle.destructor().destroy()
             _activebattle = new Battle()
-            grid = new GridOverlay model: _activemap, child: GridSquare, battle: _activebattle
+            console.log mapper.getVisibleMap()
+            debugger
+            grid = new GridOverlay model: _activemap || mapper.getVisibleMap(), child: GridSquare, battle: _activebattle
             _activebattle.grid = grid
             _activebattle.begin "random"
             _timer.show()
@@ -621,18 +626,18 @@ define ["console", "board", "globals", "utilities", "taskrunner", "mapper", "npc
         getEnemies: -> 
             _activebattle.get("NPCs")
         toggleGrid: ->
-            _activemap = mapcreator.getChunk()
+            _activemap = mapper.getVisibleMap( true )
             if _activebattle
                 _activebattle.toggleGrid()
         activateGrid: ->
-            _activemap = mapcreator.getChunk()
+            _activemap = mapper.getVisibleMap( true )
             if _activebattle
                 _activebattle.activateGrid()
         deactivateGrid: ->
             if _activebattle
                 _activebattle.deactivateGrid()
-        getActiveMap: -> 
-            _activemap
+        # getActiveMap: -> 
+        #     _activemap
         # Gets all characters, dead or alive.
         getQueue: -> getQueue()
         # Because of the game's combination of real time and RPG playing, we're using a timer! 

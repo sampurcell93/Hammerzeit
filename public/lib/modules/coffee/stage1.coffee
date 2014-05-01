@@ -13,15 +13,14 @@ define ["battler", "mapcreator", "utilities", "board", "dialog", "globals", "tas
 	# This is the parsed map with bitmaps - has not been added to the 
 	# stage at all after loading, only created
 	_bitmap = []
+	_raw_map = null
 
-	generateChunkSprite = (chunk, j, i) ->
-		if chunk.background_position is true
-			str = "-"  + globals.map.width*i  + "px "
-			str += "-" + globals.map.height*j + "px"
-			str
-		else chunk.background_position
+	generateBackgroundPosition = (i, j) ->
+		str = "-"  + globals.map.width*i  + "px "
+		str += "-" + globals.map.height*j + "px"
+		str
 
-	_initialize = ->
+	initialize = ->
 		board.clear()
 		clearInterval globals.introScenery
 		# introSlider 3
@@ -52,51 +51,42 @@ define ["battler", "mapcreator", "utilities", "board", "dialog", "globals", "tas
 					delay: 1000
 					speed: 82
 					after: ->
+						PC.changeChunk()
 						board.setPresetBackground ""
 						dialog.destroy()
-						PC.trigger("change:current_chunk")
-						c = PC.get("current_chunk")
 						board.addMarker PC
-						mapper.renderChunk _bitmap[c.y][c.x], stage
 						board.addState("TRAVEL").removeState("WAITING")
-						battler.activateGrid()
-						board.setMapSize(_stageObj.width*globals.map.width, _stageObj.height*globals.map.height)
 						# battler.start()
-						PC.marker.x = 250
-						PC.marker.y = 0
+						# PC.marker.x = 250
+						# PC.marker.y = 300
 						PC.enterSquare()
+
 
 			}
 		])
 	# t = ut.tileEntryCheckers
 	$.getJSON globals.stage_dir + "stage1.json", (json) =>
 		_stageObj = json
-		for f in [0..._stageObj.height]
-			_bitmap[f] = []
-		map = _stageObj.map
-		# Take each chunk defined above (will move to JSON map files) and load it into a full array of bitmaps
-		for i in [0..._stageObj.width] then for j in [0..._stageObj.height]
-			chunk = map[j][i]
-			chunk.background_position = generateChunkSprite chunk, j, i
-			if !chunk.tiles 
-				chunk.tiles = mapcreator.getDefaultChunk()
-			else 
-				_.each chunk.tiles, (row) ->
-					_.each row, (tile) ->
-						if tile.trigger 
-							tile.trigger = _triggers[tile.trigger]
-			_bitmap[j][i] = mapper.loadChunk(chunk, j, i)
-			_bitmap[j][i].background_position = chunk.background_position
-		_initialize()
-			# mapcreator.loadChunk map[j][i].tiles
-
+		console.log _stageObj
+		_raw_map = _stageObj.map
+		height = _stageObj.height
+		width = _stageObj.width
+		_.each _raw_map, (chunk_row,i) ->
+			_.each chunk_row, (chunk,j) ->
+				if chunk.background_position is true
+					chunk.background_position = generateBackgroundPosition j, i
+					console.log chunk.background_position
+				if _.isUndefined(chunk.tiles)
+					chunk.tiles = mapper.getEmptyMap()
+		# 		if i is 0 and j is 0
+		# 			console.log mapper.mapFromPrecursor(chunk.tiles)
+		_events.trigger "loading:done"
+		initialize()
 
 	return {
-		getBackground: ->
-			_stageObj.background
-		getBitmap: -> _bitmap
+		getBackground: -> _stageObj.background
+		# Returns the 2D array of tiles and other options
 		getPrecursor: -> _stageObj.map
-		initialize: _initialize
 		events: _events
 		
 	}

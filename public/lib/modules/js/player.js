@@ -2,7 +2,7 @@
   var __hasProp = {}.hasOwnProperty,
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
-  define(["utilities", "npc", "board", "globals", "mapper", "items", "powers", "backbone", "easel", "underscore"], function(ut, NPC, board, globals, mapper, items, powers) {
+  define(["utilities", "npc", "board", "globals"], function(ut, NPC, board, globals) {
     var PCArray, player, stage, _ref, _ref1;
     stage = board.getStage();
     player = (function(_super) {
@@ -76,7 +76,7 @@
           this.marker.x %= globals.map.width;
           this.marker.y %= globals.map.height;
           this.set("current_chunk", chunk);
-          this.trigger("change:current_chunk");
+          this.trigger("change:current_chunk", chunk);
           board.addMarker(this);
           len = stage.children.length;
           stage.setChildIndex(marker, 0);
@@ -105,7 +105,7 @@
         return _.extend(defaults, {
           current_chunk: {
             x: 1,
-            y: 1
+            y: 0
           },
           inventory: inventory,
           type: "PC",

@@ -30,8 +30,8 @@ define ["utilities", "globals"], (ut, globals) ->
                 while to_prune.length
                     to_prune.shift().destroy()
             @
-        scrollToBottom: (speed="slow") ->
-            @$el.animate {scrollTop: @$el[0].scrollHeight}, speed
+        scrollToBottom: (speed="fast") ->
+            @$("ol").animate {scrollTop: @$("ol")[0].scrollHeight}, speed
         emit: (model) ->
             line = new Line model: model
             $el = @$el

@@ -2,7 +2,7 @@
   var __hasProp = {}.hasOwnProperty,
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
-  define(["console", "board", "globals", "utilities", "taskrunner", "mapper", "npc", "mapcreator", "player", "cast", "items"], function(activity, board, globals, ut, taskrunner, mapper, NPC, mapcreator, player, cast, items) {
+  define(["console", "board", "globals", "utilities", "taskrunner", "mapper", "npc", "player", "cast", "items"], function(activity, board, globals, ut, taskrunner, mapper, NPC, player, cast, items) {
     var Battle, Dispatcher, Enemy, GridOverlay, GridSquare, InitiativeQueue, NPCArray, Player, Timer, battle_events, discardDispatch, getActive, getQueue, hit_template, map, setPotentialMoves, stage, states, virtualMovePossibilities, _activebattle, _activemap, _ref, _ref1, _ref2, _ref3, _shared, _sm, _timer, _ts;
     window.t = function() {
       return getQueue().next();
@@ -20,7 +20,7 @@
     _shared = globals.shared_events;
     _activemap = null;
     _ts = globals.map.tileside;
-    hit_template = "<%=attacker.get('name')%> hit <%=subject.get('name')%> for <%=hit_details.damage%> damage and <%=hit_details.modifiers%> effects";
+    hit_template = "<%=attacker.get('name')%> hit <%=subject.get('name')%> for <%=hit_details.damage%> damage and <%=hit_details.modifiers%> effects with <%= power.get('name') %>";
     Battle = (function(_super) {
       __extends(Battle, _super);
 
@@ -515,9 +515,24 @@
 
       GridOverlay.prototype.initialize = function(_arg) {
         this.battle = _arg.battle, this.child = _arg.child, this.model = _arg.model;
+        return GridOverlay.__super__.initialize.apply(this, arguments);
       };
 
-      GridOverlay.prototype.modifyAllTiles = function() {};
+      GridOverlay.prototype.render = function() {
+        var _this = this;
+        this.$el.empty();
+        return _.each(this.model.children, function(row) {
+          return _.each(row.children, function(tile) {
+            var item;
+            item = new GridSquare({
+              model: tile.tileModel
+            });
+            item.parent = _this;
+            tile.modifier = item;
+            return _this.$el.append(item.render().el);
+          });
+        });
+      };
 
       GridOverlay.prototype.toggle = function() {
         if (this.showing === false) {
@@ -528,7 +543,6 @@
       };
 
       GridOverlay.prototype.activate = function() {
-        this.model = _activemap;
         this.render();
         this.show();
         return this.showing = true;
@@ -646,7 +660,7 @@
 
       return GridOverlay;
 
-    })(mapcreator.Overlay);
+    })(Backbone.View);
     GridSquare = (function(_super) {
       __extends(GridSquare, _super);
 
@@ -682,10 +696,6 @@
           generalhighlight: this.highlight,
           rangeattack: this.attackrange,
           burstattack: this.burstattack
-        });
-        this.listenTo(this.model.collection.chunk, {
-          pulse: this.pulse,
-          stopPulsing: this.stopPulsing
         });
         return this.setUpHitArea();
       };
@@ -839,12 +849,13 @@
           take_action: opts.take_action
         })) {
           activity.emit(_.template(hit_template, {
+            power: power,
             attacker: attacker,
             subject: subject,
             hit_details: hit_details
           }));
         }
-        _activebattle.clearAttackZone();
+        this.parent.battle.clearAttackZone();
         return this;
       };
 
@@ -858,9 +869,10 @@
         area.on("mouseover", m.mouseoverHandler, this, false, {
           area: area
         });
-        return area.on("mouseout", m.mouseoutHandler, this, false, {
+        area.on("mouseout", m.mouseoutHandler, this, false, {
           area: area
         });
+        return this;
       };
 
       GridSquare.prototype.bindAttackFns = function(type) {
@@ -875,10 +887,11 @@
           area: area,
           type: type
         });
-        return area.on("mouseout", a.mouseoutHandler, this, false, {
+        area.on("mouseout", a.mouseoutHandler, this, false, {
           area: area,
           type: type
         });
+        return this;
       };
 
       GridSquare.prototype.highlight = function() {
@@ -912,7 +925,8 @@
         area = this.model.bitmap.hitArea;
         this.unbindHitFns();
         area.drawn = false;
-        return area.alpha = 0;
+        area.alpha = 0;
+        return this;
       };
 
       GridSquare.prototype.attackrange = function() {
@@ -987,8 +1001,10 @@
           _activebattle.destructor().destroy();
         }
         _activebattle = new Battle();
+        console.log(mapper.getVisibleMap());
+        debugger;
         grid = new GridOverlay({
-          model: _activemap,
+          model: _activemap || mapper.getVisibleMap(),
           child: GridSquare,
           battle: _activebattle
         });
@@ -1014,13 +1030,13 @@
         return _activebattle.get("NPCs");
       },
       toggleGrid: function() {
-        _activemap = mapcreator.getChunk();
+        _activemap = mapper.getVisibleMap(true);
         if (_activebattle) {
           return _activebattle.toggleGrid();
         }
       },
       activateGrid: function() {
-        _activemap = mapcreator.getChunk();
+        _activemap = mapper.getVisibleMap(true);
         if (_activebattle) {
           return _activebattle.activateGrid();
         }
@@ -1029,9 +1045,6 @@
         if (_activebattle) {
           return _activebattle.deactivateGrid();
         }
-      },
-      getActiveMap: function() {
-        return _activemap;
       },
       getQueue: function() {
         return getQueue();

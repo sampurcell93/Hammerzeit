@@ -3,8 +3,9 @@
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
   define(["globals", "utilities", "board", "player", "mapper", "mapcreator"], function(globals, ut, board, player, mapper, mapcreator) {
-    var Loader, SignUp, User, getPC, getParty, getPlayer, loadGame, loadStage, newGame, saveGame, t, _ref, _ref1, _ref2, _user;
+    var Loader, SignUp, User, getPC, getParty, getPlayer, loadGame, loadStage, newGame, saveGame, t, _currentlevel, _ref, _ref1, _ref2, _user;
     _user = null;
+    _currentlevel = 1;
     globals.shared_events.on("game:new", function() {
       return newGame();
     });
@@ -112,6 +113,8 @@
             success: function() {
               loadStage(1);
               window.PC = _user.get("party").at(0);
+              console.log(PC);
+              debugger;
               return ut.destroyModal();
             },
             parse: true
@@ -163,17 +166,17 @@
       board.addState("LOADING");
       return require(["lib/modules/js/stage" + module], function(level) {
         var PC;
+        level.events.on("loading:done", function() {
+          return board.setBackground(level.getBackground());
+        });
+        _currentlevel = level;
         PC = getPC();
         board.removeState("LOADING");
-        return PC.on("change:current_chunk", function() {
-          var full_chunk, newchunk;
-          newchunk = PC.get("current_chunk");
-          board.setBackground(level.getBackground());
-          mapcreator.loadChunk(level.getBitmap()[newchunk.y][newchunk.x], newchunk.x, newchunk.y);
-          mapcreator.render();
-          globals.shared_events.trigger("map:change", mapcreator.getChunk());
-          full_chunk = level.getBitmap()[newchunk.y][newchunk.x];
-          return mapper.renderChunk(full_chunk, board.getStage());
+        return PC.on("change:current_chunk", function(newchunk) {
+          var bitmap, full_chunk;
+          bitmap = level.getPrecursor();
+          full_chunk = bitmap[newchunk.y][newchunk.x];
+          return mapper.mapFromPrecursor(full_chunk);
         });
       });
     };

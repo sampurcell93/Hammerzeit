@@ -43,12 +43,14 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 				powers: attrs.powers.toJSON(true)
 				path: attrs.path.get "name"
 				slots: attrs.slots.toJSON(true)
+				marker: 
+					x: @marker.x
+					y: @marker.y
 			}
 		defaults: ->
 			return {
 				AC: 10
 				atk: 3
-				current_chunk: { x: 0, y: 0 }
 				currentstage: 1
 				creatine: 10
 				eco: 10
@@ -93,7 +95,7 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 						[165, 165, 55, 55, 0]]
 				}
 			}
-		initialize: ({pow, frames, spriteimg, path, inventory} = {}) ->
+		initialize: ({pow, frames, spriteimg, path, inventory, marker} = {}) ->
 			unless path instanceof Backbone.Model then @setPath path, @get "level"
 			@actions = _.extend {}, Backbone.Events
 			@resetActions()
@@ -120,7 +122,7 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 				if level then alert "new level!! #{level}"
 			# Powers load async, so when loaded we need to bind defaults to an unequipped NPC
 			# then stop listening
-			@createMarker()
+			@createMarker(marker)
 			@on "add", (model, coll) => if coll.type is "InitiativeQueue" then @activity_queue = coll
 			@cursor()
 			@
@@ -163,7 +165,7 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 				"current_chunk", "regY", "spriteimg", "frames", "modifiers", "statuses"
 			o.path = o.path.get("name")
 			o
-		createMarker: ->
+		createMarker: ({x,y}={})->
 			sheet = @sheets["0,1"]
 			sheet.getAnimation("run").speed = .13
 			sheet.getAnimation("run").next = "run"
@@ -174,6 +176,9 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 			@marker.icon = sprite
 			nameobj = new createjs.Text(@get("name"), "14px Arial", "#fff")
 			@marker.addChild _.extend nameobj, {shadow: globals.textshadow, y: 40 }
+			if x then @marker.x = x
+			if y then @marker.y = y
+			@
 		cursor: -> 
 			c = @c || board.newCursor()
 			@c = c
@@ -225,6 +230,7 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 			@
 		# Pass in a tile DisplayObject, and link it to this NPC
 		enterSquare: (target=mapper.getTargetTile(0,0,@marker), dx=0, dy=0) ->
+			console.log target
 			target.tileModel.occupy @
 			@currentspace = target
 			if target.end is false or target.end is "false" and (dx isnt 0 and dy isnt 0)
@@ -268,11 +274,10 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 				@drawStatusChange (
 					{text: @getChangeModifier(diff) + Math.abs(diff) + str, color: color}
 				)
-			# Bind draw listeners to properties
+			# Bind draw listeners to certain properties
 			_.each ["HP", "creatine", "AC", "atk", "range"], (attr) =>
 				@on "change:#{attr}", (model, val) =>
 					handleChange @getAttrDifference(attr), attr
-			console.log @
 			@listenTo @get("modifiers"), 
 				"add": (modifier, collection) =>
 					currentval = @get modifier.get "prop"
@@ -309,7 +314,9 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 			sheet = @turn dx, dy
 			if _.isEmpty(target)
 				if dx < 0 then @changeChunk -1
-				else @changeChunk null, -1
+				else if dx > 0 then @changeChunk 1
+				else if dy < 0 then @changeChunk null, -1
+				else @changeChunk null, 1
 				return true
 			if !target.tileModel.checkEnterable(dx, dy, null, {character: @}) then return false
 			if !target.tileModel.tooHigh(@currentspace, @get("jmp")) then return false
@@ -395,14 +402,20 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 		# Note the argument order - reflects 2D array notation
 		changeChunk: (x=0,y=0) ->
 			chunk = @get "current_chunk"
+			console.log chunk
+			debugger
 			chunk.x += x
 			chunk.y += y
 			if y is -1
 				@setPos null, globals.map.c_height
+			else if y is 1 
+				@setPos null, 0
 			if x is -1
 				@setPos globals.map.c_width
+			else if x is 1
+				@setPos 0
 			@set "current_chunk", chunk, {silent: true}
-			@trigger "change:current_chunk"
+			@trigger "change:current_chunk", chunk
 			@enterSquare()
 			@
 		setPath: (path="Peasant", level=1) ->
@@ -458,7 +471,7 @@ define ["globals", "utilities", "board", "items", "powers", "mapper", "cast", "u
 			@onTurnFunctions.push opts
 			@
 		addToMap: () ->
-			chunk = mapper.getVisibleChunk()?.children
+			chunk = mapper.getVisibleMap()?.children
 			x = Math.abs Math.ceil(Math.random()*globals.map.c_width/_ts - 1)
 			y = Math.abs Math.ceil(Math.random()*globals.map.c_height/_ts - 1)
 			tile = chunk[y]?.children[x] 

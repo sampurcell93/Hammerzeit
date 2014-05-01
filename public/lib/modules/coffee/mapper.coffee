@@ -1,4 +1,4 @@
-define ["globals", "utilities", "board", "mapper", "underscore", "backbone", "easel", "jquery"], (globals, ut, board, mapper) ->
+define ["globals", "utilities", "board"], (globals, ut, board) ->
     tileurl      = 'images/tiles/<%=name%>.<%=typeof filetype !== "undefined" ? filetype : "jpg" %>'
     tilewidth    = tileheight = 50
     tiles        = null
@@ -6,12 +6,117 @@ define ["globals", "utilities", "board", "mapper", "underscore", "backbone", "ea
     _activebitmap = null
     _backbone = null
     stage = board.getStage()
-    # 3d tiles have to be drawn after the players and npcs, because they overshadow them
-    _3dtiles = null
     _checkEntry = ut.tileEntryCheckers
 
     _cached_chunks = []
     for i in [0..3] then _cached_chunks[i] = []
+
+
+    class Overlay extends Backbone.View
+        el: '.enterable-list'
+        initialize: (opts) ->
+            @child = opts.child
+            _.bindAll @, "render"
+        render: ->
+            if !@model then return @
+            @$el.empty()
+            _.each @model.get("rows"), (row) =>
+                _.each row.models, (tile) =>
+                    item = @child || OverlayItem
+                    item = new item model: tile
+                    item.parent = @
+                    if item instanceof OverlayItem then tile.modifier = item
+                    @$el.append(item.render().el)
+        modifyAllTiles: (modal) ->
+            ut.c "modding all", _selected
+            _.each _selected.models, (tile) ->
+                tile.modifier.applyChanges modal, false
+            _selected.reset()
+
+
+    class OverlayItem extends Backbone.View
+        template: $("#mapcreate-item").html()
+        tagName: 'li'
+        initialize: ->
+            @listenTo @model, {
+                "change": @render
+                "modification": @modifyTileInfo
+            }    
+            enterInfo = $("#modify-tile").html()
+            # Handles the view and array modification 
+            @modifyTileInfo = ->
+                ut.c "modiying tile info"
+                if _selected.length > 1 then multi = true else multi = false
+                tile = @model
+                if multi then str = "<h3>Editing Many</h3>" else str = ""
+                modal = ut.launchModal(str + _.template(enterInfo, _.extend(tile.toJSON(), {x: tile.x, y: tile.y})))
+                modal.find(".js-add-elevation").select()
+                self = @
+                modal.on("keydown", ".js-change", (e) ->
+                    key = e.keyCode || e.which
+                    if key != 9 then $(@).attr("changed", true)
+                    if key == 13
+                        if multi
+                            self.parent.modifyAllTiles modal
+                        else 
+                            self.applyChanges modal
+                            _selected.remove self.model.cid
+                )
+                tile
+         # grab the content of the dir box and set to tiler
+        applyChanges: (modal, proceed) ->
+             # Give a tile coord set and this finds the next tile, ltr preferential
+            getNextTile = (x,y) =>
+                if x < 19
+                    x++
+                    return {tile: @parent.model.get("rows")[y].at(x), y: y, x: x}
+                else if x is 19 and y < 13 
+                    y++
+                    return {tile: @parent.model.get("rows")[y].at(0), y: y, x: 0}
+                else null
+            self = @
+            # modal.find(".js-change").each >
+            #     $t = $ @
+            #     if $t.inputChanged()
+            #         self.model.set $t.data("changeme"), $t.val()
+            if modal.find(".js-diff").inputChanged()
+                @model.set "m", parseInt(modal.find(".js-diff").val())
+            if modal.find(".js-can-end").inputChanged()
+                @model.set "end", ut.parseBool(modal.find(".js-can-end").val())
+            if modal.find(".js-add-type").inputChanged()
+                @model.set "t", modal.find(".js-add-type").val()
+            if modal.find(".js-add-dirs").inputChanged()
+                @model.set "e", modal.find(".js-add-dirs").val()
+            if modal.find(".js-add-elevation").inputChanged() 
+                @model.set "elv", parseInt(modal.find(".js-add-elevation").val())
+            ut.destroyModal()
+            @model.expose()
+            @unselect()
+            unless proceed is false
+                next = getNextTile(@model.x,@model.y)
+                if next.tile then next.tile.modifier.modifyTileInfo modal, proceed
+        render: ->
+            @$el.html(_.template(@template, @model.toJSON()))
+            @
+        select: ->
+            @$el.addClass("selected-tile")
+            @selected = true
+            _selected.add @model
+        unselect: ->
+            @$el.removeClass("selected-tile")
+            @selected = false
+        events: 
+            select: "select"
+            unselect: "unselect"
+            click: (e) ->
+                e.preventDefault()
+                unless e.shiftKey
+                    @select()
+                    @modifyTileInfo()
+                else 
+                    if @selected is true then @unselect()
+                    else @select()
+
 
     class Tile extends Backbone.Model
         defaults: 
@@ -73,32 +178,6 @@ define ["globals", "utilities", "board", "mapper", "underscore", "backbone", "ea
                 model.isOccupied() and !opts.reject(model)
             )
 
-    class Chunk extends Backbone.Model
-        defaults: ->
-            rows = []
-            for i in [0...globals.map.tileheight]
-                rows[i] = row = new Row
-                row.chunk = @
-                for j in [0...globals.map.tilewidth] 
-                    row.add tile = new Tile({t: 'e'})
-                    tile.x = j
-                    tile.y = i
-            return rows: rows
-        export: ->
-            str = "["
-            _.each @get("rows"), (row) ->
-                str += "["
-                _.each row.models, (tile) ->
-                    str += JSON.stringify(tile.toJSON()) + ","
-                str = str.substring(0,str.length-1)
-                str += "],"
-            str.substring(0,str.length-1) + "]"
-        # Takes in x,y pixel coords and returns the model at that position
-        getFromCoords: (x, y)->
-            x /= 50
-            y /= 50
-            @get("rows")[y].at(x)
-
     $.getJSON "lib/json_packs/tiles.json", {}, (t) ->
         tiles = t
         # Initialize the tiles with common defaults
@@ -136,48 +215,54 @@ define ["globals", "utilities", "board", "mapper", "underscore", "backbone", "ea
         model.bitmap = bitmap
         bitmap
 
-    loadChunk = (map) ->
-        bitmaparray = []
-        _.each map, (tile) ->
-            # Check if it's an array - if so, flatten to make sure only 2D
-            if $.isArray tile
-                if tile.length is 1 
-                    extend = []
-                    for i in [0...globals.map.width/tilewidth] then extend.push tile[0]
-                bitmaparray.push loadChunk _.flatten(extend || tile)
-            else
-                if typeof tile == "object"
-                    type = tile.t
-                else type = tile
-                temp = getFromShorthand type, tiles
-                w = tile.width  || 1
-                h = tile.height || 1
-                bitmap = new createjs.Bitmap(temp.url)
-                bitmap = _.extend(bitmap, (temp || {}), (tile || {}))
-                # Create a new bitmap image, and extend the generic tile defaults onto it, followed by the specific tile settings
-                bitmaparray.push(bindModel(bitmap))
-        bitmaparray
-
     # We have wrapper each chunk in a container, so a simple remove (0) should suffice here
     clearChunk =  ->
         stage.removeChild _activechunk
         stage.removeChild _3dtiles
 
-    renderChunk = (bitmap, vertindex) ->
-        vertindex || vertindex = 0
+    class Chunk 
+        constructor: ->
+            @container = new createjs.Container()
+            for i in [0..18]
+                @container.children[i] = new createjs.Container()
+                for j in [0..13]
+                    @container.children[i].children[j] = new Tile()
+            @
+        export: -> @container
+        plain: -> 
+            arr = []
+            for i in [0..18]
+                arr[i] = []
+                for j in [0..13]
+                    arr[i][j] = {}
+
+
+
+    renderChunk = (bitmap, vertindex=0) ->
+        # 3d tiles have to be drawn after the players and npcs, because they overshadow them
+        _3dtiles = new createjs.Container()
         container = new createjs.Container()
         container.x = 0
         container.y = 0
         _.each bitmap, (tile, i) ->
-            if $.isArray tile
-                container.addChild(renderChunk tile, i)
+            if _.isArray(tile)
+                container.addChild renderChunk tile, i
             else
-                tile.x = tilewidth * i
-                tile.y = tileheight * vertindex
-                tile.hitArea = createBitEventRegister(tile, tile.x, tile.y)
+                if typeof tile == "object"
+                    type = tile.t
+                else type = tile
+                w = tile.width  || 1
+                h = tile.height || 1
+                processed = new createjs.Bitmap("images/tiles/p.png")
+                # Create a new bitmap image, and extend the generic tile defaults onto it, followed by the specific tile settings
+                processed.x = tilewidth * i
+                processed.y = tileheight * vertindex
+                processed.hitArea = createBitEventRegister(tile, tile.x, tile.y)
+                processed = _.extend processed, {tileModel: new Tile(tile)}
+                processed.tileModel.bitmap = processed
                 if tile.t isnt "e" and tile.t isnt "p"
-                    _3dtiles.addChild tile
-                container.addChild tile
+                    _3dtiles.addChild processed
+                container.addChild processed
         stage.terrain = bitmap
         stage.addChild container
         container
@@ -187,37 +272,57 @@ define ["globals", "utilities", "board", "mapper", "underscore", "backbone", "ea
         board.setBackground(bitmap.background || false)
 
     return window.mapper = {
-        # Expects an array of 14x14 2D arrays, or chunks, each of which represents one full view in the map. 
-        # Returns the bitmap 2d array for rendering by easel
-        loadChunk: (chunk, x, y) ->
-            if _cached_chunks[y][x] then return _cached_chunks[y][x]
-            else 
-                _activebitmap = loadChunk chunk.tiles
-                _activebitmap = _cached_chunks[y][x] = _.extend _activebitmap, _.omit(chunk, "tiles")
-        # Expects a bitmap (can be generated with loadMap) and a createjs stage. Will render the map to the stage
-        # Returns a Container object with the bitmap inside it
-        renderChunk: (bitmap) ->
-            clearChunk()
-            _3dtiles = new createjs.Container()
-            _3dtiles.name = "3dtiles"
-            container = renderChunk bitmap
-            modifyBackground bitmap
-            stage.addChild _3dtiles
-            _activechunk = container 
+        # # Expects an array of 14x14 2D arrays, or chunks, each of which represents one full view in the map. 
+        # # Returns the bitmap 2d array for rendering by easel
+        # loadChunk: (chunk, x, y, render=false, cache=true) ->
+        #     if _cached_chunks[y][x] then return _cached_chunks[y][x]
+        #     else 
+        #         bitmap = loadChunk(chunk)
+        #         if cache
+        #             _activebitmap = _cached_chunks[y][x] = bitmap
+        #     if render is true then @renderChunk _activebitmap
+        #     bitmap
+        # # Expects a bitmap (can be generated with loadMap) and a createjs stage. Will render the map to the stage
+        # # Returns a Container object with the bitmap inside it
+        # renderChunk: (bitmap) ->
+        #     clearChunk()
+        #     _3dtiles = new createjs.Container()
+        #     _3dtiles.name = "3dtiles"
+        #     container = renderChunk bitmap
+        #     modifyBackground bitmap
+        #     stage.addChild _3dtiles
+        #     _activechunk = container 
+        # chunkifyBitmap: (bitmap) ->
+        #     _activebitmap
         clearChunk: ->
             clearChunk()
-        # Returns the container objects which have been rendered to the canvas
-        getVisibleChunk: () ->
-            _activechunk
+        # # Returns the container objects which have been rendered to the canvas
+        # # If chunk is set to true, returns the bitmap as a chunkified model
+        # getVisibleMap: (chunky=false) ->
+        #     console.log _activebitmap
+        #     if !chunky then _activebitmap
+        #     else @chunkifyBitmap _activebitmap
         setTile: (tile) ->
             setTile tile
-        # Given move deltas, retrieve the DisplayObject (bitmap) at that position in the current chunk
-        getTargetTile: (dx, dy, start) ->
-            if _activechunk
-                y = (start.y+(50*dy))/50
-                x = (start.x+(50*dx))/50
-                _activechunk.children[y]?.children[x] || {}
+        # # Given move deltas, retrieve the DisplayObject (bitmap) at that position in the current chunk
         Tile: Tile
         Row: Row
-        Chunk: Chunk
+        Overlay: Overlay
+        getTargetTile: (dx=0, dy=0, start,chunk=_activechunk) -> 
+            if chunk
+                y = (start.y+(50*dy))/50
+                x = (start.x+(50*dx))/50
+                chunk.children[y]?.children[x] || {}
+        # Expects a 2d array of tile objects and returns a createjs container
+        # with bound tile models
+        mapFromPrecursor: (precursor) ->
+            modifyBackground precursor
+            _activechunk = renderChunk precursor.tiles
+            globals.shared_events.trigger "map:change", _activechunk
+            _activechunk
+        getVisibleMap: -> _activechunk
+        getEmptyMap: -> 
+            c = new Chunk()
+            console.log c.export()
+            c.export()
     }

@@ -73,7 +73,11 @@
           inventory: attrs.inventory.toJSON(true),
           powers: attrs.powers.toJSON(true),
           path: attrs.path.get("name"),
-          slots: attrs.slots.toJSON(true)
+          slots: attrs.slots.toJSON(true),
+          marker: {
+            x: this.marker.x,
+            y: this.marker.y
+          }
         });
       };
 
@@ -81,10 +85,6 @@
         return {
           AC: 10,
           atk: 3,
-          current_chunk: {
-            x: 0,
-            y: 0
-          },
           currentstage: 1,
           creatine: 10,
           eco: 10,
@@ -119,9 +119,9 @@
       };
 
       NPC.prototype.initialize = function(_arg) {
-        var frames, inventory, path, pow, spriteimg, _ref1,
+        var frames, inventory, marker, path, pow, spriteimg, _ref1,
           _this = this;
-        _ref1 = _arg != null ? _arg : {}, pow = _ref1.pow, frames = _ref1.frames, spriteimg = _ref1.spriteimg, path = _ref1.path, inventory = _ref1.inventory;
+        _ref1 = _arg != null ? _arg : {}, pow = _ref1.pow, frames = _ref1.frames, spriteimg = _ref1.spriteimg, path = _ref1.path, inventory = _ref1.inventory, marker = _ref1.marker;
         if (!(path instanceof Backbone.Model)) {
           this.setPath(path, this.get("level"));
         }
@@ -168,7 +168,7 @@
             return alert("new level!! " + level);
           }
         });
-        this.createMarker();
+        this.createMarker(marker);
         this.on("add", function(model, coll) {
           if (coll.type === "InitiativeQueue") {
             return _this.activity_queue = coll;
@@ -238,8 +238,9 @@
         return o;
       };
 
-      NPC.prototype.createMarker = function() {
-        var nameobj, sheet, sprite;
+      NPC.prototype.createMarker = function(_arg) {
+        var nameobj, sheet, sprite, x, y, _ref1;
+        _ref1 = _arg != null ? _arg : {}, x = _ref1.x, y = _ref1.y;
         sheet = this.sheets["0,1"];
         sheet.getAnimation("run").speed = .13;
         sheet.getAnimation("run").next = "run";
@@ -249,10 +250,17 @@
         this.marker.addChild(sprite);
         this.marker.icon = sprite;
         nameobj = new createjs.Text(this.get("name"), "14px Arial", "#fff");
-        return this.marker.addChild(_.extend(nameobj, {
+        this.marker.addChild(_.extend(nameobj, {
           shadow: globals.textshadow,
           y: 40
         }));
+        if (x) {
+          this.marker.x = x;
+        }
+        if (y) {
+          this.marker.y = y;
+        }
+        return this;
       };
 
       NPC.prototype.cursor = function() {
@@ -353,6 +361,7 @@
         if (dy == null) {
           dy = 0;
         }
+        console.log(target);
         target.tileModel.occupy(this);
         this.currentspace = target;
         if (target.end === false || target.end === "false" && (dx !== 0 && dy !== 0)) {
@@ -434,7 +443,6 @@
             return handleChange(_this.getAttrDifference(attr), attr);
           });
         });
-        console.log(this);
         return this.listenTo(this.get("modifiers"), {
           "add": function(modifier, collection) {
             var currentval, max, mod, newval;
@@ -502,8 +510,12 @@
         if (_.isEmpty(target)) {
           if (dx < 0) {
             this.changeChunk(-1);
-          } else {
+          } else if (dx > 0) {
+            this.changeChunk(1);
+          } else if (dy < 0) {
             this.changeChunk(null, -1);
+          } else {
+            this.changeChunk(null, 1);
           }
           return true;
         }
@@ -658,18 +670,24 @@
           y = 0;
         }
         chunk = this.get("current_chunk");
+        console.log(chunk);
+        debugger;
         chunk.x += x;
         chunk.y += y;
         if (y === -1) {
           this.setPos(null, globals.map.c_height);
+        } else if (y === 1) {
+          this.setPos(null, 0);
         }
         if (x === -1) {
           this.setPos(globals.map.c_width);
+        } else if (x === 1) {
+          this.setPos(0);
         }
         this.set("current_chunk", chunk, {
           silent: true
         });
-        this.trigger("change:current_chunk");
+        this.trigger("change:current_chunk", chunk);
         this.enterSquare();
         return this;
       };
@@ -786,7 +804,7 @@
 
       NPC.prototype.addToMap = function() {
         var chunk, tile, x, y, _ref1, _ref2, _ref3;
-        chunk = (_ref1 = mapper.getVisibleChunk()) != null ? _ref1.children : void 0;
+        chunk = (_ref1 = mapper.getVisibleMap()) != null ? _ref1.children : void 0;
         x = Math.abs(Math.ceil(Math.random() * globals.map.c_width / _ts - 1));
         y = Math.abs(Math.ceil(Math.random() * globals.map.c_height / _ts - 1));
         tile = (_ref2 = chunk[y]) != null ? _ref2.children[x] : void 0;

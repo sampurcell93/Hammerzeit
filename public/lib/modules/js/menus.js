@@ -2,7 +2,7 @@
   var __hasProp = {}.hasOwnProperty,
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
-  define(["cast", "taskrunner", "powers", "globals", "utilities", "dialog", "battler", "board", "jquery-ui"], function(cast, taskrunner, powers, globals, ut, dialog, battler, board) {
+  define(["cast", "taskrunner", "powers", "globals", "utilities", "battler", "board", "jquery-ui"], function(cast, taskrunner, powers, globals, ut, battler, board) {
     var $wrapper, CharacterList, CharacterListItem, CharacterStateDisplay, DispatchMenu, InventoryList, ItemView, Menu, Meter, PlayerDispatch, PowerList, PowerListItem, StatList, closeAll, stage, toggleMenu, _activemenu, _dispatchmenu, _menus, _potential_moves, _ref, _ref1, _ref10, _ref11, _ref2, _ref3, _ref4, _ref5, _ref6, _ref7, _ref8, _ref9;
     board.focus();
     stage = board.getStage();
@@ -368,7 +368,7 @@
       };
 
       PowerListItem.prototype.chooseTargets = function() {
-        var handler, opts, user;
+        var handler, m, opts, user;
         if (this.isDisabled()) {
           return this;
         }
@@ -387,7 +387,7 @@
           handlerContext: this.model
         };
         opts = _.extend(opts, this.model.getPathOptions());
-        battler.setAttacks(battler.virtualMovePossibilities(user.getCurrentSpace(), handler, opts));
+        battler.setAttacks(m = battler.virtualMovePossibilities(user.getCurrentSpace(), handler, opts));
         return battler.setState("choosingattacks");
       };
 

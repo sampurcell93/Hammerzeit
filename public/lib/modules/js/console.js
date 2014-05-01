@@ -98,10 +98,10 @@
 
       Console.prototype.scrollToBottom = function(speed) {
         if (speed == null) {
-          speed = "slow";
+          speed = "fast";
         }
-        return this.$el.animate({
-          scrollTop: this.$el[0].scrollHeight
+        return this.$("ol").animate({
+          scrollTop: this.$("ol")[0].scrollHeight
         }, speed);
       };
 

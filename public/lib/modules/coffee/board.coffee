@@ -4,7 +4,8 @@ define ['globals', 'utilities', 'jquery', 'underscore', 'easel'], (globals, ut) 
     # The current zoom value
     _zoom = 0
     # The current pixel width and height of a loaded map
-    _mapwidth = _mapheight = 0
+    _mapwidth = globals.map.c_width
+    _mapheight = globals.map.c_height
     _ts = globals.map.tileside
 
     # State enum
@@ -281,7 +282,9 @@ define ['globals', 'utilities', 'jquery', 'underscore', 'easel'], (globals, ut) 
             $canvas.css("background-position", position)
             @
         setBackground: (url) ->
+            console.log "failing bg", url
             if !url then return @
+            console.log "setting bg to #{url}"
             $canvas.css("background-image", "url(" + url + ")")
             @
         getZoom: -> _zoom
@@ -289,9 +292,6 @@ define ['globals', 'utilities', 'jquery', 'underscore', 'easel'], (globals, ut) 
             zoomIn()
         zoomOut: ->
             zoomOut()
-        setMapSize: (width, height) ->
-            _mapwidth = width
-            _mapheight = height
         pause: (opts) ->
             opts = _.extend {}, opts
             if opts.blur then blurBoard()
@@ -321,9 +321,7 @@ define ['globals', 'utilities', 'jquery', 'underscore', 'easel'], (globals, ut) 
             new Cursor
         # Use as general purpose cursor to avoid over instantiation
         mainCursor: -> _cursor
-        inBounds: (x,y) ->
-            console.log x, y
-            x >= 0 and x <= globals.map.c_width and y >= 0 and y <= globals.map.c_height
+
     }
 
     board.initialize()

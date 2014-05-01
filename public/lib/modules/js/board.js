@@ -5,7 +5,8 @@
     canvas = document.getElementById("game-board");
     $canvas = $(canvas);
     _zoom = 0;
-    _mapwidth = _mapheight = 0;
+    _mapwidth = globals.map.c_width;
+    _mapheight = globals.map.c_height;
     _ts = globals.map.tileside;
     states = globals.states;
     window.stage = stage = new createjs.Stage(canvas);
@@ -345,9 +346,11 @@
         return this;
       },
       setBackground: function(url) {
+        console.log("failing bg", url);
         if (!url) {
           return this;
         }
+        console.log("setting bg to " + url);
         $canvas.css("background-image", "url(" + url + ")");
         return this;
       },
@@ -359,10 +362,6 @@
       },
       zoomOut: function() {
         return zoomOut();
-      },
-      setMapSize: function(width, height) {
-        _mapwidth = width;
-        return _mapheight = height;
       },
       pause: function(opts) {
         opts = _.extend({}, opts);
@@ -401,10 +400,6 @@
       },
       mainCursor: function() {
         return _cursor;
-      },
-      inBounds: function(x, y) {
-        console.log(x, y);
-        return x >= 0 && x <= globals.map.c_width && y >= 0 && y <= globals.map.c_height;
       }
     };
     board.initialize();

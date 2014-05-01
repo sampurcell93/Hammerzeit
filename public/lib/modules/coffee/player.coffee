@@ -1,4 +1,4 @@
-define ["utilities", "npc", "board", "globals", "mapper", "items", "powers", "backbone", "easel", "underscore"], (ut, NPC, board, globals, mapper, items, powers) ->
+define ["utilities", "npc", "board", "globals"], (ut, NPC, board, globals) ->
 
 	stage = board.getStage()
 	class player extends NPC.NPC
@@ -39,7 +39,7 @@ define ["utilities", "npc", "board", "globals", "mapper", "items", "powers", "ba
 				@marker.x %= globals.map.width
 				@marker.y %= globals.map.height
 				@set "current_chunk", chunk
-				@trigger "change:current_chunk"
+				@trigger "change:current_chunk", chunk
 				board.addMarker @
 				len = stage.children.length
 				stage.setChildIndex marker, 0
@@ -55,7 +55,7 @@ define ["utilities", "npc", "board", "globals", "mapper", "items", "powers", "ba
 			_.each inventory.models, (item) => item.set("belongsTo", @)
 			inventory.sort()
 			return _.extend defaults, {
-				current_chunk: { x: 1, y: 1 }
+				current_chunk: { x: 1, y: 0 }
 				inventory: inventory
 				type: "PC"
 				name: "Hero"

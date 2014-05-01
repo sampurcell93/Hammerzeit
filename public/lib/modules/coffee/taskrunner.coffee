@@ -1,5 +1,6 @@
 define ["globals", "utilities", "board", "player", "mapper", "mapcreator"], (globals, ut, board, player, mapper, mapcreator) ->
 	_user = null
+	_currentlevel = 1
 	globals.shared_events.on "game:new", -> newGame()
 	globals.shared_events.on "game:load", -> loadGame()
 	globals.shared_events.on "game:save", -> saveGame()
@@ -41,6 +42,8 @@ define ["globals", "utilities", "board", "player", "mapper", "mapcreator"], (glo
 					success: -> 
 						loadStage 1
 						window.PC = _user.get("party").at(0)
+						console.log PC
+						debugger
 						ut.destroyModal()
 					parse: true
 
@@ -67,16 +70,17 @@ define ["globals", "utilities", "board", "player", "mapper", "mapcreator"], (glo
 		board.addState "LOADING"
 		# Stage not to be confused with "level": Rename todo
 		require ["lib/modules/js/stage" + module], (level) ->
+			level.events.on "loading:done", ->
+				board.setBackground(level.getBackground())
+			_currentlevel = level
 			PC = getPC()
 			board.removeState("LOADING")
-			PC.on "change:current_chunk", () ->
-				newchunk = PC.get "current_chunk"
-				board.setBackground(level.getBackground())
-				mapcreator.loadChunk(level.getBitmap()[newchunk.y][newchunk.x], newchunk.x, newchunk.y)
-				mapcreator.render()
-				globals.shared_events.trigger "map:change", mapcreator.getChunk()
-				full_chunk = level.getBitmap()[newchunk.y][newchunk.x]
-				mapper.renderChunk full_chunk, board.getStage()
+			PC.on "change:current_chunk", (newchunk) ->
+				bitmap = level.getPrecursor()
+				# mapcreator.loadChunk(level.getBitmap()[newchunk.y][newchunk.x], newchunk.x, newchunk.y)
+				# mapcreator.render()
+				full_chunk = bitmap[newchunk.y][newchunk.x]
+				mapper.mapFromPrecursor full_chunk
 
 	loadGame = (id) ->
 		loader = new Loader({username: id})
